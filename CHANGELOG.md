@@ -5,6 +5,7 @@
 - Gỡ nghiên cứu cue-first (`experiments/`, khoảng 100 test, tài liệu và receipt), 13 tool Python chọn model ASR cùng báo cáo/benchmark ASR/CTC, sau khi chốt Whisper large-v3-turbo. Chi tiết trong [bộ nhớ hồi quy](docs/REGRESSION_MEMORY.md).
 - Panel bỏ các hook dự phòng cho cue-first và năm file `extension/ui/`; gói cài bỏ payload `big-update/`. Hai nút Dựng theo voice và Chỉ tạo subtitle không dùng các hook này nên hành vi không đổi; thay đổi tới bản cài ở lần phát hành sau. Chưa kiểm trên Premiere thật.
 - CI chỉ chạy trên pull request có đổi code, bỏ qua thay đổi chỉ ở Markdown/`docs/` và hủy lượt cũ khi có push mới; nhóm test cue-first từng chiếm khoảng 15 trong 20 phút của mỗi lượt CI.
+- CI chuyển bộ lọc "chỉ đổi tài liệu" từ cấp workflow xuống job `changes`, để `regression-tests` bị bỏ qua vẫn được tính là đạt và có thể đặt làm check bắt buộc cho `main` (14/11/2026).
 
 ## 2.20.90 — 2026-11-13
 

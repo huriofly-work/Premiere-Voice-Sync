@@ -1,15 +1,13 @@
 name: Windows CI
 
 # Docs-only changes (Markdown and docs/, except release metadata that the
-# distribution check reads) do not run the Windows suite. Pull requests are the
-# merge gate; a newer push to the same PR cancels the older run.
+# distribution check reads) skip the Windows suite. The filter is a job, not
+# `on.paths`, so a skipped `regression-tests` still reports as passed and can be
+# a required check. Require `changes` too: if it fails, the skipped test job
+# alone would read as passed. Pull requests are the merge gate; a newer push to
+# the same PR cancels the older run.
 on:
   pull_request:
-    paths:
-      - '**'
-      - '!**/*.md'
-      - '!docs/**'
-      - 'docs/releases/*.json'
   workflow_dispatch:
 
 concurrency:
@@ -20,7 +18,46 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Detect code changes
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # HEAD is the PR merge commit; its first parent is the base branch.
+          # A failed diff stops the job (bash -e), so it never reads as docs-only.
+          files=$(git -c core.quotePath=false diff --name-only HEAD^1 HEAD)
+          code=false
+          while IFS= read -r file; do
+            case "$file" in
+              '') ;;
+              docs/releases/*/*) ;;
+              docs/releases/*.json) code=true ;;
+              docs/*|*.md) ;;
+              *) code=true ;;
+            esac
+          done <<< "$files"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Code changed: $code"
+
   regression-tests:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
