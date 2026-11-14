@@ -38,7 +38,6 @@ Xem [kiến trúc](ARCHITECTURE.md), [cấu trúc repo](PROJECT_LAYOUT.md) và [
 ## Việc còn lại (14/11/2026)
 
 - Trước bản 2.20.91 (bản public đầu): gói mới chỉ có link GPL v3 của FFmpeg trong [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md), cần kèm toàn văn license; chạy kiểm phát hành trước khi gắn tag.
-- Ruleset `Protect main` chưa bắt CI xanh; bật sau khi workflow lọc thay đổi ở cấp job, để PR chỉ sửa tài liệu không bị treo.
 - Test để lại các thư mục `.tmp-*-tests` ở root (đã gitignore); chỉ xoá theo danh sách user xác nhận.
 
 ## Bài học còn áp dụng
@@ -62,7 +61,7 @@ Chạy tại root bằng Windows PowerShell. Máy có Windows PowerShell 5.1 và
 | Syntax và mô phỏng JS | `node --check extension/js/main.js`, `node --check extension/js/security.js`, `node tests/unit/speed-merge-host.js`, `node tools/Build-DiagnosticExecutor.js --check`. |
 | Metadata | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Verify-GitHubDistribution.ps1`. |
 
-Sáu nhóm bỏ qua bởi `-NoWindowsIntegration` gồm `Test-InstallerLifecycle.ps1`, `Test-InstallRollback.ps1`, `Test-PanelRegistry.ps1`, `Test-NotificationShortcut.ps1`, `Test-NativeNotifications.ps1`, `Test-IncidentNotifications.ps1`. CI chạy trên mọi pull request: job `changes` xem PR có đổi code không; PR chỉ đổi Markdown/`docs/` (trừ `docs/releases/*.json`) thì job `regression-tests` được bỏ qua (GitHub tính là đạt). Native import/playback/timing/marker và hành vi lúc dừng cần kiểm riêng trên Premiere với user.
+Sáu nhóm bỏ qua bởi `-NoWindowsIntegration` gồm `Test-InstallerLifecycle.ps1`, `Test-InstallRollback.ps1`, `Test-PanelRegistry.ps1`, `Test-NotificationShortcut.ps1`, `Test-NativeNotifications.ps1`, `Test-IncidentNotifications.ps1`. CI chạy trên mọi pull request: job `changes` xem PR có đổi code không; PR chỉ đổi Markdown/`docs/` (trừ `docs/releases/*.json`) thì job `regression-tests` được bỏ qua (GitHub tính là đạt). Từ 14/11/2026 ruleset `Protect main` bắt buộc hai check `changes` và `regression-tests` của GitHub Actions; đổi tên một trong hai job thì phải sửa ruleset cùng lúc, nếu không mọi PR bị chặn. Native import/playback/timing/marker và hành vi lúc dừng cần kiểm riêng trên Premiere với user.
 
 ## Quyết định cần giữ
 
