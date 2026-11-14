@@ -37,7 +37,7 @@ Xem [kiến trúc](ARCHITECTURE.md), [cấu trúc repo](PROJECT_LAYOUT.md) và [
 
 ## Việc còn lại (14/11/2026)
 
-- Trước bản 2.20.91 (bản public đầu): gói mới chỉ có link GPL v3 của FFmpeg trong [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md), cần kèm toàn văn license; chạy kiểm phát hành trước khi gắn tag.
+- Trước bản 2.20.91 (bản public đầu): toàn văn GPL v3 của FFmpeg đã nằm trong repo ở `licenses/GPL-3.0.txt` (tải một lần từ gnu.org ngày 14/11/2026, SHA-256 `3972dc97…6986`, test khóa hash) và có trong allowlist của gói; chưa build ZIP để xem file thật nằm trong gói. Còn chờ user quyết: có đính kèm mã nguồn FFmpeg 8.1.2 (và các thư viện gộp trong bản `essentials_build`) vào GitHub Release hay chỉ trỏ link ffmpeg.org/gyan.dev; có kèm file LICENSE gốc của whisper.cpp v1.9.1 để ghi đúng dòng bản quyền. Chạy kiểm phát hành trước khi gắn tag.
 - Test để lại các thư mục `.tmp-*-tests` ở root (đã gitignore); chỉ xoá theo danh sách user xác nhận.
 
 ## Bài học còn áp dụng
