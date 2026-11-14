@@ -40,7 +40,11 @@
       "PowerShell(git branch --list:*)",
       "Bash(git merge-base:*)",
       "Bash(node tests/unit/speed-merge-host.js)",
-      "PowerShell(node tests/unit/speed-merge-host.js)"
+      "PowerShell(node tests/unit/speed-merge-host.js)",
+      "Bash(git stash list:*)",
+      "PowerShell(git stash list:*)",
+      "Bash(git stash show:*)",
+      "PowerShell(git stash show:*)"
     ],
     "ask": [
       "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-release.ps1:*)",
@@ -54,11 +58,29 @@
     ],
     "deny": [
       "Bash(git reset --hard:*)",
-      "Bash(git stash:*)",
       "Bash(git clean:*)",
       "PowerShell(git reset --hard:*)",
-      "PowerShell(git stash:*)",
-      "PowerShell(git clean:*)"
+      "PowerShell(git clean:*)",
+      "Bash(git stash)",
+      "PowerShell(git stash)",
+      "Bash(git stash -*)",
+      "PowerShell(git stash -*)",
+      "Bash(git stash push:*)",
+      "PowerShell(git stash push:*)",
+      "Bash(git stash save:*)",
+      "PowerShell(git stash save:*)",
+      "Bash(git stash pop:*)",
+      "PowerShell(git stash pop:*)",
+      "Bash(git stash apply:*)",
+      "PowerShell(git stash apply:*)",
+      "Bash(git stash drop:*)",
+      "PowerShell(git stash drop:*)",
+      "Bash(git stash clear:*)",
+      "PowerShell(git stash clear:*)",
+      "Bash(git stash store:*)",
+      "PowerShell(git stash store:*)",
+      "Bash(git stash branch:*)",
+      "PowerShell(git stash branch:*)"
     ]
   }
 }
