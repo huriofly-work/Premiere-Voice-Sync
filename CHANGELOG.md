@@ -1,5 +1,7 @@
 # Changelog
 
+Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
+
 ## Chưa phát hành — dọn các hướng đã đóng, 2026-11-13
 
 - Gỡ nghiên cứu cue-first (`experiments/`, khoảng 100 test, tài liệu và receipt), 13 tool Python chọn model ASR cùng báo cáo/benchmark ASR/CTC, sau khi chốt Whisper large-v3-turbo. Chi tiết trong [bộ nhớ hồi quy](docs/REGRESSION_MEMORY.md).

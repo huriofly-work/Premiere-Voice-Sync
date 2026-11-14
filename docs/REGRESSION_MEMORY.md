@@ -43,7 +43,9 @@ gọi các hook này.
   native mới vẫn phải qua [feasibility policy](DEVELOPMENT_FEASIBILITY_POLICY.md)
   trước khi làm feature.
 - **Tra lại lịch sử.** Ghi chép đầy đủ S1–S8, M1, Q13–Q18, ASR/CTC và Qwen
-  (142 mục) nằm trong Git: `git show 1d56546:docs/REGRESSION_MEMORY.md`.
+  (142 mục) nằm trong lịch sử repo cũ (`docs/REGRESSION_MEMORY.md` tại commit
+  `1d56546`, repo cũ), nay chỉ còn ở bản sao lưu ngoài GitHub
+  ([khởi tạo lại repo](maintenance/REPO_RESTART_2026-11-14.md)).
 - **Chưa kiểm native.** Gỡ hook cần một bản phát hành mới mới tới bản cài;
   replay/CI không chứng minh hành vi trên Premiere thật.
 
