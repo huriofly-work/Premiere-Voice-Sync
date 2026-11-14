@@ -23,9 +23,7 @@ foreach ($required in @(
     'extension\engine\lib\vi-caption-phrases.LICENSE.txt',
     'Release still contains protected payload',
     "Copy-Item -LiteralPath (Join-Path `$projectRoot 'THIRD_PARTY_NOTICES.md') -Destination `$staging -Force",
-    "'THIRD_PARTY_NOTICES.md'",
-    "Copy-Item -LiteralPath (Join-Path `$projectRoot 'licenses\GPL-3.0.txt') -Destination (Join-Path `$staging 'licenses') -Force",
-    "'licenses\GPL-3.0.txt'"
+    "'THIRD_PARTY_NOTICES.md'"
 )) {
     if ($buildSource.IndexOf($required,[StringComparison]::Ordinal) -lt 0) { throw "OPEN_SOURCE_BUILD_INVARIANT_MISSING:$required" }
 }
@@ -49,16 +47,29 @@ foreach ($phrase in @('GPL v3','https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz'
     if ($notices.IndexOf($phrase,[StringComparison]::Ordinal) -lt 0) { throw "THIRD_PARTY_NOTICE_TERM_MISSING:$phrase" }
 }
 
-# FFmpeg is GPL v3: the package must carry the full license text, not only a
-# link. The text is committed (never fetched at build time) and hash-pinned.
-$gplRelative = 'licenses\GPL-3.0.txt'
-$gplSha256 = '3972DC9744F6499F0F9B2DBF76696F2AE7AD8AF9B23DDE66D6AF86C9DFB36986'
-if ($gplRelative -notin $packageFiles) { throw 'GPL_LICENSE_NOT_IN_PACKAGE_ALLOWLIST' }
-$gplPath = Join-Path $projectRoot $gplRelative
-if (-not (Test-Path -LiteralPath $gplPath -PathType Leaf)) { throw 'GPL_LICENSE_MISSING' }
-if ((Get-FileHash -LiteralPath $gplPath -Algorithm SHA256).Hash -ne $gplSha256) { throw 'GPL_LICENSE_HASH_MISMATCH' }
-foreach ($phrase in @('licenses/GPL-3.0.txt',$gplSha256.ToLowerInvariant())) {
-    if ($notices.IndexOf($phrase,[StringComparison]::Ordinal) -lt 0) { throw "GPL_LICENSE_NOTICE_MISSING:$phrase" }
+# Bundled license texts: FFmpeg is GPL v3 (full text must accompany the
+# binary, not only a link); whisper.cpp/ggml is MIT (its copyright notice must
+# accompany the binaries). Texts are committed (never fetched at build time)
+# and hash-pinned.
+$bundledLicenses = [ordered]@{
+    'licenses\GPL-3.0.txt' = '3972DC9744F6499F0F9B2DBF76696F2AE7AD8AF9B23DDE66D6AF86C9DFB36986'
+    'licenses\whisper.cpp-LICENSE.txt' = '94F29BBED6A22C35B992C5C6EBF0E7C92F13B836B90F36F461C9CF2F0F1D010D'
+}
+foreach ($licenseRelative in $bundledLicenses.Keys) {
+    $licenseSha256 = $bundledLicenses[$licenseRelative]
+    if ($licenseRelative -notin $packageFiles) { throw "LICENSE_NOT_IN_PACKAGE_ALLOWLIST:$licenseRelative" }
+    $copyLine = "Copy-Item -LiteralPath (Join-Path `$projectRoot '$licenseRelative') -Destination (Join-Path `$staging 'licenses') -Force"
+    if ($buildSource.IndexOf($copyLine,[StringComparison]::Ordinal) -lt 0) { throw "LICENSE_NOT_COPIED_BY_BUILD:$licenseRelative" }
+    if ($buildSource.IndexOf("'$licenseRelative'",[StringComparison]::Ordinal) -lt 0) { throw "LICENSE_NOT_REQUIRED_BY_BUILD:$licenseRelative" }
+    $licensePath = Join-Path $projectRoot $licenseRelative
+    if (-not (Test-Path -LiteralPath $licensePath -PathType Leaf)) { throw "LICENSE_MISSING:$licenseRelative" }
+    if ((Get-FileHash -LiteralPath $licensePath -Algorithm SHA256).Hash -ne $licenseSha256) { throw "LICENSE_HASH_MISMATCH:$licenseRelative" }
+    foreach ($phrase in @($licenseRelative.Replace('\','/'),$licenseSha256.ToLowerInvariant())) {
+        if ($notices.IndexOf($phrase,[StringComparison]::Ordinal) -lt 0) { throw "LICENSE_NOTICE_MISSING:$phrase" }
+    }
+}
+foreach ($leftover in @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'licenses') -File)) {
+    if (('licenses\' + $leftover.Name) -notin $bundledLicenses.Keys) { throw "LICENSE_FILE_NOT_PINNED:$($leftover.Name)" }
 }
 
 . $releaseCommon

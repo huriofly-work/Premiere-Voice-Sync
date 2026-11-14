@@ -9,7 +9,7 @@ không áp dụng cho chúng.
 | Thành phần | File trong gói | Phiên bản và nguồn | Giấy phép |
 | --- | --- | --- | --- |
 | FFmpeg | `extension/engine/runtime/bin/ffmpeg.exe` | 8.1.2, bản `essentials_build` của [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) | GPL v3 hoặc mới hơn (build với `--enable-gpl --enable-version3`); toàn văn trong `licenses/GPL-3.0.txt` đi kèm |
-| whisper.cpp và ggml | `whisper-cli.exe`, `whisper.dll`, `ggml.dll`, `ggml-base.dll`, `ggml-cpu-*.dll`, `parakeet.dll` trong `extension/engine/runtime/bin/` | v1.9.1, bản Windows x64 từ [ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.9.1) | [MIT](https://github.com/ggml-org/whisper.cpp/blob/v1.9.1/LICENSE) |
+| whisper.cpp và ggml | `whisper-cli.exe`, `whisper.dll`, `ggml.dll`, `ggml-base.dll`, `ggml-cpu-*.dll`, `parakeet.dll` trong `extension/engine/runtime/bin/` | v1.9.1, bản Windows x64 từ [ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.9.1) | [MIT](https://github.com/ggml-org/whisper.cpp/blob/v1.9.1/LICENSE); bản gốc trong `licenses/whisper.cpp-LICENSE.txt` đi kèm |
 | SDL2 | `extension/engine/runtime/bin/SDL2.dll` | Bản đi kèm whisper.cpp v1.9.1 Windows x64 ([libsdl.org](https://www.libsdl.org/)) | [zlib](https://www.libsdl.org/license.php) |
 | Model Whisper large-v3-turbo (định dạng ggml) | `extension/engine/runtime/models/ggml-large-v3-turbo.bin` | [huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp), revision `5359861c739e955e79d9a303bcbc70fb988958b1`; trọng số gốc của [OpenAI Whisper](https://github.com/openai/whisper) | [MIT](https://github.com/openai/whisper/blob/main/LICENSE) |
 | Danh sách cụm từ tiếng Việt | `extension/engine/lib/vi-caption-phrases.txt` | Rút gọn từ VnVocab của [RDRsegmenter](https://github.com/datquocnguyen/RDRsegmenter) | Apache 2.0; xem `vi-caption-phrases.NOTICE.txt` và `vi-caption-phrases.LICENSE.txt` đi kèm |
@@ -46,8 +46,10 @@ Premiere Voice Sync không phân phối lại nó.
 
 ## Thông báo bản quyền MIT
 
-whisper.cpp và ggml, Copyright (c) The ggml authors (năm bản quyền đúng như
-file [LICENSE của v1.9.1](https://github.com/ggml-org/whisper.cpp/blob/v1.9.1/LICENSE)).
+whisper.cpp và ggml, Copyright (c) 2023-2026 The ggml authors. File LICENSE
+gốc của tag v1.9.1 (commit `f049fff95a089aa9969deb009cdd4892b3e74916`) đi kèm
+gói ở `licenses/whisper.cpp-LICENSE.txt` (1 078 byte, SHA-256
+`94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d`).
 OpenAI Whisper, Copyright (c) 2022 OpenAI.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

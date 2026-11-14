@@ -9,6 +9,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 - CI chỉ chạy trên pull request có đổi code, bỏ qua thay đổi chỉ ở Markdown/`docs/` và hủy lượt cũ khi có push mới; nhóm test cue-first từng chiếm khoảng 15 trong 20 phút của mỗi lượt CI.
 - CI chuyển bộ lọc "chỉ đổi tài liệu" từ cấp workflow xuống job `changes`, để `regression-tests` bị bỏ qua vẫn được tính là đạt và có thể đặt làm check bắt buộc cho `main` (14/11/2026).
 - Gói phát hành kèm toàn văn giấy phép GPL v3 của FFmpeg ở `licenses/GPL-3.0.txt` thay vì chỉ có link; `THIRD_PARTY_NOTICES.md` trỏ tới file này và ghi nơi lấy mã nguồn FFmpeg 8.1.2. Test kiểm file có trong allowlist của gói và đúng SHA-256 (14/11/2026).
+- Gói phát hành kèm file LICENSE gốc của whisper.cpp v1.9.1 ở `licenses/whisper.cpp-LICENSE.txt`; `THIRD_PARTY_NOTICES.md` ghi đúng dòng bản quyền "2023-2026 The ggml authors" thay vì để trống năm. Test kiểm mọi file trong `licenses/` có trong gói và đúng SHA-256 (14/11/2026).
 
 ## 2.20.90 — 2026-11-13
 
