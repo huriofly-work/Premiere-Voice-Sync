@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.89",
+  "tag": "v2.20.89",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "D6C51C2F4E1E57DFE715C1D4CDEA3C648A519FE50E597BDFAAB84506687CB1F8",
+    "bytes": 488821010,
+    "filename": "Premiere-Voice-Sync-2.20.89-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 75,
+    "powershellScriptsParsed": 177,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "fullSuiteWithShortTempPath": true,
+    "zipEntriesVerified": 82,
+    "packageChecksumsVerified": true,
+    "trackedExtensionFilesMatchingSource": 53,
+    "untrackedRuntimeFilesPackaged": 20,
+    "sourceMismatches": 0,
+    "runtimeSourceMatches": true
+  },
+  "changes": [
+    "Caption edges keep aligned timing; default edge padding 5 -> 0 frames in Auto edit and caption-only (S6 decision 2026-10-25). One-frame overlap repair and larger-overlap rejection unchanged.",
+    "Shared link checks (security.js, Security.ps1) walk from the drive root down; UNC/device roots rejected before disk access in cue-first research code.",
+    "Cue-first research code (not enabled in the panel) pins its readback Python runtime (S8 T1)."
+  ],
+  "pullRequests": [
+    94,
+    95
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "Native Premiere import, playback, caption timing and markers are not verified for this build.",
+    "Captions show about 5 frames shorter at each edge than 2.20.88; small gaps between adjacent captions may be more visible.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build.",
+    "The cue-first Beta workflow is not enabled; both panel buttons use the existing 2.20.x workflow."
+  ]
+}

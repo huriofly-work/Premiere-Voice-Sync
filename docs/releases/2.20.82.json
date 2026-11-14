@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.82",
+  "tag": "v2.20.82",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "23BBE212B83D6313B1809499E731CD13F879414B7A83F14300B2D74D2FB027A0",
+    "bytes": 488789984,
+    "filename": "Premiere-Voice-Sync-2.20.82-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "packagePayloadFilesVerified": 73,
+    "zipEntriesVerified": 74,
+    "packagedNodeSuitesPassed": 20,
+    "regressionGroupsPassed": 68,
+    "powershellScriptsParsed": 145,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "runtimeSourceMatches": true,
+    "reproducingTestsFailBeforePassAfter": true
+  },
+  "alienReplay": {
+    "inputReferenceCues": 319,
+    "voiceChapters": 3,
+    "originalErrorReproduced": true,
+    "originalUnresolvedCueCount": 159,
+    "newUnresolvedCueCount": 157,
+    "whisperCacheHits": 149,
+    "whisperCacheMisses": 0,
+    "partialRecoveredCueCount": 0,
+    "result": "blocked-safely-before-timeline",
+    "firstBlockingRange": {
+      "cueIndices": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44
+      ],
+      "chapter": 0,
+      "voiceStart": 146.92727272727274,
+      "voiceEnd": 188.1818181818182,
+      "durationSeconds": 41.25454545454545,
+      "maximumSeconds": 30,
+      "reason": "manual-window-limit"
+    },
+    "sourceFilesHashVerifiedUnchanged": 8,
+    "timelineCalls": 0,
+    "asrAccuracyImprovementClaimed": false
+  },
+  "historicalReplay": {
+    "islandReferenceCuesRetained": 30,
+    "islandFinalCaptions": 66,
+    "islandSrtByteIdenticalTo": "2.20.81",
+    "islandSrtSha256": "AE1EB5769083804D40664281772307EC4C99C56A8CE26EF7DA64A63B9ECCEC93",
+    "protectedSourceGaps": 27,
+    "pendingSourceGaps": 1,
+    "mismatchedReferenceManualBlocks": 5,
+    "mismatchedReferenceFinalCaptions": 65,
+    "mismatchedPendingReferenceCueIndices": [
+      7,
+      11,
+      20
+    ],
+    "shortReferencesRetained": 27,
+    "letterLabelReferencesRetained": 199,
+    "sourcePictureAndVoiceConserved": true,
+    "falseReferenceNotRestored": true
+  },
+  "knownLimitations": [
+    "Alien 02 remains blocked at cues35-44:41.254545s without a safe internal anchor. This release does not claim the reported project can now complete Auto edit.",
+    "Manual limits30s/40cues/800words, omission proof and timing capability checks remain enforced. No model change; production stays Whisper Small.",
+    "Native Premiere import/razor/retime/playback/caption timing/markers/Save remain pending. Offline geometry is reconstructed from saved metadata, not live timeline state.",
+    "No automatic PR merge or stable promotion."
+  ],
+  "installation": {
+    "previousVersion": "2.20.81",
+    "installedFiles": 65,
+    "preservedFiles": 6333,
+    "preservedDirectories": 22,
+    "cepRegistryUnchanged": true,
+    "notificationShortcutRegistered": true,
+    "premiereClosedAtSetup": true,
+    "projectActionsPerformed": false,
+    "nativeHelperLaunched": false,
+    "packageSha256": "23BBE212B83D6313B1809499E731CD13F879414B7A83F14300B2D74D2FB027A0",
+    "nativeAcceptance": "pending-user-test"
+  }
+}

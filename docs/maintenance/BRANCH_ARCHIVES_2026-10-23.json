@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "maintenanceStarted": "2026-10-23",
+  "keptBranches": [
+    "codex/cue-first-big-update",
+    "codex/github-sync-2.20.72",
+    "codex/organize-project-2026-10-23",
+    "main"
+  ],
+  "branchesBefore": 13,
+  "archived": [
+    {
+      "branch": "agent/single-file-installer",
+      "sha": "771778d0558dc271fe4eba0a56deb0430c5e5324",
+      "archiveTag": "archive/2026-10-23/agent/single-file-installer",
+      "wasRemote": true,
+      "reason": "merged PR #3; preserve original tip",
+      "pullRequest": 3
+    },
+    {
+      "branch": "codex/actionable-notifications-2.20.30",
+      "sha": "e5bb5b338cef397044087c4d01a82ea6fbc19d55",
+      "archiveTag": "archive/2026-10-23/codex/actionable-notifications-2.20.30",
+      "wasRemote": false,
+      "reason": "local historical branch; preserve original tip in archive tag",
+      "pullRequest": null
+    },
+    {
+      "branch": "codex/audit-2.20.22",
+      "sha": "d3d4be6d34ecc3241a073f5abccfc0ae8a97cc73",
+      "archiveTag": "archive/2026-10-23/codex/audit-2.20.22",
+      "wasRemote": true,
+      "reason": "merged PR #9; preserve original tip",
+      "pullRequest": 9
+    },
+    {
+      "branch": "codex/content-review-foundation",
+      "sha": "cb936812288477fd0e757eceb1faae2c82b58e90",
+      "archiveTag": "archive/2026-10-23/codex/content-review-foundation",
+      "wasRemote": true,
+      "reason": "closed unmerged draft PR #12; preserve deferred work",
+      "pullRequest": 12
+    },
+    {
+      "branch": "codex/no-delay-auto-edit",
+      "sha": "81a4277f8d7b0d2febb9ca373d30c1932fe38a57",
+      "archiveTag": "archive/2026-10-23/codex/no-delay-auto-edit",
+      "wasRemote": true,
+      "reason": "duplicate tip of merged PR #8",
+      "pullRequest": null
+    },
+    {
+      "branch": "codex/subtitle-reference-scope",
+      "sha": "81a4277f8d7b0d2febb9ca373d30c1932fe38a57",
+      "archiveTag": "archive/2026-10-23/codex/subtitle-reference-scope",
+      "wasRemote": true,
+      "reason": "merged PR #8; preserve original tip",
+      "pullRequest": 8
+    },
+    {
+      "branch": "codex/ui-2.20.26",
+      "sha": "ff150abfb8846c37454da6ba525f7d1dd07c7683",
+      "archiveTag": "archive/2026-10-23/codex/ui-2.20.26",
+      "wasRemote": true,
+      "reason": "superseded by cumulative PR #13; exact head is an ancestor of 0802eb62b39522084cf22ae6c686e7f95139151d",
+      "pullRequest": 10
+    },
+    {
+      "branch": "codex/voice-boundary-2.20.27",
+      "sha": "e5bb5b338cef397044087c4d01a82ea6fbc19d55",
+      "archiveTag": "archive/2026-10-23/codex/voice-boundary-2.20.27",
+      "wasRemote": true,
+      "reason": "superseded by cumulative PR #13; exact head is an ancestor of 0802eb62b39522084cf22ae6c686e7f95139151d",
+      "pullRequest": 11
+    },
+    {
+      "branch": "feat/standalone-subtitles",
+      "sha": "0d98904b3ecc7db9dcd5f6d38c870dc1b2937fab",
+      "archiveTag": "archive/2026-10-23/feat/standalone-subtitles",
+      "wasRemote": true,
+      "reason": "merged PR #7; preserve original tip",
+      "pullRequest": 7
+    },
+    {
+      "branch": "fix/voice-aligned-single-line-captions",
+      "sha": "3c75a96a4c600a46512ee6f1aaf06a9e338c1407",
+      "archiveTag": "archive/2026-10-23/fix/voice-aligned-single-line-captions",
+      "wasRemote": true,
+      "reason": "merged PR #6; preserve original tip",
+      "pullRequest": 6
+    },
+    {
+      "branch": "stabilize/2.20.4-rc",
+      "sha": "1abb583e782c4c7dd365f8751b8adf6b433e9566",
+      "archiveTag": "archive/2026-10-23/stabilize/2.20.4-rc",
+      "wasRemote": false,
+      "reason": "local historical branch; preserve original tip in archive tag",
+      "pullRequest": null
+    },
+    {
+      "branch": "stable/2.19.1",
+      "sha": "447efb0b1a7b9b126147439cef10f27b96a471a7",
+      "archiveTag": "archive/2026-10-23/stable/2.19.1",
+      "wasRemote": true,
+      "reason": "historical baseline; published version tag is retained",
+      "pullRequest": null
+    }
+  ],
+  "releasePolicy": "keep all 22 releases and all published asset IDs, sizes and digests unchanged"
+}

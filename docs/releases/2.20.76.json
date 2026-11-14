@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.76",
+  "tag": "v2.20.76",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "filename": "Premiere-Voice-Sync-2.20.76-Panel.zip",
+    "bytes": 488777805,
+    "sha256": "7ACAB69795A7F6E02754EC7195F7DBC954C8557A2FBAF6C888200874C35A6457"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 59,
+    "powershellScriptsParsed": 132,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "packagedNodeSuitesPassed": 20,
+    "packagePayloadFilesVerified": 72,
+    "zipEntriesVerified": 73,
+    "installedPanelFilesVerified": 64,
+    "preservedUserFiles": 4767,
+    "preservedUserDirectories": 22,
+    "previousPanelBackupVerified": true,
+    "cepRegistryUnchanged": true
+  },
+  "knownLimitations": [
+    "Native Premiere import/playback/word timing/markers/Auto edit acceptance remains pending. Full-engine audio is reconstructed without native mix/effects.",
+    "Production remains Whisper small. This fixes a pipeline loss after empty local supplement ASR, not model weights or the remaining spelling of Null Seek.",
+    "Large-v3 experimental replay retains255/255 SRT and restores75 outro words, reducing final-outro errors77/77 to3/77 against the user reference. This does not establish a universal model ranking or resolve its earlier quiz failure.",
+    "Small/Medium/Turbo output SRT bytes remain identical to2.20.75; Medium truncated outro and Turbo nonempty wrong speech remain, since this bounded fallback never overrides nonempty recognition."
+  ]
+}

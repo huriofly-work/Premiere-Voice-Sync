@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.77",
+  "sourceBaseCommit": "9739499dbe4df78938a30242c1c5c5275da82665",
+  "sourceHashes": {
+    "extension/engine/run-captions.ps1": "44c2b69c0122b913073d0ee92eade57baca881801ffb6892f9d3c586328935dc",
+    "extension/engine/lib/SubtitleTiming.ps1": "9909e1d41c47be4a68f5d24adb2345c75f2fe44df0dff83cf99a18f200f2345f"
+  },
+  "cause": "Local supplement timing is wholly estimated in both failures. Cropping Medium on estimated word positions drops the real prefix. Turbo accepts unrelated text from a degraded rerecognition even though complete primary DTW speech is available.",
+  "policy": "Reuse the bounded immutable primary DTW tail after empty or wholly estimated accepted supplement text. Retain76 unique-left/source/chapter/bounds/energy/complete-DTW guards, reject unresolved/interior/partial tails, preserve local DTW or mixed timing and native failures. No confidence vote, semantic blacklist or reference prompt.",
+  "traceBeforeFix": {
+    "whisper-medium": {
+      "rawConvertedWordCount": 80,
+      "croppedWordCount": 69,
+      "acceptedWordCount": 69,
+      "acceptedTimingQuality": [
+        "estimated"
+      ],
+      "leftContextMatched": false,
+      "gapStart": 750.26,
+      "gapEnd": 766.5,
+      "readStart": 747.76,
+      "readEnd": 766.5,
+      "primaryTailWordCount": 74,
+      "primarySnapshotSha256": "59914e54289f6c95dd47d67a15190edae339c75a6d15520f268b0050b8798c2a",
+      "supplementSnapshotSha256": "ddc6685136a5a1a88c44fd85f28fe68b23bfab696ebe27e552fcad3aaf197da5"
+    },
+    "whisper-large-v3-turbo": {
+      "rawConvertedWordCount": 15,
+      "croppedWordCount": 13,
+      "acceptedWordCount": 13,
+      "acceptedTimingQuality": [
+        "estimated"
+      ],
+      "leftContextMatched": false,
+      "gapStart": 748.561312,
+      "gapEnd": 766.5,
+      "readStart": 746.061312,
+      "readEnd": 766.5,
+      "primaryTailWordCount": 75,
+      "primarySnapshotSha256": "3fd1f4d71989eeb5ff76a84fdd5e51cde7efd8dc5c9a732ea7ed5827bb198e6b",
+      "supplementSnapshotSha256": "f6f16f2f6fefe3efd90818f21ee9a83fdfa01aeafb7b6074d97a8038880a89e6"
+    }
+  },
+  "preFixRegression": "PRIMARY_DTW_LOST_TO_ESTIMATED_SUPPLEMENT on2.20.76 entrypoint",
+  "regressionGroupsPassed": 59,
+  "powershellScriptsParsedLocal": 132,
+  "finalCaptionEvaluation": {
+    "schemaVersion": 1,
+    "engineVersion": "2.20.77",
+    "sourceCommit": null,
+    "sourceSrtSha256": "82dd6df284661c219009b446ba4d81ebcdda9b7edd70c4598ce6962c164b98b4",
+    "audioSha256": "77e61450e89dc43e240e18b0d6c91e84bc08ace2d56113ce86cc084bd9e5e32b",
+    "outroReferenceSha256": "38838c4a0405a9f74c2d63b4dbaf6719a6ac380f58ca0cefca5bcc0a5a198fd3",
+    "referenceProvenance": "Exact outro wording supplied directly by user in this chat on 2026-10-18; not fed to ASR. No independently annotated word timestamps.",
+    "limitation": "Offline reconstructed audio and mixed cache; final caption text is checked, not native acoustic timing or model speed.",
+    "candidates": [
+      {
+        "model": "whisper-small",
+        "retainedSourceCues": 255,
+        "sourceCueCount": 255,
+        "unresolvedSourceCues": [],
+        "finalRetainedSourceSequenceExact": true,
+        "noInterleavedUnexpectedTokens": true,
+        "captionCount": 468,
+        "positiveNonoverlappingCaptions": true,
+        "acousticTimingVerified": false,
+        "estimatedTimingRegions": 2,
+        "recognitionBackend": "cuda",
+        "fallbackReason": "",
+        "cache": {
+          "enabled": true,
+          "whisperHits": 113,
+          "whisperMisses": 0,
+          "quietHits": 186,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        },
+        "finalSrtSha256": "fb5840456a940026c3a2483404af588c1846819039b602d4bf65595c1ae4e15a",
+        "trailingAsrTokens": 74,
+        "trailingAsrSha256": "f99e8fc38dcbb59476ecd3a99f2ec59be6cb4a4f928493bf6959ba26a144462e",
+        "trailingAsrErrors": {
+          "referenceTokens": 77,
+          "hypothesisTokens": 74,
+          "edits": 7,
+          "rate": 0.09090909090909091,
+          "substitutions": 4,
+          "deletions": 3,
+          "insertions": 0,
+          "examples": [
+            [
+              "các",
+              ""
+            ],
+            [
+              "super",
+              ""
+            ],
+            [
+              "thanks",
+              "superthanks"
+            ],
+            [
+              "null",
+              ""
+            ],
+            [
+              "seek",
+              "nosick"
+            ],
+            [
+              "trân",
+              "chân"
+            ],
+            [
+              "hữu",
+              "hiệu"
+            ]
+          ]
+        },
+        "trailingAsrTerms": [
+          {
+            "term": "Null Seek",
+            "expected": 1,
+            "recognized": 0
+          },
+          {
+            "term": "Super Thanks",
+            "expected": 1,
+            "recognized": 0
+          },
+          {
+            "term": "Super Stickers",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Chat",
+            "expected": 1,
+            "recognized": 1
+          }
+        ],
+        "rawResultSha256": "b0431853ad12a0043d5ec403866d48030bc962df43e5eba4375fa7eeb40b921d"
+      },
+      {
+        "model": "whisper-medium",
+        "retainedSourceCues": 254,
+        "sourceCueCount": 255,
+        "unresolvedSourceCues": [
+          138
+        ],
+        "finalRetainedSourceSequenceExact": true,
+        "noInterleavedUnexpectedTokens": true,
+        "captionCount": 467,
+        "positiveNonoverlappingCaptions": true,
+        "acousticTimingVerified": false,
+        "estimatedTimingRegions": 7,
+        "recognitionBackend": "cuda",
+        "fallbackReason": "",
+        "cache": {
+          "enabled": true,
+          "whisperHits": 164,
+          "whisperMisses": 0,
+          "quietHits": 174,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        },
+        "finalSrtSha256": "2a8dbf6d82bd0f20aa4816f8699a4279208a3592dfa178e7aab2531d50374a6e",
+        "trailingAsrTokens": 74,
+        "trailingAsrSha256": "32a147881ef4a76e72780931d87b337760580cfef46e20dd041ec67a304a8baf",
+        "trailingAsrErrors": {
+          "referenceTokens": 77,
+          "hypothesisTokens": 74,
+          "edits": 5,
+          "rate": 0.06493506493506493,
+          "substitutions": 2,
+          "deletions": 3,
+          "insertions": 0,
+          "examples": [
+            [
+              "các",
+              ""
+            ],
+            [
+              "qua",
+              ""
+            ],
+            [
+              "null",
+              ""
+            ],
+            [
+              "seek",
+              "nossiq"
+            ],
+            [
+              "hữu",
+              "hiệu"
+            ]
+          ]
+        },
+        "trailingAsrTerms": [
+          {
+            "term": "Null Seek",
+            "expected": 1,
+            "recognized": 0
+          },
+          {
+            "term": "Super Thanks",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Stickers",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Chat",
+            "expected": 1,
+            "recognized": 1
+          }
+        ],
+        "rawResultSha256": "e6d3c2a0b81d0c49dae0fe53bead210fa234ddd66e60445319b49393bd12705d"
+      },
+      {
+        "model": "whisper-large-v3-turbo",
+        "retainedSourceCues": 254,
+        "sourceCueCount": 255,
+        "unresolvedSourceCues": [
+          138
+        ],
+        "finalRetainedSourceSequenceExact": true,
+        "noInterleavedUnexpectedTokens": true,
+        "captionCount": 467,
+        "positiveNonoverlappingCaptions": true,
+        "acousticTimingVerified": false,
+        "estimatedTimingRegions": 0,
+        "recognitionBackend": "cuda",
+        "fallbackReason": "",
+        "cache": {
+          "enabled": true,
+          "whisperHits": 89,
+          "whisperMisses": 1,
+          "quietHits": 164,
+          "quietMisses": 2,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        },
+        "finalSrtSha256": "8ba4df097052cc1ba50f51f124646870f4a7e563bc31f93156a2f59332815758",
+        "trailingAsrTokens": 75,
+        "trailingAsrSha256": "d49fc685ab8f5bab7c7e000e6f82b0b7bf1978fff18035a6fdee2be7e456d19a",
+        "trailingAsrErrors": {
+          "referenceTokens": 77,
+          "hypothesisTokens": 75,
+          "edits": 3,
+          "rate": 0.03896103896103896,
+          "substitutions": 1,
+          "deletions": 2,
+          "insertions": 0,
+          "examples": [
+            [
+              "các",
+              ""
+            ],
+            [
+              "null",
+              ""
+            ],
+            [
+              "seek",
+              "no6x"
+            ]
+          ]
+        },
+        "trailingAsrTerms": [
+          {
+            "term": "Null Seek",
+            "expected": 1,
+            "recognized": 0
+          },
+          {
+            "term": "Super Thanks",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Stickers",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Chat",
+            "expected": 1,
+            "recognized": 1
+          }
+        ],
+        "rawResultSha256": "689abab392cdc97e55fdbfe66df464fe0f80212e6a2f0da27b178a6467ca6141"
+      },
+      {
+        "model": "whisper-large-v3",
+        "retainedSourceCues": 255,
+        "sourceCueCount": 255,
+        "unresolvedSourceCues": [],
+        "finalRetainedSourceSequenceExact": true,
+        "noInterleavedUnexpectedTokens": true,
+        "captionCount": 467,
+        "positiveNonoverlappingCaptions": true,
+        "acousticTimingVerified": false,
+        "estimatedTimingRegions": 1,
+        "recognitionBackend": "cuda",
+        "fallbackReason": "",
+        "cache": {
+          "enabled": true,
+          "whisperHits": 84,
+          "whisperMisses": 0,
+          "quietHits": 146,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        },
+        "finalSrtSha256": "fc9e83d9ba22f3e60028b13bde37e786cdb7fa7f1025e6457bdff3bcfea5c1e4",
+        "trailingAsrTokens": 75,
+        "trailingAsrSha256": "b5cdcac89885feb02df6f63c21dffb852eae7f8822c476dee51b7e9d354123fb",
+        "trailingAsrErrors": {
+          "referenceTokens": 77,
+          "hypothesisTokens": 75,
+          "edits": 3,
+          "rate": 0.03896103896103896,
+          "substitutions": 1,
+          "deletions": 2,
+          "insertions": 0,
+          "examples": [
+            [
+              "các",
+              ""
+            ],
+            [
+              "null",
+              ""
+            ],
+            [
+              "seek",
+              "nosix"
+            ]
+          ]
+        },
+        "trailingAsrTerms": [
+          {
+            "term": "Null Seek",
+            "expected": 1,
+            "recognized": 0
+          },
+          {
+            "term": "Super Thanks",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Stickers",
+            "expected": 1,
+            "recognized": 1
+          },
+          {
+            "term": "Super Chat",
+            "expected": 1,
+            "recognized": 1
+          }
+        ],
+        "rawResultSha256": "4dd65c0c0adabf984d4b110bf42ef54e08bf44a2e52a5643716e4332db63b252"
+      }
+    ]
+  },
+  "primaryReuseRanges": {
+    "whisper-small": [],
+    "whisper-medium": [
+      {
+        "sourceIndex": 0,
+        "start": 750.26,
+        "end": 766.4,
+        "reason": "estimated-context-rerecognition",
+        "wordCount": 74
+      }
+    ],
+    "whisper-large-v3-turbo": [
+      {
+        "sourceIndex": 0,
+        "start": 750.080187,
+        "end": 766.230063,
+        "reason": "estimated-context-rerecognition",
+        "wordCount": 75
+      }
+    ],
+    "whisper-large-v3": [
+      {
+        "sourceIndex": 0,
+        "start": 750.080187,
+        "end": 766.230063,
+        "reason": "empty-context-rerecognition",
+        "wordCount": 75
+      }
+    ]
+  },
+  "unchangedCaptionBytesFrom76": {
+    "whisper-small": true,
+    "whisper-large-v3": true
+  },
+  "beforeAfterOutroEdits": {
+    "whisper-small": [
+      7,
+      7
+    ],
+    "whisper-medium": [
+      9,
+      5
+    ],
+    "whisper-large-v3-turbo": [
+      75,
+      3
+    ],
+    "whisper-large-v3": [
+      3,
+      3
+    ]
+  },
+  "productionModel": "Whisper small",
+  "nativeAcceptance": "pending-user-test",
+  "limitations": [
+    "Medium/Turbo retain254/255 source cues; cue138 remains unresolved.",
+    "All checkpoints still misspell Null Seek. This fixes pipeline result retention, not model weights or ASR spelling.",
+    "Medium primary reference edge still ends750.26s after a measured pause. This fix restores text and does not independently validate or repair that boundary.",
+    "Reconstructed audio and native-dtw labels are not native Premiere import/playback/word-timing/marker acceptance.",
+    "Qwen standalone outro scoring is not full-engine timing acceptance; no new backend/router is installed."
+  ]
+}

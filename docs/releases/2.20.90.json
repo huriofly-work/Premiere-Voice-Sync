@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.90",
+  "tag": "v2.20.90",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "CE627B55113CAE2B815E37C0EE90E85C6D4F0DA68EAE1B1C45BE650F0E7C86F5",
+    "bytes": 1535356630,
+    "filename": "Premiere-Voice-Sync-2.20.90-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 72,
+    "powershellScriptsParsed": 171,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntriesVerified": 82,
+    "packageChecksumsVerified": true,
+    "trackedExtensionFilesMatchingSource": 53,
+    "untrackedRuntimeFilesPackaged": 20,
+    "sourceMismatches": 0,
+    "runtimeSourceMatches": true,
+    "offlineFullEngineReplay": {
+      "audio": "reconstructed Antarctica voice, 766.5 s, SHA-256 77e61450e89dc43e240e18b0d6c91e84bc08ace2d56113ce86cc084bd9e5e32b",
+      "sourceSrtCues": 255,
+      "retainedSourceCues": 254,
+      "unresolvedSourceCues": [138],
+      "estimatedTimingRegions": 0,
+      "outroErrors": "3/77",
+      "smallBaselineSameEngine": "255/255 retained, 2 estimated regions, outro 7/77",
+      "backend": "cuda"
+    }
+  },
+  "changes": [
+    "Recognition model changes from Whisper Small to Whisper large-v3-turbo, the only model in the package. The runtime lock rejects any other model, including a hash-locked Small runtime. The CPU path uses the same model.",
+    "The cached CUDA probe is keyed on the model too, so the first run after updating re-probes CUDA with Turbo.",
+    "Cue-first research code (not enabled in the panel) reads the Turbo runtime profile."
+  ],
+  "pullRequests": [
+    100
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "Native Premiere import, playback, caption timing, markers, real run time and GPU memory alongside Premiere are not verified for this build.",
+    "CPU recognition is about 2x slower than Small (26.5 s clip: 18.1 s vs 8.7 s on an i7-14700K). CPU is the default without the CUDA download and on AMD/Intel.",
+    "Antarctica cue 138 ('nước hồ giàu sắt') is heard as 'dầu sắc' and goes to manual review; Small kept this cue.",
+    "Languages other than Vietnamese are not measured with Turbo.",
+    "The package is about 1.5 GB (was about 490 MB). An old Small copy in %LOCALAPPDATA%\\PremiereVoiceSync\\Models is left in place.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build.",
+    "The cue-first Beta workflow is not enabled; both panel buttons use the existing 2.20.x workflow."
+  ]
+}

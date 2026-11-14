@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.84",
+  "tag": "v2.20.84",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "8AB2CA540DEEF38AA871046CD1B95CF15C206DB31C7BB94616C2AC952F38799F",
+    "bytes": 488792802,
+    "filename": "Premiere-Voice-Sync-2.20.84-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "packagePayloadFilesVerified": 73,
+    "zipEntriesVerified": 74,
+    "packagedNodeSuitesPassed": 20,
+    "regressionGroupsPassed": 69,
+    "powershellScriptsParsed": 146,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "runtimeSourceMatches": true,
+    "markerRegressionFailsBeforePassesAfter": true
+  },
+  "reportedNativeRun": {
+    "version": "2.20.83",
+    "localStart": "2026-10-21T16:31:19+07:00",
+    "localFinish": "2026-10-21T16:35:46+07:00",
+    "finalCaptions": 695,
+    "voiceSegments": 19,
+    "sequenceReviewMarkers": 620,
+    "jobCleaned": true,
+    "source": "persisted workflow log, not a read of live Premiere caption or marker contents"
+  },
+  "markerReplay": {
+    "oldIssues": 1816,
+    "oldTimelineMarkers": 620,
+    "newIssues": 114,
+    "newTimelineMarkers": 111,
+    "manualTimingRegions": 56,
+    "unmatchedTextRegions": 36,
+    "independentDtwCaptionRanges": 4,
+    "sourceGapReviewRegions": 18,
+    "restoredExactCellReferences": [
+      6,
+      49,
+      54,
+      286
+    ],
+    "oldSyntheticA2Markers": 11,
+    "newA2Markers": 0,
+    "sourceVoiceSegmentPlanUnchanged": true,
+    "captionCount": 695,
+    "nativePremiereCalls": 0,
+    "nativeAcceptance": "pending-user-test"
+  },
+  "alienReplay": {
+    "referenceCues": 319,
+    "retainedReferenceCues": 280,
+    "pendingReferenceCues": 39,
+    "manualBlocks": 56,
+    "wholePreservedRegions": 4,
+    "finalCaptions": 695,
+    "observedWords": 4503,
+    "observedWordsOwnedExactlyOnceAtRecognitionStage": true,
+    "allPhysicalVoiceFramesPreserved": true,
+    "manualCaptionCellsPreserved": true,
+    "allSourcePictureFramesPreserved": true,
+    "noNewOmissions": true,
+    "sourceVoiceSrtFilesUnchanged": 7,
+    "projectSnapshotHistorical": true,
+    "projectActionsPerformed": false,
+    "finalSrtSha256": "5ADE53CD9793FD29B673C1809DFC861CA38409EE27643174DB69F7BD8EB3E56A",
+    "voiceConservedThroughSpeedMerge": true,
+    "nativePremiereCalls": 0,
+    "nativeAcceptance": "pending-user-test"
+  },
+  "historicalReplay": {
+    "islandReferences": 30,
+    "islandCaptions": 66,
+    "islandSrtSha256": "AE1EB5769083804D40664281772307EC4C99C56A8CE26EF7DA64A63B9ECCEC93",
+    "protectedSourceGaps": 27,
+    "pendingSourceGaps": 1,
+    "mismatchedBlocks": 5,
+    "mismatchedCaptions": 65,
+    "mismatchedPendingReferences": [
+      7,
+      11,
+      20
+    ],
+    "shortReferences": 27,
+    "letterLabelReferences": 199,
+    "sourceVoiceFramesPreserved": true,
+    "falseReferenceNotRestored": true
+  },
+  "knownLimitations": [
+    "111 markers are predicted from replay with shipping marker grouping, not native Premiere acceptance of version 2.20.84. The native log records 620 markers on version 2.20.83.",
+    "39 pending reference cues and 36 raw-ASR regions are review metadata, not confirmed ASR-error counts. Four full-cell text matches retain SRT punctuation/case; this is not an ASR model accuracy upgrade.",
+    "Replay uses historical saved geometry and does not read or modify the live timeline. Seven source SRT/MP3 files retain their hashes.",
+    "Timing remains estimated in manual blocks; Confidence=0/no-word-timing, omission/cut guards, frame conservation, native errors, source gap and speed warnings remain enforced.",
+    "Native import/playback/retime/caption timing/marker/Save acceptance is pending. No Premiere Save/Undo, live marker cleanup, helper launch, automatic PR merge, or stable promotion."
+  ],
+  "installation": {
+    "previousVersion": "2.20.83",
+    "installedFiles": 65,
+    "preservedFiles": 6161,
+    "preservedDirectories": 22,
+    "cepRegistryUnchanged": true,
+    "registryWritesSkipped": true,
+    "notificationShortcutRegistered": true,
+    "premiereClosedAtSetup": true,
+    "projectActionsPerformed": false,
+    "nativeHelperLaunched": false,
+    "packageSha256": "8AB2CA540DEEF38AA871046CD1B95CF15C206DB31C7BB94616C2AC952F38799F",
+    "nativeAcceptance": "pending-user-test",
+    "verificationPasses": 2,
+    "finalPass": "refreshed unpublished local candidate after verifying mixed-group recognition confidence labels"
+  }
+}

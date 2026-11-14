@@ -1,0 +1,54 @@
+name: Windows CI
+
+# Docs-only changes (Markdown and docs/, except release metadata that the
+# distribution check reads) do not run the Windows suite. Pull requests are the
+# merge gate; a newer push to the same PR cancels the older run.
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!docs/**'
+      - 'docs/releases/*.json'
+  workflow_dispatch:
+
+concurrency:
+  group: windows-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  regression-tests:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify JavaScript syntax
+        shell: powershell
+        run: |
+          node --check extension/js/main.js
+          if ($LASTEXITCODE -ne 0) { throw 'UI syntax check failed' }
+          node --check extension/js/security.js
+          if ($LASTEXITCODE -ne 0) { throw 'Security syntax check failed' }
+          node tests/unit/speed-merge-host.js
+          if ($LASTEXITCODE -ne 0) { throw 'Speed merge host preflight mock failed' }
+
+      - name: Run regression suite without external Windows integration
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Run-Tests.ps1 -NoWindowsIntegration
+
+      - name: Verify distribution metadata
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\Verify-GitHubDistribution.ps1
+
+      - name: Confirm runtime binaries are not tracked
+        shell: powershell
+        run: |
+          $tracked = @(git ls-files extension/engine/runtime)
+          if ($tracked.Count) { throw "Runtime binaries must not be committed: $($tracked -join ', ')" }
+          $generated = @(git ls-files dist extension/native/PvsNotifications.exe extension/native/helper-lock.json)
+          if ($generated.Count) { throw "Generated artifacts must not be committed: $($generated -join ', ')" }

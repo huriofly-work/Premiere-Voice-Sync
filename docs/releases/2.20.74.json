@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.74",
+  "tag": "v2.20.74",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "filename": "Premiere-Voice-Sync-2.20.74-Panel.zip",
+    "bytes": 488774610,
+    "sha256": "33B66F7E4D75D021CCEF8542476B89A974ED1030158164165A9D2A6F19016728"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 57,
+    "powershellScriptsParsed": 128,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "packagedNodeSuitesPassed": 20,
+    "packagePayloadFilesVerified": 71,
+    "installedPanelFilesVerified": 63
+  },
+  "knownLimitations": [
+    "Native Premiere import/playback/word timing/marker acceptance remains pending; offline reconstruction is not the native mix/effects and does not reproduce the original six saved-run omissions.",
+    "Small reconstructed Antarctica now retains all255/255 cues with468 positive nonoverlapping captions and unchanged real outro. Historical replays preserve exactly27 consciousness and199 letter-reference cues.",
+    "Medium is experimental only:254/255, cue138 unresolved, and previously truncated membership outro persists. Production remains Whisper small; no new ASR backend or multilingual router is installed."
+  ]
+}

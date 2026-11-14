@@ -1,0 +1,33 @@
+# Release artifacts and transient build directories
+/dist/
+*.zip
+*.zip.sha256
+
+# Native runtime is restored by the pinned engine bootstrap, not tracked in Git
+/extension/engine/runtime/
+/extension/native/PvsNotifications.exe
+/extension/native/helper-lock.json
+/cache/
+/.cache/
+
+# Local caches, diagnostics and editor state
+/_local/
+/.tmp*/
+/.vscode/
+/.idea/
+*.log
+__pycache__/
+*.py[cod]
+Thumbs.db
+Desktop.ini
+
+# Signing material is never part of source control or the end-user ZIP.
+.rnd
+*.p12
+*.pfx
+*.key
+
+# Claude Code local settings
+/.claude/settings.local.json
+/CLAUDE.local.md
+/.claude/worktrees/

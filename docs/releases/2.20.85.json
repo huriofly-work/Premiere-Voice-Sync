@@ -1,0 +1,197 @@
+﻿{
+    "schemaVersion":  1,
+    "version":  "2.20.85",
+    "tag":  "v2.20.85",
+    "channel":  "prerelease",
+    "nativeAcceptance":  "pending-user-test",
+    "package":  {
+                    "sha256":  "0B4B127D42B1046805185CA4490D973E995454437FF57A466BBA609F1011830F",
+                    "bytes":  488799871,
+                    "filename":  "Premiere-Voice-Sync-2.20.85-Panel.zip"
+                },
+    "validationAtPackaging":  {
+                                  "packagePayloadFilesVerified":  74,
+                                  "zipEntriesVerified":  75,
+                                  "packagedNodeSuitesPassed":  20,
+                                  "regressionGroupsPassed":  70,
+                                  "powershellScriptsParsed":  148,
+                                  "externalWindowsIntegrationGroupsSkipped":  6,
+                                  "runtimeSourceMatches":  true,
+                                  "fixtureReproducesBeforeAndAfter":  true,
+                                  "captionOnlyCapabilityWithoutCutProofVerified":  true
+                              },
+    "reportedNativeRun":  {
+                              "version":  "2.20.84",
+                              "localStart":  "2026-10-21T18:02:34+07:00",
+                              "localFinish":  "2026-10-21T18:04:42+07:00",
+                              "finalCaptions":  695,
+                              "voiceGroups":  19,
+                              "reviewMarkers":  111,
+                              "acceptance":  "failure reported by user: too few cuts, picture-voice drift, excessive manual review"
+                          },
+    "alienOfflineReplay":  {
+                               "shippingStages":  4,
+                               "historicalGeometry":  true,
+                               "sourceReferenceCues":  319,
+                               "retainedReferenceCues":  280,
+                               "pendingReferenceCues":  39,
+                               "rawRecognitionWords":  4503,
+                               "independentDtwWords":  4510,
+                               "allRecognitionWordsOwnedOnce":  true,
+                               "voiceGroupsBefore":  19,
+                               "voiceGroupsAfter":  158,
+                               "certifiedAcousticBoundaries":  155,
+                               "manualCaptionCells":  268,
+                               "manualCaptionCellsRefined":  231,
+                               "localCaptionRetries":  60,
+                               "cellsAddedByRetry":  31,
+                               "manualBlocks":  56,
+                               "blocksWithRemainingEstimatedTiming":  17,
+                               "remainingEstimatedCells":  37,
+                               "estimatedTimingRegions":  25,
+                               "unmatchedTextRegions":  36,
+                               "sourceGapReviewRanges":  14,
+                               "nonmanualDtwReviewCues":  4,
+                               "reviewIssues":  79,
+                               "predictedReviewMarkerPositions":  74,
+                               "visualSpeedWarnings":  11,
+                               "finalCaptions":  695,
+                               "captionTextExactlyPreservedFrom84":  true,
+                               "allSourcePictureFramesPreserved":  true,
+                               "allPhysicalVoiceFramesPreserved":  true,
+                               "newOmissions":  0,
+                               "sourceSrtMp3FilesUnchanged":  7,
+                               "projectActionsPerformed":  false,
+                               "finalSrtSha256":  "78CD3538676BA024E53F5C9416325C4CB897B370484766D44310D37186F32605",
+                               "recognitionBackend":  "cuda",
+                               "cacheHits":  248,
+                               "cacheMisses":  0,
+                               "nativeCalls":  0
+                           },
+    "timingProxy":  {
+                        "note":  "Interior cues not used as cut context; same project/model data, not independent native or listening acceptance",
+                        "before":  {
+                                       "count":  11,
+                                       "median":  1.8842563084225503,
+                                       "p95":  4.093051456840044,
+                                       "max":  7.1672308100187365
+                                   },
+                        "after":  {
+                                      "count":  11,
+                                      "median":  0.45366083953774705,
+                                      "p95":  1.0175652409778877,
+                                      "max":  1.1522194399286718
+                                  },
+                        "cues":  [
+                                     {
+                                         "cue":  19,
+                                         "before":  2.9048651186926833,
+                                         "after":  0.5245776797895871
+                                     },
+                                     {
+                                         "cue":  30,
+                                         "before":  1.3854159846035259,
+                                         "after":  0.41278019997341175
+                                     },
+                                     {
+                                         "cue":  73,
+                                         "before":  1.91343015413986,
+                                         "after":  1.1522194399286718
+                                     },
+                                     {
+                                         "cue":  91,
+                                         "before":  0.5800165710428473,
+                                         "after":  0.20869739885347371
+                                     },
+                                     {
+                                         "cue":  155,
+                                         "before":  4.093051456840044,
+                                         "after":  0.8883801844120853
+                                     },
+                                     {
+                                         "cue":  175,
+                                         "before":  7.1672308100187365,
+                                         "after":  0.4347917630777829
+                                     },
+                                     {
+                                         "cue":  199,
+                                         "before":  3.7868142163482617,
+                                         "after":  1.0175652409778877
+                                     },
+                                     {
+                                         "cue":  203,
+                                         "before":  1.8842563084225503,
+                                         "after":  0.3617897611597982
+                                     },
+                                     {
+                                         "cue":  206,
+                                         "before":  0.3207665895338323,
+                                         "after":  0.14537221024170321
+                                     },
+                                     {
+                                         "cue":  227,
+                                         "before":  0.20544814196466632,
+                                         "after":  0.45366083953774705
+                                     },
+                                     {
+                                         "cue":  280,
+                                         "before":  1.4108741295997334,
+                                         "after":  0.6416083517422067
+                                     }
+                                 ]
+                    },
+    "historicalReplay":  {
+                             "islandReferenceCues":  30,
+                             "islandFinalCaptions":  66,
+                             "reportedSourceGapFrames":  125,
+                             "sourceGapsProtected":  27,
+                             "sourceGapsPending":  1,
+                             "deliberateMismatchedReference":  "103",
+                             "raw102Preserved":  true,
+                             "mismatchFinalCaptions":  65,
+                             "mismatchManualBlocks":  5,
+                             "mismatchMeasuredCells":  20,
+                             "falseReferenceNotRestored":  true,
+                             "shortReferences":  27,
+                             "letterLabelReferences":  199,
+                             "sourceAndVoiceFramesPreserved":  true
+                         },
+    "reviewedPaths":  [
+                          "legacy Auto edit",
+                          "independent raw-DTW partitions",
+                          "manual caption-only recovery without cut permission",
+                          "additive DTW trial metadata",
+                          "speed merge",
+                          "direct host executor",
+                          "diagnostic host executor",
+                          "caption-only unchanged",
+                          "strict omission resolver unchanged",
+                          "trimmed voice conservative fallback",
+                          "review marker ownership and reconciliation",
+                          "build/security/install package allowlists"
+                      ],
+    "knownLimitations":  [
+                             "Replay uses historical saved geometry, not the live timeline. Native Premiere import/playback/razor/retime/caption/marker acceptance is pending.",
+                             "74 review markers are predicted from final replay output; speed markers are separate. Pending references/review regions are not confirmed ASR error counts.",
+                             "37 manual cells still use estimated timing; 36 raw-ASR text regions remain for optional localized review. No model upgrade or perfect recognition claim.",
+                             "The timing proxy uses 11 interior cues not used as cut contexts, but shares project/model data. It is not independent gold or listening acceptance; one cue worsens.",
+                             "No estimated timing or manual-caption text grants omission/cut authority. New acoustic capability skips trimmed inPoint voices and preserves strict fallback.",
+                             "No Premiere Save/Undo, forced application/helper close, live marker cleanup, auto-merge, or stable promotion."
+                         ],
+    "installation":  {
+                         "version":  "2.20.85",
+                         "previousVersion":  "2.20.84",
+                         "installedFiles":  66,
+                         "preservedFiles":  6163,
+                         "preservedDirectories":  22,
+                         "cepRegistryUnchanged":  true,
+                         "registryWritesSkipped":  true,
+                         "notificationShortcutRegistered":  true,
+                         "premiereClosedAtSetup":  true,
+                         "projectActionsPerformed":  false,
+                         "nativeHelperLaunched":  false,
+                         "previousPanelBackup":  "F:\\Tools\\Premiere Voice Sync\\dist\\_installation-2.20.85-20261021T115429Z\\previous-panel",
+                         "packageSha256":  "0B4B127D42B1046805185CA4490D973E995454437FF57A466BBA609F1011830F",
+                         "nativeAcceptance":  "pending-user-test"
+                     }
+}

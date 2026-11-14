@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.88",
+  "tag": "v2.20.88",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "117FF42D6CD63D5740C241D2AF89D34275A64DBA87F7B2FBE8A9DAFC3BFA77D8",
+    "bytes": 488809272,
+    "filename": "Premiere-Voice-Sync-2.20.88-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 74,
+    "powershellScriptsParsed": 152,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "packagedNodeSuitesPassed": 22,
+    "packagePayloadFilesVerified": 74,
+    "zipEntriesVerified": 75,
+    "runtimeSourceMatches": true,
+    "reproducedSparseSpeedBatchFailureBeforeFix": true,
+    "allProfilesFourLinkedPairMaximum": true,
+    "nativeEditingCallAndReportParity": true,
+    "abortAddsNoEdits": true,
+    "nullCutListRetainsEmptyGroups": true,
+    "linearReferenceIndexRegression": true,
+    "singleBatchValidationAndTamperParity": true,
+    "unicodeNumberMutationEvictionAndLongTextRegression": true
+  },
+  "offlineReplay": {
+    "baselineSource": "2.20.87 / 0e2dc50",
+    "fixture": "Alien 319 reference cues / 3 voice chapters",
+    "backend": "verified CUDA selection frozen for matched replay; resolver/probe excluded",
+    "freshRecognitionBlocked": true,
+    "measurements": [
+      {
+        "Stage": "build-sentence-plan.ps1",
+        "Variant": "baseline",
+        "Milliseconds": 66591,
+        "AudioCache": {
+          "enabled": true,
+          "whisperHits": 0,
+          "whisperMisses": 0,
+          "quietHits": 3,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        }
+      },
+      {
+        "Stage": "build-sentence-plan.ps1",
+        "Variant": "candidate",
+        "Milliseconds": 32938,
+        "AudioCache": {
+          "enabled": true,
+          "whisperHits": 0,
+          "whisperMisses": 0,
+          "quietHits": 3,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        }
+      },
+      {
+        "Stage": "run-alignment.ps1",
+        "Variant": "baseline",
+        "Milliseconds": 227682,
+        "AudioCache": {
+          "enabled": true,
+          "whisperHits": 248,
+          "whisperMisses": 0,
+          "quietHits": 126,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        }
+      },
+      {
+        "Stage": "run-alignment.ps1",
+        "Variant": "candidate",
+        "Milliseconds": 121845,
+        "AudioCache": {
+          "enabled": true,
+          "whisperHits": 248,
+          "whisperMisses": 0,
+          "quietHits": 126,
+          "quietMisses": 0,
+          "invalidEntries": 0,
+          "writeFailures": 0
+        }
+      }
+    ],
+    "fullOutputParity": [
+      {
+        "stage": "build-sentence-plan",
+        "completeJsonParity": true,
+        "changes": [],
+        "srtByteParity": true,
+        "srtSha256": "293cf8d224e93b1d2adc1df972385590fa2a050e3ce4f66fc228eec1a7c84394"
+      },
+      {
+        "stage": "run-alignment",
+        "completeJsonParity": true,
+        "changes": [],
+        "srtByteParity": true,
+        "srtSha256": "fd637629fb202c22620cabfcb1feaac35fdfb320c5a8e38f954c7359c36ec033"
+      }
+    ],
+    "scope": "One warm-cache pair, not a native or cold-cache latency claim",
+    "cpuPilotExcluded": "The CPU pilot had 77 recognition misses before and zero after; do not use its ratio."
+  },
+  "algorithm": {
+    "referenceUniqueness": "O(P*C) repeated lexical scans -> O(C+P) lexical index work per proof batch; timing/quiet/frame validators unchanged",
+    "lexicalCache": {
+      "scope": "PowerShell process only",
+      "key": "exact original text, Ordinal",
+      "maximumEntries": 2048,
+      "maximumKeyCharacters": 4096,
+      "proofTimingOrCueObjectsStored": false
+    },
+    "speedScheduling": "Separate bounded plan scans and at most 4 actual linked-pair changes; no-delay 20 scans / 250 ms; one native operation may exceed budget"
+  },
+  "syntheticNativeBatches": {
+    "before": [
+      {
+        "count": 65,
+        "profile": "baseline",
+        "ok": true,
+        "totalCalls": 82,
+        "speedCalls": 34
+      },
+      {
+        "count": 65,
+        "profile": "fast",
+        "ok": true,
+        "totalCalls": 62,
+        "speedCalls": 34
+      },
+      {
+        "count": 65,
+        "profile": "no-delay",
+        "ok": true,
+        "totalCalls": 82,
+        "speedCalls": 34
+      },
+      {
+        "count": 130,
+        "profile": "baseline",
+        "ok": true,
+        "totalCalls": 134,
+        "speedCalls": 66
+      },
+      {
+        "count": 130,
+        "profile": "fast",
+        "ok": true,
+        "totalCalls": 100,
+        "speedCalls": 66
+      },
+      {
+        "count": 130,
+        "profile": "no-delay",
+        "ok": true,
+        "totalCalls": 134,
+        "speedCalls": 66
+      },
+      {
+        "count": 302,
+        "profile": "baseline",
+        "ok": true,
+        "totalCalls": 280,
+        "speedCalls": 152
+      },
+      {
+        "count": 302,
+        "profile": "fast",
+        "ok": true,
+        "totalCalls": 200,
+        "speedCalls": 152
+      },
+      {
+        "count": 302,
+        "profile": "no-delay",
+        "ok": true,
+        "totalCalls": 280,
+        "speedCalls": 152
+      }
+    ],
+    "after": [
+      {
+        "count": 65,
+        "profile": "baseline",
+        "ok": true,
+        "totalCalls": 60,
+        "speedCalls": 12
+      },
+      {
+        "count": 65,
+        "profile": "fast",
+        "ok": true,
+        "totalCalls": 40,
+        "speedCalls": 12
+      },
+      {
+        "count": 65,
+        "profile": "no-delay",
+        "ok": true,
+        "totalCalls": 60,
+        "speedCalls": 12
+      },
+      {
+        "count": 130,
+        "profile": "baseline",
+        "ok": true,
+        "totalCalls": 90,
+        "speedCalls": 22
+      },
+      {
+        "count": 130,
+        "profile": "fast",
+        "ok": true,
+        "totalCalls": 56,
+        "speedCalls": 22
+      },
+      {
+        "count": 130,
+        "profile": "no-delay",
+        "ok": true,
+        "totalCalls": 90,
+        "speedCalls": 22
+      },
+      {
+        "count": 302,
+        "profile": "baseline",
+        "ok": true,
+        "totalCalls": 180,
+        "speedCalls": 52
+      },
+      {
+        "count": 302,
+        "profile": "fast",
+        "ok": true,
+        "totalCalls": 100,
+        "speedCalls": 52
+      },
+      {
+        "count": 302,
+        "profile": "no-delay",
+        "ok": true,
+        "totalCalls": 180,
+        "speedCalls": 52
+      }
+    ],
+    "scope": "Synthetic scheduling call counts, not measured Premiere seconds"
+  },
+  "reviewedPaths": [
+    "Shared edit/subtitle lexical core, primary/CPU fallback, recovery, numeric and supplemental windows",
+    "Whole-cue and raw-DTW proof validation, group selection and plan postcheck",
+    "Legacy / additive-DTW / speed-merge / manual acoustic / SRT-cue picture planners",
+    "Direct native statements unchanged; staged baseline/fast/no-delay preserve exact editing calls and reports",
+    "Snapshot/rebind/sequence-and-timeline guards, stop/pause/recovery, omission/frame/A2/marker invariants",
+    "Caption-only import/export and compact payload remain covered in packaged tests"
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "installedVersionAtDiagnosis": "2.20.87",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false,
+    "reason": "Premiere was open at the read-only process check. Do not install while it is open."
+  },
+  "knownLimitations": [
+    "Native runtime speed, import/playback/timing/markers and responsiveness remain pending.",
+    "Fresh recognition/model reload cost has not been optimized or benchmarked here.",
+    "No reduction of safety thresholds or promotion of estimated timing; no infinite batches or concurrent timeline writers.",
+    "A single blocked native call still cannot safely be preempted. No automatic Save/Undo, forced close, merge or stable promotion."
+  ]
+}

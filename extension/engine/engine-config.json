@@ -1,0 +1,8 @@
+{
+  "modelPath": "models\\ggml-large-v3-turbo.bin",
+  "ffmpeg": "bin\\ffmpeg.exe",
+  "whisper": "bin\\whisper-cli.exe",
+  "whisperVersion": "1.9.1",
+  "model": "large.v3.turbo",
+  "backends": {"cuda": {"version": "12.4.0", "url": "https://github.com/ggml-org/whisper.cpp/releases/download/v1.9.1/whisper-cublas-12.4.0-bin-x64.zip", "sha256": "106a2030eff8998e4ef320fe72e263a78449e9040386ee27c41ea80b001b601b"}}
+}

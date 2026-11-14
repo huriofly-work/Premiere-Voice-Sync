@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none';">
+  <title>Premiere Voice Sync</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="panel">
+    <header>
+      <div class="heading-row"><h1>Premiere Voice Sync</h1><span class="version">2.20.90</span></div>
+      <p>Chọn nguồn → Kiểm tra SRT và phạm vi → Chạy</p>
+    </header>
+
+
+
+    <section id="recoveryNotice" class="card recovery-notice" hidden role="alert">
+      <strong>Cần kiểm tra sau sự cố trước khi chạy tiếp</strong>
+      <p>Chờ thao tác cũ kết thúc. Kiểm tra timeline, Caption Track và bin tạm; Undo hoặc mở bản đã lưu nếu cần.</p>
+      <button id="checkRecovery" class="button secondary" type="button">Đã kiểm tra/khôi phục — Xác minh đầu vào</button>
+    </section>
+
+    <nav class="workflow-tabs" aria-label="Chức năng">
+      <button id="modeEdit" class="button workflow-tab active" type="button" aria-pressed="true">Dựng theo voice</button>
+      <button id="modeCaptions" class="button workflow-tab" type="button" aria-pressed="false">Tạo phụ đề</button>
+    </nav>
+
+    <section class="card input-card">
+      <div class="section-heading"><div class="section-title">1 · Chọn nguồn</div><button id="scanSequence" class="button secondary compact-top" type="button" title="Cập nhật SRT và thông tin timeline sau khi đổi sequence, chọn clip hoặc import file. Không chỉnh timeline.">Cập nhật đầu vào</button></div>
+      <div id="sequenceSummary" class="summary muted edit-only" role="status" aria-live="polite">Đang đọc sequence...</div>
+      <div id="captionSummary" class="summary muted caption-only" hidden role="status" aria-live="polite">Chọn nguồn audio và phạm vi thời gian rồi cập nhật đầu vào.</div>
+      <p class="hint edit-only">Dùng template đã lưu: V1 là video nest, A1 linked với V1, A2 là voice.</p>
+    </section>
+
+    <section class="card edit-only">
+      <label for="voiceLanguage">Ngôn ngữ voice</label>
+      <select id="voiceLanguage">
+        <option value="vi">Tiếng Việt</option><option value="auto">Tự nhận diện ngôn ngữ</option>
+        <option value="en">English</option><option value="zh">中文 · Tiếng Trung</option>
+        <option value="ja">日本語 · Tiếng Nhật</option><option value="ko">한국어 · Tiếng Hàn</option>
+        <option value="fr">Français · Tiếng Pháp</option><option value="de">Deutsch · Tiếng Đức</option>
+        <option value="es">Español · Tiếng Tây Ban Nha</option><option value="pt">Português · Tiếng Bồ Đào Nha</option>
+        <option value="ru">Русский · Tiếng Nga</option><option value="it">Italiano · Tiếng Ý</option>
+        <option value="id">Bahasa Indonesia</option><option value="hi">हिन्दी · Tiếng Hindi</option><option value="ar">العربية · Tiếng Ả Rập</option>
+      </select>
+      <p id="voiceLanguageError" class="hint input-error" role="alert" hidden></p>
+      <p class="hint">SRT cần đúng lời và cùng ngôn ngữ với voice.</p>
+
+
+    </section>
+
+    <section class="card caption-only" hidden>
+      <p id="captionAutomaticHint" class="hint audio-auto-hint">Ưu tiên clip audio đang chọn; nếu không có, gợi ý track có audio.</p>
+      <details id="captionAudioOptions" class="compact-picker audio-options">
+        <summary>Đổi nguồn hoặc phạm vi audio</summary>
+        <label for="captionSourceMode">Lấy audio từ</label>
+        <select id="captionSourceMode"><option value="auto">Tự động · ưu tiên clip đang chọn</option><option value="clips">Chỉ clip audio đang chọn</option><option value="tracks">Track do tôi chọn</option><option value="mix">Tất cả track đang bật</option></select>
+        <p id="captionSourceModeError" class="hint input-error" role="alert" hidden></p>
+        <div id="captionScopeControl" hidden>
+          <label for="captionScopeMode">Phạm vi thời gian</label>
+          <select id="captionScopeMode"><option value="whole">Toàn sequence</option><option value="selection">Theo khoảng clip đang chọn</option><option value="inout">Theo In/Out</option><option value="clips" disabled>Theo clip audio đang chọn</option></select>
+        </div>
+        <p id="captionScopeModeError" class="hint input-error" role="alert" hidden></p>
+        <details id="captionTrackPicker" class="compact-picker" hidden>
+          <summary id="captionTrackSummary">Chọn track nguồn</summary>
+          <fieldset id="captionVoiceTrack" class="caption-tracks" tabindex="-1" aria-describedby="captionInputHint"><legend>Có thể chọn nhiều track</legend><div id="captionTrackList" class="bounded-list">Cập nhật đầu vào để chọn track.</div></fieldset>
+        </details>
+        <p id="captionVoiceTrackError" class="hint input-error" role="alert" hidden></p>
+        <p id="captionInputHint" class="hint">Chọn track có lời nói; tránh chọn nhạc nền nếu có thể.</p>
+      </details>
+      <label for="captionLanguage">Ngôn ngữ lời nói</label>
+      <select id="captionLanguage">
+        <option value="vi">Tiếng Việt</option><option value="auto">Tự nhận diện ngôn ngữ</option>
+        <option value="en">English</option><option value="zh">中文 · Tiếng Trung</option>
+        <option value="ja">日本語 · Tiếng Nhật</option><option value="ko">한국어 · Tiếng Hàn</option>
+        <option value="fr">Français · Tiếng Pháp</option><option value="de">Deutsch · Tiếng Đức</option>
+        <option value="es">Español · Tiếng Tây Ban Nha</option><option value="pt">Português · Tiếng Bồ Đào Nha</option>
+        <option value="ru">Русский · Tiếng Nga</option><option value="it">Italiano · Tiếng Ý</option>
+        <option value="id">Bahasa Indonesia</option>
+        <option value="hi">हिन्दी · Tiếng Hindi</option><option value="ar">العربية · Tiếng Ả Rập</option>
+      </select>
+      <p id="captionLanguageError" class="hint input-error" role="alert" hidden></p>
+
+
+    </section>
+
+    <section class="card srt-reference" id="srtReference">
+      <div class="section-title">File SRT</div>
+      <div class="edit-only">
+      <div id="editSrtSingle">
+      <label for="srtCandidates">SRT dùng để tạo voice</label>
+      <div class="picker-row">
+        <select id="srtCandidates"><option value="">Chưa quét SRT trong Project</option></select>
+        <button id="pickTargetSrt" class="button compact" type="button">Chọn ngoài</button>
+      </div>
+      <p id="srtHint" class="hint">Chọn SRT đã import trong Project hoặc chọn file ngoài.</p>
+      </div>
+      </div>
+      <div class="caption-only" hidden>
+      <div id="captionSrtSingle">
+      <label for="captionSrtCandidates">SRT có sẵn <span class="optional">· không bắt buộc</span></label>
+      <div class="picker-row">
+        <select id="captionSrtCandidates"><option value="">Tự nhận diện · không dùng SRT</option></select>
+        <button id="pickCaptionSrt" class="button compact" type="button">Chọn ngoài</button>
+      </div>
+      <p id="captionSrtHint" class="hint">Kiểm tra SRT đúng lời nói, hoặc chọn tự nhận diện.</p>
+      </div>
+      </div>
+      <label class="check join-toggle"><input id="srtJoinEnabled" type="checkbox">Nối nhiều file SRT</label>
+      <div id="srtJoinBody" hidden>
+        <div class="source-actions"><button id="srtJoinAddProject" class="button secondary" type="button">Chọn từ Project</button><button id="srtJoinAddFiles" class="button secondary" type="button">Chọn từ máy</button></div>
+        <details id="srtJoinProjectPicker" class="compact-picker">
+          <summary>SRT trong Project</summary>
+          <input id="srtJoinSearch" type="search" placeholder="Tìm theo tên file…" aria-label="Tìm SRT trong Project">
+          <div id="srtJoinProjectList" class="bounded-list"></div>
+          <p id="srtJoinProjectHint" class="hint"></p>
+        </details>
+        <p id="srtJoinPreview" class="hint file-preview"></p>
+        <details id="srtJoinSelection" class="compact-picker">
+          <summary id="srtJoinSelectionSummary">Danh sách đã chọn · 0 file</summary>
+          <ol id="srtJoinFiles" class="bounded-list"></ol>
+        </details>
+        <details class="compact-picker">
+          <summary>Cách nối thời gian</summary>
+          <select id="srtJoinTiming" aria-label="Cách nối thời gian"><option value="preserve">Giữ thời gian gốc</option><option value="append">Nối tiếp từng file</option></select>
+        </details>
+        <p id="srtJoinHint" class="hint" role="status"></p>
+      </div>
+    </section>
+
+    <section class="card" id="workflowOptions">
+      <div class="section-title">2 · Tùy chọn</div>
+      <details id="editSettings" class="edit-only">
+        <summary>Tùy chỉnh theo video</summary>
+        <div class="grid-two">
+          <label title="Hình chậm hơn ngưỡng sẽ thử gộp một lần với đoạn liền kề nếu tốt hơn. Nếu vẫn ngoài ngưỡng, gắn marker; không ép tốc độ. Mọi đoạn đã gộp đều có marker riêng.">Ngưỡng chậm<input id="minSpeed" type="number" min="10" max="100" value="70"><small>%</small><span id="minSpeedError" class="hint input-error" role="alert" hidden></span></label>
+          <label title="Hình nhanh hơn ngưỡng sẽ thử gộp một lần với đoạn liền kề nếu tốt hơn. Nếu vẫn ngoài ngưỡng, gắn marker; không ép tốc độ. Mọi đoạn đã gộp đều có marker riêng.">Ngưỡng nhanh<input id="maxSpeed" type="number" min="100" max="400" value="130"><small>%</small><span id="maxSpeedError" class="hint input-error" role="alert" hidden></span></label>
+          <label title="Khoảng trống giữa hai vùng subtitle phải dài ít nhất bao nhiêu để được coi là đoạn không lời cần giữ nguyên.">Khoảng không lời<input id="minDialogueGap" type="number" min="0.2" max="10" step="0.1" value="0.5"><small>s</small><span id="minDialogueGapError" class="hint input-error" role="alert" hidden></span></label>
+          <label title="Khoảng cách giữa hai clip A2 lớn hơn mức này sẽ kết thúc nhóm voice chính; các clip sau như CTA được giữ nguyên.">Khoảng tách nhóm voice<input id="voiceGroupGap" type="number" min="0.2" max="20" step="0.1" value="2"><small>s</small><span id="voiceGroupGapError" class="hint input-error" role="alert" hidden></span></label>
+          <label class="caption-length-setting" title="Caption dài hơn giới hạn sẽ được tách tại ranh giới từ; timestamp của phần mới bám theo các từ Whisper nhận diện trong voice.">Ký tự tối đa mỗi caption<input id="maxCaptionCharacters" type="number" min="20" max="80" step="1" value="42"><small>ký tự</small><span id="maxCaptionCharactersError" class="hint input-error" role="alert" hidden></span></label>
+        </div>
+        <button id="resetSettings" class="button secondary compact-top" type="button">Khôi phục mặc định</button>
+        <p id="settingsFeedback" class="hint" role="status" hidden></p>
+        <p class="hint">Ngưỡng chậm/nhanh dùng để gộp hình một lần với đoạn liền kề và cảnh báo, không giới hạn tốc độ. Các ngưỡng cắt an toàn và hậu kiểm cố định trong thuật toán.</p>
+      </details>
+      <div class="caption-only" hidden>
+      <label for="subtitleMaxCharacters" title="Giới hạn độ dài một caption. Tiếng Việt ưu tiên dấu câu, nghỉ hơi và giữ cụm từ; timestamp bám lời nói.">Ký tự tối đa mỗi caption</label>
+      <input id="subtitleMaxCharacters" type="number" min="20" max="80" step="1" value="42">
+      <p id="subtitleMaxCharactersError" class="hint input-error" role="alert" hidden></p>
+      </div>
+
+    </section>
+
+    <section class="card action-card single-action">
+      <div class="section-title wide">3 · Chạy và xem kết quả</div>
+      <button id="runSync" class="button primary wide edit-only" type="button">Phân tích và dựng tự động</button>
+      <button id="runCaptions" class="button primary wide caption-only" type="button" hidden>Tạo phụ đề</button>
+      <button id="pauseWorkflow" class="button secondary wide" type="button" aria-describedby="pauseWorkflowHint" hidden disabled>Tạm dừng</button>
+      <button id="stopWorkflow" class="button stop-workflow wide" type="button" aria-describedby="stopWorkflowHint" hidden disabled>Dừng tác vụ</button>
+      <p id="pauseWorkflowHint" class="hint" role="status" aria-live="polite" hidden></p>
+      <p id="stopWorkflowHint" class="hint" role="status" aria-live="polite" hidden></p>
+      <div id="workflowProgress" class="wide">
+      <div id="status" class="summary muted wide" role="status" aria-live="polite">Sẵn sàng.</div>
+      <p id="runHealth" class="run-health wide" role="status" aria-live="polite"></p>
+      </div>
+  <aside id="workflowNotice" class="workflow-notice" hidden role="region" aria-labelledby="workflowNoticeTitle" aria-describedby="workflowNoticeMessage workflowNoticeImpact">
+    <div id="workflowNoticeCard" class="workflow-notice-card">
+      <div class="notice-heading"><span id="workflowNoticeSymbol" aria-hidden="true">✓</span><h2 id="workflowNoticeTitle">Hoàn tất</h2></div>
+      <p id="workflowNoticeMessage"></p>
+      <strong id="workflowNoticeImpact"></strong>
+      <details id="workflowNoticeDetails" hidden><summary>Chi tiết</summary>
+        <p id="workflowNoticeActionsNeeded" hidden></p>
+        <pre id="workflowNoticeReview" class="review-positions" hidden></pre>
+        <details><summary>Thông tin kỹ thuật</summary><pre id="workflowNoticeTechnical"></pre><p id="workflowNoticeStage" class="hint"></p><p id="workflowNoticeAttention" class="hint" role="status"></p>
+          <div class="support-actions">
+<button id="noticeViewLog" class="button secondary" type="button" hidden>Xem nhật ký</button>
+<button id="noticeExportLog" class="button secondary" type="button" hidden>Xuất log đã che</button></div>
+        </details>
+      </details>
+      <div class="workflow-notice-actions">
+        <button id="noticePickSrt" class="button secondary" type="button" hidden>Chọn lại SRT</button>
+        <button id="noticeCheckInputs" class="button secondary" type="button" hidden>Kiểm tra lại đầu vào</button>
+        <button id="noticeReviewIssues" class="button secondary" type="button" hidden>Xem vị trí cần kiểm tra</button>
+        <button id="closeWorkflowNotice" class="button secondary" type="button">Đóng thông báo</button>
+        <button id="acceptWorkflowNotice" class="button primary" type="button" hidden>Tiếp tục</button>
+      </div>
+    </div>
+  </aside>
+      <p class="hint edit-only">Chỉnh trực tiếp timeline. Không tự lưu project; hãy dùng template đã lưu.</p>
+      <p class="hint caption-only" hidden>Chỉ thêm Caption Track; giữ nguyên video/audio và không tự lưu project.</p>
+    </section>
+
+
+
+    <details id="appSettings" class="card">
+      <summary>Thiết lập</summary>
+      <label class="check"><input id="externalNotifications" type="checkbox" checked>Nhắc khi hoàn tất hoặc cần tôi xử lý</label>
+      <p class="hint">Hiện thông báo Windows khi tôi đang dùng ứng dụng khác. Bấm để mở đúng kết quả.</p>
+      <label class="check notification-sound"><input id="notificationSound" type="checkbox" checked aria-describedby="notificationSoundHint">Phát âm thanh khi hoàn tất hoặc cần xử lý</label>
+      <p id="notificationSoundHint" class="hint">Phát một lần cùng thông báo Windows, theo âm lượng và quyền thông báo của Windows.</p>
+      <p id="nativeNotificationStatus" class="hint" role="status">Kết quả và quyết định chỉ nằm trong panel.</p>
+    <section class="card backend-card">
+      <div class="section-title">Bộ xử lý nhận diện</div>
+      <div id="backendSummary" class="summary backend-state muted" role="status" aria-live="polite">Đang kiểm tra CPU/GPU...</div>
+      <p id="backendReason" class="hint" hidden role="status" aria-live="polite"></p>
+      <details id="backendOptions">
+        <summary>Thiết lập CPU/GPU</summary>
+        <label class="check"><input id="allowGpuDownload" type="checkbox">Cho phép tải backend GPU từ GitHub nếu máy chưa có</label>
+        <p class="hint">Mặc định không tự tải. CPU chạy offline; GPU đã thiết lập vẫn dùng khi bỏ chọn. Chỉ báo GPU sau khi vượt phép thử nhận diện thực tế.</p>
+        <button id="retryBackend" class="button secondary compact-top" type="button">Kiểm tra lại GPU</button>
+      </details>
+    </section>
+    </details>
+
+    <details id="noticeHistory" class="card notice-history">
+      <summary id="noticeHistorySummary">Cảnh báo gần đây (0 chưa xem)</summary>
+      <div id="noticeHistoryList"></div>
+      <p id="noticeHistoryHint" class="hint">Lưu tối đa 30 thông báo trong 30 ngày. Chi tiết lỗi nằm trong nhật ký của phiên hiện tại.</p>
+    </details>
+
+    <details id="editUsageHelp" class="card usage-help edit-only">
+      <summary>Hướng dẫn dựng và màu marker</summary>
+      <ol>
+        <li>Lưu project trước khi chạy. Mở template sạch: V1 là nested video chính, A1 là audio của nest đã linked với V1, A2 là các chapter voice tiếng Việt đặt liên tiếp đúng thứ tự.</li>
+        <li>Chọn ngôn ngữ voice và SRT đã dùng để tạo voice, hoặc bật nối nhiều SRT. Nội dung SRT phải cùng ngôn ngữ và đúng lời voice; timestamp cần tương ứng với hình nguồn. Không cần xuất XML.</li>
+        <li>Có thể mở Tùy chỉnh theo video nếu cần. Không cần bấm chẩn đoán; đầu vào được kiểm lại khi chạy. Cập nhật đầu vào chỉ cần khi vừa đổi timeline/import file.</li>
+        <li>Bấm Phân tích và dựng tự động, đọc xác nhận rồi chạy. Không chỉnh timeline hoặc đổi sequence trong lúc tool làm việc.</li>
+        <li>Nghe/xem lại video, voice, caption và marker trước khi lưu. Marker clip: đỏ quá nhanh, cam quá chậm, vàng cần kiểm căn voice, xanh dương hình đã gộp và speed trong ngưỡng. Marker trên thước timeline: vàng cần kiểm tra, đỏ lỗi hậu kiểm; mở ghi chú để xem lý do và khoảng thời gian.</li>
+      </ol>
+      <p class="hint">Tool cắt/retime V1 và A1 linked, sắp A2 theo timeline mới và thêm Caption Track. Hình ngoài ngưỡng được gộp một lần với đoạn liền kề; voice/caption không bị gộp theo hình. Chỉ dọn marker nhận diện được là của tool, giữ marker tự đặt. Bật Timeline Settings > Show Clip Markers nếu chưa thấy.</p>
+      <p class="hint">Nếu timeline đã thay đổi rồi báo lỗi, Undo; nếu không khôi phục đầy đủ, đóng project không lưu và mở bản đã lưu. Không chạy lại trên timeline đã xử lý. File tạm được dọn sau tác vụ.</p>
+    </details>
+
+    <details id="captionUsageHelp" class="card usage-help caption-only" hidden>
+      <summary>Hướng dẫn tạo phụ đề</summary>
+      <ol>
+        <li>Mở sequence. Chọn nguồn audio: tất cả track đang bật, các track chỉ định, hoặc đúng các clip audio đang chọn.</li>
+          <li>Chọn ngôn ngữ lời nói. Tool ưu tiên SRT trong Project khi có một file phù hợp rõ ràng; kiểm tra file đúng lời nói. Chọn Tự nhận diện · không dùng SRT nếu muốn nhận diện toàn bộ.</li>
+        <li>Chọn phạm vi toàn sequence, thời gian của clip đang chọn hoặc In/Out. Với nguồn clip audio đang chọn, phạm vi lấy theo chính các clip đó. Kiểm tra tóm tắt nguồn và phạm vi trước khi chạy.</li>
+        <li>Bấm Tạo phụ đề. Tool kiểm tra lại phạm vi hiện tại và thêm Caption Track mới.</li>
+        <li>Nghe lại, kiểm marker vàng trên thước timeline, sửa những từ nhận diện sai rồi tự lưu project. Ghi chú marker nêu cue, lý do và vùng cần kiểm tra.</li>
+      </ol>
+      <p class="hint">Nhiều nguồn được phối theo thời gian timeline để nhận diện chung. Các vùng rời nhau giữ đúng vị trí; caption cũ được giữ. Tool không tự đổi nguồn đã chỉ định khi nguồn trống.</p>
+    </details>
+
+    <details id="supportTools" class="card log-card">
+      <summary>Hỗ trợ và nhật ký</summary>
+      <div class="edit-only">
+        <p class="hint">Chẩn đoán chỉ kiểm tra đầu vào, không sửa timeline; dùng khi cần tìm nguyên nhân không chạy được.</p>
+        <button id="runDiagnostics" class="button secondary" type="button">Chẩn đoán đầu vào</button>
+        <div id="diagnosticSummary" class="summary muted" role="status" aria-live="polite">Chưa chạy chẩn đoán.</div>
+      </div>
+      <button id="testWindowsNotification" class="button secondary" type="button">Thử thông báo Windows</button>
+      <p id="notificationTestFeedback" class="hint" role="status" hidden></p>
+      <p id="supportFeedback" class="hint" role="status" hidden></p>
+      <pre id="log">Sẵn sàng.</pre>
+      <div class="button-row">
+        <button id="exportSafeLog" class="button secondary" type="button">Xuất log đã che thông tin</button>
+        <button id="clearWhisperCache" class="button secondary" type="button">Xóa cache nhận diện</button>
+      </div>
+      <p class="hint">Cache có nội dung lời nói đã nhận diện. Log đã che vẫn cần đọc lại trước khi chia sẻ; không có dữ liệu nào tự gửi đi.</p>
+    </details>
+  </main>
+
+  <script src="js/security.js"></script>
+  <script src="js/notification-policy.js"></script>
+  <script src="js/native-notifications.js"></script>
+  <script src="js/caption-input.js"></script>
+  <script src="js/srt-join.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

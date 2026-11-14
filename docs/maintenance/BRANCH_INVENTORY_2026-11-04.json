@@ -1,0 +1,1224 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-04",
+  "mainAtRecord": "b89c9883",
+  "note": "All listed branch tips were ancestors of main at merge commit b89c9883 (PR #89, merge commit). Recover any tip with: git branch <name> <sha>.",
+  "remoteBranches": [
+    {
+      "branch": "codex/github-sync-2.20.72",
+      "sha": "0802eb62b39522084cf22ae6c686e7f95139151d",
+      "lastCommitDate": "2026-10-22",
+      "subject": "Preserve empty cut-list behavior and finalize 2.20.88 evidence",
+      "prs": [
+        {
+          "number": 13,
+          "state": "MERGED",
+          "draft": true,
+          "base": "main"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-big-update",
+      "sha": "0caba32f0a282a383e7eb363f5a455257cb35452",
+      "lastCommitDate": "2026-10-23",
+      "subject": "Audit cue-first history and preserve subtitle review reasons",
+      "prs": [
+        {
+          "number": 17,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/github-sync-2.20.72"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-h06-study",
+      "sha": "255411d5dca90bfa60904de93cdf39fd31f06d16",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: reduce alignment suffix memory with ordered-edge parity",
+      "prs": [
+        {
+          "number": 25,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s4-reference-evaluation"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-input-feasibility",
+      "sha": "f5105285460ad32f6caae6039498b150baa426aa",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: verify SRT input snapshot and freshness on Windows",
+      "prs": [
+        {
+          "number": 19,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/organize-project-2026-10-23"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s4-boundary-review",
+      "sha": "bb9b8e9c75ecd924e5e74f01c7ceafd21f397f56",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: resolve caption boundaries using existing word anchors",
+      "prs": [
+        {
+          "number": 23,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s4-word-timing"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s4-corpus",
+      "sha": "ee09911a7c97cc5992d25112c542dff3f56244a6",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: evaluate pinned Vietnamese corpus through final SRT",
+      "prs": [
+        {
+          "number": 21,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-srt-file-adapter"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s4-reference-evaluation",
+      "sha": "f212ffacac0ed52cc6c78d4d8011e99acc502e6a",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: audit S4 reference provenance and score retained terms",
+      "prs": [
+        {
+          "number": 24,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s4-boundary-review"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s4-word-timing",
+      "sha": "ba4ab477a3a67243e087d2445b749909c32555f2",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: retain punctuation through timing fallback cascades",
+      "prs": [
+        {
+          "number": 22,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s4-corpus"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-srt-file-adapter",
+      "sha": "ae0238f06987b6f974d58f595c801e9a51596de8",
+      "lastCommitDate": "2026-10-24",
+      "subject": "research: bind selected SRT files through offline caption pipeline",
+      "prs": [
+        {
+          "number": 20,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-input-feasibility"
+        }
+      ]
+    },
+    {
+      "branch": "codex/organize-project-2026-10-23",
+      "sha": "c69030b329f704b0f194de7271d79b5a0bc0c434",
+      "lastCommitDate": "2026-10-24",
+      "subject": "chore: organize project documentation and archive obsolete work",
+      "prs": [
+        {
+          "number": 18,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-big-update"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-h06-long-cache",
+      "sha": "5fe84cf5713a5339c70fe973ce6d509fa1fe9156",
+      "lastCommitDate": "2026-10-25",
+      "subject": "test(research): verify long cached H05 and full analysis resources",
+      "prs": [
+        {
+          "number": 31,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-live-cli"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-live-cli",
+      "sha": "0bd70d62782910ab277385224ec2f7963446d9ef",
+      "lastCommitDate": "2026-10-25",
+      "subject": "feat(research): wire explicit live and cache tail CLI",
+      "prs": [
+        {
+          "number": 30,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-live-tail-proof"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-live-tail-proof",
+      "sha": "cc1441a5d9a5cebc41b4317f041cb67e57d4474e",
+      "lastCommitDate": "2026-10-25",
+      "subject": "research: prove bounded live tail ASR and exact-sample work budget",
+      "prs": [
+        {
+          "number": 29,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-tail-stage"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-local-context-proof",
+      "sha": "15f2ea502f3220211249edf30b3ff8158154961e",
+      "lastCommitDate": "2026-10-25",
+      "subject": "test(research): prove bounded local context for repeated cues",
+      "prs": [
+        {
+          "number": 32,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-h06-long-cache"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-local-context-stage",
+      "sha": "50b0806cdf01299059d8c3c51e056fafd57d6849",
+      "lastCommitDate": "2026-10-25",
+      "subject": "Add explicit one-target local context application stage",
+      "prs": [
+        {
+          "number": 33,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-local-context-proof"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-merged-recovery",
+      "sha": "db39f47a014f0e0e0d29feac3953a50bbd75269d",
+      "lastCommitDate": "2026-10-25",
+      "subject": "docs: distinguish frozen audit status from current H05 gates",
+      "prs": [
+        {
+          "number": 26,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-h06-study"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-tail-stage",
+      "sha": "ca8efe7b517e4cac5055d3061d9dd5e5ec8f0c8c",
+      "lastCommitDate": "2026-10-25",
+      "subject": "feat(research): integrate opt-in cached tail supplement stage",
+      "prs": [
+        {
+          "number": 28,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-tail-supplement-proof"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-h05-tail-supplement-proof",
+      "sha": "68e311ff2fb7e73bf8f5f4de42ab1e54c836f585",
+      "lastCommitDate": "2026-10-25",
+      "subject": "docs: bind measured worktree evidence to canonical Git source",
+      "prs": [
+        {
+          "number": 27,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-merged-recovery"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s4-exit-review",
+      "sha": "3ced86e97277be2a45c8da898aa72347e56c870f",
+      "lastCommitDate": "2026-10-25",
+      "subject": "Close bounded S4 offline baseline and prioritize S5 preservation",
+      "prs": [
+        {
+          "number": 34,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-h05-local-context-stage"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s5-preservation",
+      "sha": "1b4d0f78a69b18adef6f3d85030e55f37ac50ff0",
+      "lastCommitDate": "2026-10-25",
+      "subject": "Verify four planned S5 preservation oracles through final SRT",
+      "prs": [
+        {
+          "number": 35,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s4-exit-review"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s6-caption-review",
+      "sha": "dd004bb52025022a8fa8005b8f575c38f2695229",
+      "lastCommitDate": "2026-10-25",
+      "subject": "Preserve S6 caption timing and report reading rates",
+      "prs": [
+        {
+          "number": 36,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s5-preservation"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s7-job-lifecycle",
+      "sha": "ecb733054e73323924816907c2b32c881e34a0d9",
+      "lastCommitDate": "2026-10-25",
+      "subject": "Connect offline S7 job specs and checkpoint lifecycle",
+      "prs": [
+        {
+          "number": 37,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s6-caption-review"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s8-readiness",
+      "sha": "b3483d643b8b057a37375c3b9e6cdc1ec7f169ef",
+      "lastCommitDate": "2026-10-25",
+      "subject": "Audit S8 readiness and preserve native capability gates",
+      "prs": [
+        {
+          "number": 38,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s7-job-lifecycle"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-c01-recognition-proof",
+      "sha": "4d58c427caa74a9e794e10630e058c59fdc70549",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Record C01 recognition source-chain proof for two pinned WAVs",
+      "prs": [
+        {
+          "number": 45,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-observation-audio-binding"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-f02-coordinate-evidence",
+      "sha": "2f61a4546f47aabfb4804d74a9c54c1cd72b2228",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Record scoped F02 source-coordinate evidence and next S3 dependency",
+      "prs": [
+        {
+          "number": 40,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-f02-native-observation"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-f02-native-observation",
+      "sha": "30bc55d9eca01bfb5d90ccd7b5cca0bff95647ff",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Record F02 native observations and retain source timing gate",
+      "prs": [
+        {
+          "number": 39,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s8-readiness"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-observation-audio-binding",
+      "sha": "fd9c4f05f03d0741cdc6cde9bfae20fcc735827a",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Bind prepared observations and timing to pinned WAV coordinates",
+      "prs": [
+        {
+          "number": 44,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s3-audio-binding"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-opaque-project-reference",
+      "sha": "6dcc972dfd68198a54a8b16d409662a88a209ab1",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Record bounded C08 native identity proof after snapshot fix",
+      "prs": [
+        {
+          "number": 47,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-recorded-recognition-input"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-recorded-recognition-input",
+      "sha": "4f5da3b5c81b61acbee84d0bdc8e0a481cba1c5a",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Bind frozen recognition artifacts to offline job freshness",
+      "prs": [
+        {
+          "number": 46,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-c01-recognition-proof"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s3-audio-binding",
+      "sha": "0f21ce81a274ef500af6b45b7eacc1134a1ae7ae",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Bind WAV assets and requested timeline ranges to offline cue-first jobs",
+      "prs": [
+        {
+          "number": 43,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s8-audio-observation"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s3-geometry-binding",
+      "sha": "cc0b9448dbe69e96ef5cba818934a2ac7a99cad7",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Bind captured timeline geometry to offline cue-first jobs",
+      "prs": [
+        {
+          "number": 41,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-f02-coordinate-evidence"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-s8-audio-observation",
+      "sha": "deb399f31dab612712c3a237eac7a356a2b345c7",
+      "lastCommitDate": "2026-10-26",
+      "subject": "Record scoped A2 audio export and restoration evidence for S8",
+      "prs": [
+        {
+          "number": 42,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-s3-geometry-binding"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-c06-probe-response",
+      "sha": "6253b6aaff58f2a174d0e864fbde6a5511c7811e",
+      "lastCommitDate": "2026-10-28",
+      "subject": "Discontinue C06 rounding diagnostic at user request",
+      "prs": [
+        {
+          "number": 48,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-opaque-project-reference"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-c07-marker-feasibility",
+      "sha": "3060acbd6ba00c1bb0b7206ff4cd4da21dedca74",
+      "lastCommitDate": "2026-10-28",
+      "subject": "Record C07 native marker creation in empty baseline and completed cleanup",
+      "prs": [
+        {
+          "number": 55,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-native-output-adapter"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-foreign-caption-start",
+      "sha": "46abef41ec4e45a5ca10154f1b5cdf0357ae29a1",
+      "lastCommitDate": "2026-10-28",
+      "subject": "docs: record successful S8 trial finish and cleanup",
+      "prs": [
+        {
+          "number": 52,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-job-srt-import-trial"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-job-srt-import-trial",
+      "sha": "e8610973362f8fa9678185d3daac3de54806a08d",
+      "lastCommitDate": "2026-10-28",
+      "subject": "Record S8 reference-layout stop and completed debug cleanup",
+      "prs": [
+        {
+          "number": 51,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-srt-caption-output"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-native-apply-receipt",
+      "sha": "dc5a9dadd8523227c7a5730e5c1e0c91e8a3ee8a",
+      "lastCommitDate": "2026-10-28",
+      "subject": "Add recorded native apply receipts and immutable journal",
+      "prs": [
+        {
+          "number": 49,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-c06-probe-response"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-native-output-adapter",
+      "sha": "23d841b588b72eca91cf03234fc9baf9451129d1",
+      "lastCommitDate": "2026-10-28",
+      "subject": "Record bounded native adapter trial and completed debug cleanup",
+      "prs": [
+        {
+          "number": 54,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-phased-output-controller"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-phased-output-controller",
+      "sha": "a64491075d78e2680554735e64ba93739afecd8d",
+      "lastCommitDate": "2026-10-28",
+      "subject": "feat: persist phased caption output intents and receipts",
+      "prs": [
+        {
+          "number": 53,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-foreign-caption-start"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-srt-caption-output",
+      "sha": "b64129c160521b6935a0e8d888bdc9e84e8cccda",
+      "lastCommitDate": "2026-10-28",
+      "subject": "Fix SRT output test setup on clean checkouts",
+      "prs": [
+        {
+          "number": 50,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-native-apply-receipt"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-auto-edit-media-output",
+      "sha": "80ced4e15384a64cb5798e4a7f95e38ba2e3a037",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Bind finished Auto edit jobs to offline media output plans",
+      "prs": [
+        {
+          "number": 59,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-auto-edit-media-preparation"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-auto-edit-media-preparation",
+      "sha": "6d798d765780251a4d90cef1071a0c9b4ada864b",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Record accepted S8 retime and voice move native trial",
+      "prs": [
+        {
+          "number": 58,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-voice-match-survey"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-media-dispatch",
+      "sha": "8dfdea4b467f695c4e43370282eb92e248fe1799",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Record bounded native Auto edit job dispatch and completed cleanup",
+      "prs": [
+        {
+          "number": 62,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-media-output-binding"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-media-output-binding",
+      "sha": "5d622bd9f550791c5fb8c0ad2474e1efcf412168",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Bind Auto edit clone clip IDs before media dispatch",
+      "prs": [
+        {
+          "number": 61,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-media-source-binding"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-media-source-binding",
+      "sha": "b35bb4843694dda6bc8c57925791299f4a70e6ed",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Bind media job sources to recorded clip identities and timeline frames",
+      "prs": [
+        {
+          "number": 60,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-auto-edit-media-output"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-review-marker-output",
+      "sha": "b7bd02cbb97690c3c11754584a22841f95bcd845",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Record successful job marker native trial and cleanup",
+      "prs": [
+        {
+          "number": 56,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-c07-marker-feasibility"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-voice-match-survey",
+      "sha": "098904b56d913ba5cc9d2d22ad3e7eb03f5462fc",
+      "lastCommitDate": "2026-10-29",
+      "subject": "Plan conditional reuse of Premiere MCP mapping and media helpers",
+      "prs": [
+        {
+          "number": 57,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-review-marker-output"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-cep-ui-trial",
+      "sha": "6a8876b44577f25cdb1253c772755613d4106cf7",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Record completed bounded CEP UI trial and verified cleanup",
+      "prs": [
+        {
+          "number": 69,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-bootstrap"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-controller-panel-handoff",
+      "sha": "3eccba7a0f1e2193f37ee639366731793f1d87b4",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Hand inspected job bindings from controller to output panel",
+      "prs": [
+        {
+          "number": 73,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-activation"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-legacy-startup-trial",
+      "sha": "c98a3ae25f186ffd661a9c2f07657426367cd228",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Record successful bounded CEP startup trial and cleanup",
+      "prs": [
+        {
+          "number": 71,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-registration"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-activation",
+      "sha": "36cf5bba302eb683eddf3caae1f6cd6d54df052c",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Load recorded-output API from product panel and package assets",
+      "prs": [
+        {
+          "number": 72,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-legacy-startup-trial"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-bootstrap",
+      "sha": "01b9a92c60d60c9a5e4f8ac0d949a4180d1811c9",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Wire registered output jobs into the panel session through pinned Node",
+      "prs": [
+        {
+          "number": 68,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-controller-jobs"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-controller-jobs",
+      "sha": "e33570e96d9ada143d1e388c05683d17e86b48c4",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Record registered panel job regression evidence",
+      "prs": [
+        {
+          "number": 67,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-job-selection"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-form-input",
+      "sha": "950c45723b1b45507723fa199678efbd636e4b1a",
+      "lastCommitDate": "2026-11-01",
+      "subject": "feat(cue-first): capture panel form input for S7 bootstrap",
+      "prs": [
+        {
+          "number": 75,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-job-workflow"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-job-selection",
+      "sha": "fad8d9e25788d1e636458a60134c73f7add349ea",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Link final CI evidence to the current pull-request head",
+      "prs": [
+        {
+          "number": 66,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-output-status"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-job-workflow",
+      "sha": "255f3a3a17b56decebf0e3acca1a4300c08aa0bd",
+      "lastCommitDate": "2026-11-01",
+      "subject": "feat(cue-first): add controlled S7 analysis UI session",
+      "prs": [
+        {
+          "number": 74,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-controller-panel-handoff"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-output-status",
+      "sha": "ab360855777316744ea38aa0498d0463079db7a1",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Reuse the existing panel for recorded Auto edit output status",
+      "prs": [
+        {
+          "number": 65,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-post-media-captions"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-panel-registration",
+      "sha": "ef4a0d070fabb4e754b937429f7e1a2126bc90c3",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Add controller-owned output registration handoff",
+      "prs": [
+        {
+          "number": 70,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-cep-ui-trial"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-post-media-captions",
+      "sha": "17fa7d4d9220e591b8cf62597a0dd0a046da2690",
+      "lastCommitDate": "2026-11-01",
+      "subject": "Complete debug cleanup after the panel worker status probe",
+      "prs": [
+        {
+          "number": 63,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-media-dispatch"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-whisper-input",
+      "sha": "1f4570eb99e5873c0dd67b492eeca682fcbb1fad",
+      "lastCommitDate": "2026-11-01",
+      "subject": "feat(cue-first): bind frozen Whisper WAV input to S7 jobs",
+      "prs": [
+        {
+          "number": 76,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-panel-form-input"
+        }
+      ]
+    },
+    {
+      "branch": "codex/big-update-edit-source-capture",
+      "sha": "d7bf6afc1c7bd4c2f393cda5a761a811c97abac9",
+      "lastCommitDate": "2026-11-02",
+      "subject": "research(cue-first): prepare bounded edit source mapping capture",
+      "prs": [
+        {
+          "number": 85,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/big-update-product-beta"
+        }
+      ]
+    },
+    {
+      "branch": "codex/big-update-product-beta",
+      "sha": "9abfffd071bb47aa12da4c31a28abfb953866b69",
+      "lastCommitDate": "2026-11-02",
+      "subject": "feat(cue-first): prepare relocatable product runtime and panel context",
+      "prs": [
+        {
+          "number": 84,
+          "state": "MERGED",
+          "draft": true,
+          "base": "main"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-layout-node",
+      "sha": "cad79fe962c7663bdcb71673c19e467f4681b1c0",
+      "lastCommitDate": "2026-11-02",
+      "subject": "fix(cue-first): pin Node for child PowerShell layout validation",
+      "prs": [
+        {
+          "number": 82,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-primary-cep-trial"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-primary-bootstrap",
+      "sha": "fd2973135ef82a769fde6d08c8959522d36dee24",
+      "lastCommitDate": "2026-11-02",
+      "subject": "feat: prepare pinned primary context from the current panel form",
+      "prs": [
+        {
+          "number": 80,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-primary-lifecycle"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-primary-cep-trial",
+      "sha": "9e15d31af5c91499a945405d1e03d988c47500dd",
+      "lastCommitDate": "2026-11-02",
+      "subject": "test: align host bootstrap contract with private owner forwarding",
+      "prs": [
+        {
+          "number": 81,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-primary-bootstrap"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-primary-controls",
+      "sha": "43b2069d5482ccb20cf786d376083c7cde48b4ee",
+      "lastCommitDate": "2026-11-02",
+      "subject": "fix(cue-first): keep incident actions disabled during owned sessions",
+      "prs": [
+        {
+          "number": 83,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-layout-node"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-primary-grouping",
+      "sha": "4b6aa70f8eea7383196dc9efa9141e05028b20a3",
+      "lastCommitDate": "2026-11-02",
+      "subject": "fix(cue-first): map retained primary raw through grouping and DTW provider",
+      "prs": [
+        {
+          "number": 78,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-primary-whisper-trial"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-primary-lifecycle",
+      "sha": "982150fe0e742d1226409f56a33a106b8caf7b35",
+      "lastCommitDate": "2026-11-02",
+      "subject": "build: synchronize diagnostic host hash after source identity metadata",
+      "prs": [
+        {
+          "number": 79,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-primary-grouping"
+        }
+      ]
+    },
+    {
+      "branch": "codex/cue-first-primary-native-result",
+      "sha": "e1d57edbf7432055b2f5c21099d218d6cf53e6d4",
+      "lastCommitDate": "2026-11-02",
+      "subject": "docs(cue-first): record successful primary native trial and cleanup",
+      "prs": []
+    },
+    {
+      "branch": "codex/cue-first-primary-whisper-trial",
+      "sha": "093bf859f127c2d103841b0f55aa75d5b1ee2b36",
+      "lastCommitDate": "2026-11-02",
+      "subject": "test(cue-first): add bounded primary Small integration trial",
+      "prs": [
+        {
+          "number": 77,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/cue-first-whisper-input"
+        }
+      ]
+    },
+    {
+      "branch": "codex/edit-source-explicit-branches",
+      "sha": "457520594119e9695343ba8188a33d6730fe1b92",
+      "lastCommitDate": "2026-11-02",
+      "subject": "fix(cue-first): use explicit branches in native source classification",
+      "prs": [
+        {
+          "number": 86,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/big-update-edit-source-capture"
+        }
+      ]
+    },
+    {
+      "branch": "codex/edit-source-live-binding",
+      "sha": "6906188ff4114b72030be37c00edad84fd7cc36a",
+      "lastCommitDate": "2026-11-02",
+      "subject": "feat(cue-first): bind captured edit source to primary and media preflight",
+      "prs": []
+    },
+    {
+      "branch": "codex/edit-source-native-record",
+      "sha": "10d7e3cd4c325028af894e4a7a2a504637fe4a5f",
+      "lastCommitDate": "2026-11-02",
+      "subject": "docs(cue-first): record native source metadata capture and cleanup",
+      "prs": []
+    },
+    {
+      "branch": "codex/edit-source-preflight-record",
+      "sha": "9deb6e26cf31f5fe8c98a21d0e0a3e92be0e6927",
+      "lastCommitDate": "2026-11-02",
+      "subject": "docs(cue-first): record source preflight stop and debug cleanup",
+      "prs": []
+    },
+    {
+      "branch": "codex/edit-source-template",
+      "sha": "8aa6e17037296a2e33eb006befebdb521216b8a2",
+      "lastCommitDate": "2026-11-02",
+      "subject": "research(cue-first): derive captured source template and verify SRT scope",
+      "prs": [
+        {
+          "number": 87,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/edit-source-explicit-branches"
+        }
+      ]
+    },
+    {
+      "branch": "codex/edit-source-template-record",
+      "sha": "8f59e3e113d7a9f8463b4a2adaa1e5e838bcfee9",
+      "lastCommitDate": "2026-11-02",
+      "subject": "docs(cue-first): record successful reuse of the ten-second source fixture",
+      "prs": []
+    },
+    {
+      "branch": "codex/edit-source-product-producer",
+      "sha": "e09de3f69a7d0402bccea38937b225745eae195b",
+      "lastCommitDate": "2026-11-03",
+      "subject": "feat(cue-first): produce edit templates from the installed product entry",
+      "prs": []
+    },
+    {
+      "branch": "codex/gstack-project-setup",
+      "sha": "2bacc7cb6791a481e1c7a5bbfd57b552d6773442",
+      "lastCommitDate": "2026-11-03",
+      "subject": "docs: add gstack workflow and Windows capability guidance",
+      "prs": [
+        {
+          "number": 88,
+          "state": "OPEN",
+          "draft": false,
+          "base": "codex/github-account-migration-2026-11-01"
+        }
+      ]
+    },
+    {
+      "branch": "claude/s8-integration",
+      "sha": "7a41224401f6e06155fffe7f00393c4e46e2a116",
+      "lastCommitDate": "2026-11-04",
+      "subject": "docs: add maintainer briefing for Claude Code takeover",
+      "prs": [
+        {
+          "number": 89,
+          "state": "MERGED",
+          "draft": false,
+          "base": "main"
+        }
+      ]
+    },
+    {
+      "branch": "codex/github-account-migration-2026-11-01",
+      "sha": "e08062bd0784feb1c6868ab3723028b65327f6dd",
+      "lastCommitDate": "2026-11-04",
+      "subject": "docs: make Claude Code the primary tool in agent guidance",
+      "prs": [
+        {
+          "number": 64,
+          "state": "OPEN",
+          "draft": true,
+          "base": "codex/organize-project-2026-10-23"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "tag": "archive/2026-10-23/agent/single-file-installer",
+      "sha": "f3caa60464e9fc531f22f0c0c383eeecf33702d0"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/actionable-notifications-2.20.30",
+      "sha": "c4c644f81853602389563038f1d564b275ec5356"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/audit-2.20.22",
+      "sha": "4c25e57359e0d5deca497d66a56fb25fdc20909c"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/content-review-foundation",
+      "sha": "9b6d331c0246f96b2a30c09bfd2db71fda245f62"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/no-delay-auto-edit",
+      "sha": "6f21e440ee8424efb37b35122cd4b5588c212b52"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/subtitle-reference-scope",
+      "sha": "88d299a471e6bc5222eae979cb7e5b9b29cae817"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/ui-2.20.26",
+      "sha": "7b8bbc0be5c748a343b40a616473fa9bb7fe44a9"
+    },
+    {
+      "tag": "archive/2026-10-23/codex/voice-boundary-2.20.27",
+      "sha": "c71e8e5d372aed7afe41f51521118327a4e657fe"
+    },
+    {
+      "tag": "archive/2026-10-23/feat/standalone-subtitles",
+      "sha": "73b2e2f659a702954422ea52c80f8b5479f2a095"
+    },
+    {
+      "tag": "archive/2026-10-23/fix/voice-aligned-single-line-captions",
+      "sha": "5a76292ebb941b659e4be82f54f9041b803e7291"
+    },
+    {
+      "tag": "archive/2026-10-23/stabilize/2.20.4-rc",
+      "sha": "c64ab024fca645e069decfcd683c29e24f140827"
+    },
+    {
+      "tag": "archive/2026-10-23/stable/2.19.1",
+      "sha": "0715dcd27e3bd8a5623218cdc5132dd28096ff07"
+    },
+    {
+      "tag": "v2.19.1",
+      "sha": "418a7ec8776b5ddbf175f68633f6c263218f1104"
+    },
+    {
+      "tag": "v2.19.9",
+      "sha": "4cc21ff6c99fc4c78ce1e545f38c6eed08a1a998"
+    },
+    {
+      "tag": "v2.20.0",
+      "sha": "d31168a1b529d0b8cb2a3f9cab5867d49e4f2817"
+    },
+    {
+      "tag": "v2.20.22",
+      "sha": "edd6e68d021e5bc1a2f8676ec6b5260b86900ace"
+    },
+    {
+      "tag": "v2.20.25",
+      "sha": "cb6d0493b32ced8a6bac4c64d09a407f7fc330c9"
+    },
+    {
+      "tag": "v2.20.72",
+      "sha": "1cea554da918124ef7cd3c618a455443950a1023"
+    },
+    {
+      "tag": "v2.20.73",
+      "sha": "7c981340e493cea1befa7e4fabc9438873cc2aed"
+    },
+    {
+      "tag": "v2.20.74",
+      "sha": "d38aef110bc2ef2783945bb7fa6149be25ea0cde"
+    },
+    {
+      "tag": "v2.20.75",
+      "sha": "71acc6c8346c5b6dd095319bf4be9b90a87d3258"
+    },
+    {
+      "tag": "v2.20.76",
+      "sha": "9739499dbe4df78938a30242c1c5c5275da82665"
+    },
+    {
+      "tag": "v2.20.77",
+      "sha": "9d72835759eac38558ba03440efa50b16c92630c"
+    },
+    {
+      "tag": "v2.20.78",
+      "sha": "145d80e9a8d6014832da657d2ef8fbbbbf3b66cb"
+    },
+    {
+      "tag": "v2.20.79",
+      "sha": "a2abaadf60c2fa490a84c8d0128cab99d74bb15c"
+    },
+    {
+      "tag": "v2.20.80",
+      "sha": "5d8f48356eb07d375ac4a186229f487820c00099"
+    },
+    {
+      "tag": "v2.20.81",
+      "sha": "2a07fd16fbaea71cb01b9337c7336bfccd06fbb6"
+    },
+    {
+      "tag": "v2.20.82",
+      "sha": "53634aa7f24533f219626227e1f8ad77f8a9417e"
+    },
+    {
+      "tag": "v2.20.83",
+      "sha": "72a3ce5696623d35a4418e2093976480b73979d9"
+    },
+    {
+      "tag": "v2.20.84",
+      "sha": "dce72b06e1682229c98745b70e222a09f656158e"
+    },
+    {
+      "tag": "v2.20.85",
+      "sha": "468c7ad9d11fe38697aa73405e064ca692d53d1f"
+    },
+    {
+      "tag": "v2.20.86",
+      "sha": "d0799853881582438f722c728cab3b6b6b1e92cf"
+    },
+    {
+      "tag": "v2.20.87",
+      "sha": "0e2dc50d56c411476d9af0ac8360e592c2fe0833"
+    },
+    {
+      "tag": "v2.20.88",
+      "sha": "0802eb62b39522084cf22ae6c686e7f95139151d"
+    }
+  ]
+}

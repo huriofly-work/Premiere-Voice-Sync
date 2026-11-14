@@ -1,0 +1,920 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "baseCommit": "0caba32f0a282a383e7eb363f5a455257cb35452",
+  "note": "sha256Before/After record physical working-file bytes; gitBlobSha256Before/After record Git-normalized source bytes at baseCommit and the cleanup index. Historical JSON receipts and their original paths/hashes remain immutable; resolve relocated documents with this map. Markdown edits only relocate links.",
+  "documents": [
+    {
+      "from": "docs/ALIGNMENT_REVIEW_2026-10-15.md",
+      "to": "docs/reviews/ALIGNMENT_REVIEW_2026-10-15.md",
+      "sha256Before": "f9adbff063306484dc717d1ea6fbd159e33e71a24f7593ec6aae2751fb937bb2",
+      "sha256After": "f9adbff063306484dc717d1ea6fbd159e33e71a24f7593ec6aae2751fb937bb2",
+      "gitBlobSha256Before": "f9adbff063306484dc717d1ea6fbd159e33e71a24f7593ec6aae2751fb937bb2",
+      "gitBlobSha256After": "f9adbff063306484dc717d1ea6fbd159e33e71a24f7593ec6aae2751fb937bb2"
+    },
+    {
+      "from": "docs/ASR_ADDITIONAL_CANDIDATES_2026-10-18.md",
+      "to": "docs/research/asr/ASR_ADDITIONAL_CANDIDATES_2026-10-18.md",
+      "sha256Before": "08b36809679019cf30c52d8835ee906589b78aaf7db1d20dff07766d05ed34bf",
+      "sha256After": "08b36809679019cf30c52d8835ee906589b78aaf7db1d20dff07766d05ed34bf",
+      "gitBlobSha256Before": "08b36809679019cf30c52d8835ee906589b78aaf7db1d20dff07766d05ed34bf",
+      "gitBlobSha256After": "08b36809679019cf30c52d8835ee906589b78aaf7db1d20dff07766d05ed34bf"
+    },
+    {
+      "from": "docs/ASR_AUTOMATED_REFERENCE_2026-10-18.md",
+      "to": "docs/research/asr/ASR_AUTOMATED_REFERENCE_2026-10-18.md",
+      "sha256Before": "42827431e2614e51fe6549ca8582536f008b91711fb526aeff93a03699452f80",
+      "sha256After": "f56bae0bc65c357823e11ca3527df879cdf25090e5c677ba1ca886470be307bf",
+      "gitBlobSha256Before": "f2a4fcddd927e6fc5a715995a2840bfe70385e77462a91ad07c6daf57cadf9fe",
+      "gitBlobSha256After": "f56bae0bc65c357823e11ca3527df879cdf25090e5c677ba1ca886470be307bf"
+    },
+    {
+      "from": "docs/ASR_BACKEND_ADAPTER_PLAN_2026-10-18.md",
+      "to": "docs/research/asr/ASR_BACKEND_ADAPTER_PLAN_2026-10-18.md",
+      "sha256Before": "8d6548c30923302162171372baa8d21a307fb2ade69a6182250dc3c696bc10f3",
+      "sha256After": "2a2f8e5320a2fc67ba24a98fae1b7d95004243323f8c3e1129bffc3549d10cae",
+      "gitBlobSha256Before": "c99b8b0f4902075b3537e3dcf1c85147466b3593a51d7d67695112ee51ee68bd",
+      "gitBlobSha256After": "2a2f8e5320a2fc67ba24a98fae1b7d95004243323f8c3e1129bffc3549d10cae"
+    },
+    {
+      "from": "docs/ASR_MODEL_CANDIDATES_2026-10-18.json",
+      "to": "docs/research/asr/ASR_MODEL_CANDIDATES_2026-10-18.json",
+      "sha256Before": "5b436b362ce4ca9def0ceed37e9ce2e4290691ea163c64945a15fec871dd6bce",
+      "sha256After": "5b436b362ce4ca9def0ceed37e9ce2e4290691ea163c64945a15fec871dd6bce",
+      "gitBlobSha256Before": "08edd20f0d9df6b267a327f732f06c8129fed12117f4c930e64725899d7e50f2",
+      "gitBlobSha256After": "08edd20f0d9df6b267a327f732f06c8129fed12117f4c930e64725899d7e50f2"
+    },
+    {
+      "from": "docs/ASR_PRACTICAL_COMPARISON_2026-10-18.md",
+      "to": "docs/research/asr/ASR_PRACTICAL_COMPARISON_2026-10-18.md",
+      "sha256Before": "c6d25fed1f58552b387ad3959764c2b7c079257cf89c5d92ff16cfe62d775aef",
+      "sha256After": "cfefabc7414aede93862247a409c576790d42e596e3a7f6defe2b9685ad4f448",
+      "gitBlobSha256Before": "c6d25fed1f58552b387ad3959764c2b7c079257cf89c5d92ff16cfe62d775aef",
+      "gitBlobSha256After": "cfefabc7414aede93862247a409c576790d42e596e3a7f6defe2b9685ad4f448"
+    },
+    {
+      "from": "docs/ASR_RECIPE_COMPARISON_2026-10-18.md",
+      "to": "docs/research/asr/ASR_RECIPE_COMPARISON_2026-10-18.md",
+      "sha256Before": "9fb74a09a9434b24f554df42014ef4b05c9efb5d59d10f0fc5874d0e416fe347",
+      "sha256After": "eb7ffd5a2be6fce8a67f51297daf930972952600eb036bfb5722053d4066118c",
+      "gitBlobSha256Before": "9fb74a09a9434b24f554df42014ef4b05c9efb5d59d10f0fc5874d0e416fe347",
+      "gitBlobSha256After": "eb7ffd5a2be6fce8a67f51297daf930972952600eb036bfb5722053d4066118c"
+    },
+    {
+      "from": "docs/AUDIO_SOURCE_SCOPE_REVIEW_2026-10-16.md",
+      "to": "docs/reviews/AUDIO_SOURCE_SCOPE_REVIEW_2026-10-16.md",
+      "sha256Before": "494a68fd041f6d3e10cbf295d9294df0a01d1346cafb36aaf1c2d7af13e48e7d",
+      "sha256After": "494a68fd041f6d3e10cbf295d9294df0a01d1346cafb36aaf1c2d7af13e48e7d",
+      "gitBlobSha256Before": "494a68fd041f6d3e10cbf295d9294df0a01d1346cafb36aaf1c2d7af13e48e7d",
+      "gitBlobSha256After": "494a68fd041f6d3e10cbf295d9294df0a01d1346cafb36aaf1c2d7af13e48e7d"
+    },
+    {
+      "from": "docs/AUDIT-2.19.2.md",
+      "to": "docs/releases/notes/AUDIT-2.19.2.md",
+      "sha256Before": "9e13e08aeaae5f4c786bd26947e2f51f8935d954d0f9af473c1c2b297fe4869d",
+      "sha256After": "9e13e08aeaae5f4c786bd26947e2f51f8935d954d0f9af473c1c2b297fe4869d",
+      "gitBlobSha256Before": "9e13e08aeaae5f4c786bd26947e2f51f8935d954d0f9af473c1c2b297fe4869d",
+      "gitBlobSha256After": "9e13e08aeaae5f4c786bd26947e2f51f8935d954d0f9af473c1c2b297fe4869d"
+    },
+    {
+      "from": "docs/AUDIT_2026-10-08.md",
+      "to": "docs/reviews/AUDIT_2026-10-08.md",
+      "sha256Before": "2139eb5d64eed595090c345bd3ba21bb5e5f6c8a90ba3b8b5c4fc0881bccec1f",
+      "sha256After": "2139eb5d64eed595090c345bd3ba21bb5e5f6c8a90ba3b8b5c4fc0881bccec1f",
+      "gitBlobSha256Before": "2139eb5d64eed595090c345bd3ba21bb5e5f6c8a90ba3b8b5c4fc0881bccec1f",
+      "gitBlobSha256After": "2139eb5d64eed595090c345bd3ba21bb5e5f6c8a90ba3b8b5c4fc0881bccec1f"
+    },
+    {
+      "from": "docs/AUTO_EDIT_ACOUSTIC_2.20.85.md",
+      "to": "docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.85.md",
+      "sha256Before": "1369faaf5b940933ae25ec35fb1ec5d725478ffc6b1cdc555f6afe651e548ce7",
+      "sha256After": "914dded51526bc718342ec17243bc58474d90ceb9a8d01e1c8094378fe7fe387",
+      "gitBlobSha256Before": "1369faaf5b940933ae25ec35fb1ec5d725478ffc6b1cdc555f6afe651e548ce7",
+      "gitBlobSha256After": "914dded51526bc718342ec17243bc58474d90ceb9a8d01e1c8094378fe7fe387"
+    },
+    {
+      "from": "docs/AUTO_EDIT_ACOUSTIC_2.20.86.md",
+      "to": "docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.86.md",
+      "sha256Before": "4e2c213e017b9c45abf67cf555b823170c33f76efa8563f2457025ae1885583a",
+      "sha256After": "780fd929646556546407837d4ad6a0935a771204137f9bf272e66a678fd4291b",
+      "gitBlobSha256Before": "4e2c213e017b9c45abf67cf555b823170c33f76efa8563f2457025ae1885583a",
+      "gitBlobSha256After": "780fd929646556546407837d4ad6a0935a771204137f9bf272e66a678fd4291b"
+    },
+    {
+      "from": "docs/AUTO_EDIT_ACOUSTIC_2.20.87.md",
+      "to": "docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.87.md",
+      "sha256Before": "57433c145c07970bdb67c1351f7e5944f07fac21f1d2967e5b4d0f50b76ce775",
+      "sha256After": "033556f323d41a4941c9912b475d33c57a0fc6a7e69e47a269a8402c6a68bb23",
+      "gitBlobSha256Before": "57433c145c07970bdb67c1351f7e5944f07fac21f1d2967e5b4d0f50b76ce775",
+      "gitBlobSha256After": "033556f323d41a4941c9912b475d33c57a0fc6a7e69e47a269a8402c6a68bb23"
+    },
+    {
+      "from": "docs/AUTO_EDIT_ACOUSTIC_2.20.88.md",
+      "to": "docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.88.md",
+      "sha256Before": "ca8918da1a222212e4c8597411e144c63334d9ba1d43f9b4a1e60d197d2410e2",
+      "sha256After": "ca8918da1a222212e4c8597411e144c63334d9ba1d43f9b4a1e60d197d2410e2",
+      "gitBlobSha256Before": "ca8918da1a222212e4c8597411e144c63334d9ba1d43f9b4a1e60d197d2410e2",
+      "gitBlobSha256After": "ca8918da1a222212e4c8597411e144c63334d9ba1d43f9b4a1e60d197d2410e2"
+    },
+    {
+      "from": "docs/BIG_UPDATE_ARCHITECTURE_V2_2026-10-22.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_ARCHITECTURE_V2_2026-10-22.md",
+      "sha256Before": "568b068e428335dc93bdb980127ef59357df4b3001a098bea9c4bd5319e06a2b",
+      "sha256After": "399cf2709e5ce55b3ac80a5b00056a5ed065cf6afaa48a81074101d179862e62",
+      "gitBlobSha256Before": "568b068e428335dc93bdb980127ef59357df4b3001a098bea9c4bd5319e06a2b",
+      "gitBlobSha256After": "399cf2709e5ce55b3ac80a5b00056a5ed065cf6afaa48a81074101d179862e62"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CAPTION_EDIT_CONTRACT_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CAPTION_EDIT_CONTRACT_2026-10-23.md",
+      "sha256Before": "736c94d3e103700882c9ebc7bf6d667e567b02f487c5baf0109aa009993112db",
+      "sha256After": "9588dffa5ae797deeab87ad6a385aa78bea3bf3781942cea1c1d5f2d9b480b9a",
+      "gitBlobSha256Before": "736c94d3e103700882c9ebc7bf6d667e567b02f487c5baf0109aa009993112db",
+      "gitBlobSha256After": "9588dffa5ae797deeab87ad6a385aa78bea3bf3781942cea1c1d5f2d9b480b9a"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CAPTION_OBSERVATIONS_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CAPTION_OBSERVATIONS_2026-10-23.md",
+      "sha256Before": "c05abf634296df71c74792e2e0a2946d702c343bc3b3e1e2e46a59a413f7e833",
+      "sha256After": "466d55374029d8cbcd628ba73e9cae985fcdc3b05917f018389b021ab1963a45",
+      "gitBlobSha256Before": "c05abf634296df71c74792e2e0a2946d702c343bc3b3e1e2e46a59a413f7e833",
+      "gitBlobSha256After": "466d55374029d8cbcd628ba73e9cae985fcdc3b05917f018389b021ab1963a45"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CAPTION_OUTPUT_TRIAL_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CAPTION_OUTPUT_TRIAL_2026-10-23.md",
+      "sha256Before": "c1f02534e7e44eca2fb4f6f296817dd5f5c1846f888093182159d55cc1203af9",
+      "sha256After": "95df1a26ad4dd49bc52e0874f4ca3bbc4c1a25ac32e74e0caac3a49512da7f99",
+      "gitBlobSha256Before": "c1f02534e7e44eca2fb4f6f296817dd5f5c1846f888093182159d55cc1203af9",
+      "gitBlobSha256After": "95df1a26ad4dd49bc52e0874f4ca3bbc4c1a25ac32e74e0caac3a49512da7f99"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CAPTION_READBACK_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CAPTION_READBACK_2026-10-23.md",
+      "sha256Before": "a6d08a01476a1f8c118b2abd12b2a8e9e80330aa7a512498416c5a0c01e9f628",
+      "sha256After": "0ae02bdcfa660035cd93d114a15b11315b5d2bd61769c157b47b527a9a68d392",
+      "gitBlobSha256Before": "a6d08a01476a1f8c118b2abd12b2a8e9e80330aa7a512498416c5a0c01e9f628",
+      "gitBlobSha256After": "0ae02bdcfa660035cd93d114a15b11315b5d2bd61769c157b47b527a9a68d392"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CAPTION_WRITER_CANDIDATES_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CAPTION_WRITER_CANDIDATES_2026-10-23.md",
+      "sha256Before": "b2ffb0bb374e11c174e59637c87c4ebad95768780bd2bb84def882acc0fc1862",
+      "sha256After": "bde783ddb6e1903b4873798d60db412c54bf038f32c08df9e03e027ce9422a19",
+      "gitBlobSha256Before": "b2ffb0bb374e11c174e59637c87c4ebad95768780bd2bb84def882acc0fc1862",
+      "gitBlobSha256After": "bde783ddb6e1903b4873798d60db412c54bf038f32c08df9e03e027ce9422a19"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CAPTION_WRITER_FEASIBILITY_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CAPTION_WRITER_FEASIBILITY_2026-10-23.md",
+      "sha256Before": "ed91810199ed899dc50785f697e6726e7018fdda1ae41f518dcfc0c4d5fe8729",
+      "sha256After": "89641bec19c157643a803220cade5c49154b1f7679806af6b2f18ac7225d9f7b",
+      "gitBlobSha256Before": "ed91810199ed899dc50785f697e6726e7018fdda1ae41f518dcfc0c4d5fe8729",
+      "gitBlobSha256After": "89641bec19c157643a803220cade5c49154b1f7679806af6b2f18ac7225d9f7b"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CLONE_CAPTIONS_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CLONE_CAPTIONS_2026-10-23.md",
+      "sha256Before": "369ed30ac9f001e87220493910105dc3a72e498403ffa179d64534881897bd46",
+      "sha256After": "f74bee7742dc77a893cfbfee184842b53346e9fda3b28f869b3dbaeb0a80c237",
+      "gitBlobSha256Before": "369ed30ac9f001e87220493910105dc3a72e498403ffa179d64534881897bd46",
+      "gitBlobSha256After": "f74bee7742dc77a893cfbfee184842b53346e9fda3b28f869b3dbaeb0a80c237"
+    },
+    {
+      "from": "docs/BIG_UPDATE_CUE_FIRST_PLAN_2026-10-22.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_CUE_FIRST_PLAN_2026-10-22.md",
+      "sha256Before": "ab03e1b0b981450de07267a6c7c39b9d587ce93f673ee8574888792d277029ad",
+      "sha256After": "feea04e6467f4265d27f6befd44f91d5f5a5086bed0f919803dfadde23156320",
+      "gitBlobSha256Before": "ab03e1b0b981450de07267a6c7c39b9d587ce93f673ee8574888792d277029ad",
+      "gitBlobSha256After": "feea04e6467f4265d27f6befd44f91d5f5a5086bed0f919803dfadde23156320"
+    },
+    {
+      "from": "docs/BIG_UPDATE_EXECUTION_FIXTURES_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_EXECUTION_FIXTURES_2026-10-23.md",
+      "sha256Before": "bf7e685d9543c44b4e4f7adb78d7dcce8a3f300cd4b5a24aa93ce87b40684078",
+      "sha256After": "3670b3c14bac8070c54b6edf82d88ea20f4211e53b4dd55c72a4b794d806ce3b",
+      "gitBlobSha256Before": "bf7e685d9543c44b4e4f7adb78d7dcce8a3f300cd4b5a24aa93ce87b40684078",
+      "gitBlobSha256After": "3670b3c14bac8070c54b6edf82d88ea20f4211e53b4dd55c72a4b794d806ce3b"
+    },
+    {
+      "from": "docs/BIG_UPDATE_EXECUTION_TRADEOFFS_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_EXECUTION_TRADEOFFS_2026-10-23.md",
+      "sha256Before": "67cddb928ab304c32ef28e9ebbad17ac29f4ea3bd192df73c8e38b52b5a0b579",
+      "sha256After": "dbdeaa010a1e8d7eed120579287fd1d9e831fc39900c99ced405ac829fc90cfc",
+      "gitBlobSha256Before": "e6e2a1a0bd1cd99cc0746de2b840a1a993d3cf56e27abb2db2b5c97d9b4dee92",
+      "gitBlobSha256After": "dbdeaa010a1e8d7eed120579287fd1d9e831fc39900c99ced405ac829fc90cfc"
+    },
+    {
+      "from": "docs/BIG_UPDATE_FILE_REAUDIT_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_FILE_REAUDIT_2026-10-23.md",
+      "sha256Before": "71a26db17464fb9d5a58819ab249c890f1881ad03f9bb7757ebd085ebf0858b6",
+      "sha256After": "09970758802ebe0089b67b53db982218d09c2de1e67877fbb584d3cb8f4a948b",
+      "gitBlobSha256Before": "5c296bba216b7ad869c2edea35cc71f027e4bc908833667f83b897447ede2f2f",
+      "gitBlobSha256After": "09970758802ebe0089b67b53db982218d09c2de1e67877fbb584d3cb8f4a948b"
+    },
+    {
+      "from": "docs/BIG_UPDATE_HISTORY_SELECTION_2026-10-22.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_HISTORY_SELECTION_2026-10-22.md",
+      "sha256Before": "2e5750e5f4fe0f2b7399bbc5f27452bc3c46422add3c60a233afacbcba7c538d",
+      "sha256After": "645d79c951a23a7b2b57ecc26377c54949eb450603ce908bbbc79579fc1e0e8f",
+      "gitBlobSha256Before": "2e5750e5f4fe0f2b7399bbc5f27452bc3c46422add3c60a233afacbcba7c538d",
+      "gitBlobSha256After": "645d79c951a23a7b2b57ecc26377c54949eb450603ce908bbbc79579fc1e0e8f"
+    },
+    {
+      "from": "docs/BIG_UPDATE_IMPLEMENTATION_REAUDIT_2026-10-22.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_IMPLEMENTATION_REAUDIT_2026-10-22.md",
+      "sha256Before": "7e3349fa3687bf77d12c0415699620c4c564f4dd325867f8d7811ae7b4195689",
+      "sha256After": "5f67c5cf8e476c2f3ad68bbaee166b00999c2c4541712c2a2b122b0ff9d8f790",
+      "gitBlobSha256Before": "7e3349fa3687bf77d12c0415699620c4c564f4dd325867f8d7811ae7b4195689",
+      "gitBlobSha256After": "5f67c5cf8e476c2f3ad68bbaee166b00999c2c4541712c2a2b122b0ff9d8f790"
+    },
+    {
+      "from": "docs/BIG_UPDATE_M3_CONTEXT_RETRY_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_M3_CONTEXT_RETRY_2026-10-23.md",
+      "sha256Before": "886f2ea3db29f794f3084629692f4c60d3893acafb24b99fe4b3cea13c611ff0",
+      "sha256After": "5377dffe7b3bd06433113c78c83e1c8dd2810169722cb85f02f527f893b3ceb7",
+      "gitBlobSha256Before": "886f2ea3db29f794f3084629692f4c60d3893acafb24b99fe4b3cea13c611ff0",
+      "gitBlobSha256After": "5377dffe7b3bd06433113c78c83e1c8dd2810169722cb85f02f527f893b3ceb7"
+    },
+    {
+      "from": "docs/BIG_UPDATE_M3_IDENTITY_2026-10-22.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_M3_IDENTITY_2026-10-22.md",
+      "sha256Before": "da4dbc9c9743c6b63dbd5013ef325d270887dfad22792c8a47be3ead4d42e695",
+      "sha256After": "1bb844b936c01e27b657d8718a45ec095ca7430e5b6010fab75b022dd2e36c0a",
+      "gitBlobSha256Before": "da4dbc9c9743c6b63dbd5013ef325d270887dfad22792c8a47be3ead4d42e695",
+      "gitBlobSha256After": "1bb844b936c01e27b657d8718a45ec095ca7430e5b6010fab75b022dd2e36c0a"
+    },
+    {
+      "from": "docs/BIG_UPDATE_NO_CAPTION_CREATION_TRIAL_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_NO_CAPTION_CREATION_TRIAL_2026-10-23.md",
+      "sha256Before": "003706a31e524286a1856032988a198f5a6053c308a877e0c01fb2bce8b25675",
+      "sha256After": "fba775d9348243748d8e50b8ba3c86b87214504f63384674361a68b00ca3d962",
+      "gitBlobSha256Before": "003706a31e524286a1856032988a198f5a6053c308a877e0c01fb2bce8b25675",
+      "gitBlobSha256After": "fba775d9348243748d8e50b8ba3c86b87214504f63384674361a68b00ca3d962"
+    },
+    {
+      "from": "docs/BIG_UPDATE_NO_CAPTION_SNAPSHOT_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_NO_CAPTION_SNAPSHOT_2026-10-23.md",
+      "sha256Before": "23b309c71ac089e332833dc0af36aa79492fc80fab1e0d359bdd65aa8fd40846",
+      "sha256After": "5fc0b54e432755a07deb2b415bbecd49a675a2ccbbe93d0323199ce107508e67",
+      "gitBlobSha256Before": "23b309c71ac089e332833dc0af36aa79492fc80fab1e0d359bdd65aa8fd40846",
+      "gitBlobSha256After": "5fc0b54e432755a07deb2b415bbecd49a675a2ccbbe93d0323199ce107508e67"
+    },
+    {
+      "from": "docs/BIG_UPDATE_PHASED_EDIT_WORKFLOW_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_PHASED_EDIT_WORKFLOW_2026-10-23.md",
+      "sha256Before": "ffc8a5960f7695bb8ccf0266df4aa2137513071645c09dfd6db1b7f2d7f1d759",
+      "sha256After": "17a574fda7fea711a48e7a8aeb4b19d5158643ad4913f4ab1a96df8d7ff2b463",
+      "gitBlobSha256Before": "ffc8a5960f7695bb8ccf0266df4aa2137513071645c09dfd6db1b7f2d7f1d759",
+      "gitBlobSha256After": "17a574fda7fea711a48e7a8aeb4b19d5158643ad4913f4ab1a96df8d7ff2b463"
+    },
+    {
+      "from": "docs/BIG_UPDATE_SEQUENCE_SNAPSHOT_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_SEQUENCE_SNAPSHOT_2026-10-23.md",
+      "sha256Before": "593bfe03d1b0832810deb9631d40fe286a8307a65324f8c019443cc6d4d13a16",
+      "sha256After": "d707a5fe5343bbcb5bb99239116265084319e24a00593bae4cdafb59f7d8f35f",
+      "gitBlobSha256Before": "593bfe03d1b0832810deb9631d40fe286a8307a65324f8c019443cc6d4d13a16",
+      "gitBlobSha256After": "d707a5fe5343bbcb5bb99239116265084319e24a00593bae4cdafb59f7d8f35f"
+    },
+    {
+      "from": "docs/BIG_UPDATE_SRT_FILE_WORKFLOW_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_SRT_FILE_WORKFLOW_2026-10-23.md",
+      "sha256Before": "6c5d9970d56bf45e6c370d2bc9c24cccb020edec83736011decf4ffe1c9a0826",
+      "sha256After": "557ea7b018da636b4a758d25de20cd3684c15a3d9291c210c1dc3fd62b16087d",
+      "gitBlobSha256Before": "6c5d9970d56bf45e6c370d2bc9c24cccb020edec83736011decf4ffe1c9a0826",
+      "gitBlobSha256After": "557ea7b018da636b4a758d25de20cd3684c15a3d9291c210c1dc3fd62b16087d"
+    },
+    {
+      "from": "docs/BIG_UPDATE_TIMELINE_CAPTIONS_2026-10-23.md",
+      "to": "docs/research/cue-first/BIG_UPDATE_TIMELINE_CAPTIONS_2026-10-23.md",
+      "sha256Before": "cc084b4307f9897a388ebd20a054de1d334e94e2d9f53839034ff27beb6c9ea9",
+      "sha256After": "cc084b4307f9897a388ebd20a054de1d334e94e2d9f53839034ff27beb6c9ea9",
+      "gitBlobSha256Before": "cc084b4307f9897a388ebd20a054de1d334e94e2d9f53839034ff27beb6c9ea9",
+      "gitBlobSha256After": "cc084b4307f9897a388ebd20a054de1d334e94e2d9f53839034ff27beb6c9ea9"
+    },
+    {
+      "from": "docs/CTC_TIMING_AUDIT_2026-10-18.md",
+      "to": "docs/research/asr/CTC_TIMING_AUDIT_2026-10-18.md",
+      "sha256Before": "156efa157fb2e2941f2bd95e43055d39d1c6362967772c04bd4bfbb4b6f14a0b",
+      "sha256After": "4ecfc048c67ba4d3f1bf5e82ab5c8d129387e9d12e9ee4deddea159b52fa8b4b",
+      "gitBlobSha256Before": "156efa157fb2e2941f2bd95e43055d39d1c6362967772c04bd4bfbb4b6f14a0b",
+      "gitBlobSha256After": "4ecfc048c67ba4d3f1bf5e82ab5c8d129387e9d12e9ee4deddea159b52fa8b4b"
+    },
+    {
+      "from": "docs/CTC_USER_BOUNDARY_REVIEW_2026-10-18.md",
+      "to": "docs/research/asr/CTC_USER_BOUNDARY_REVIEW_2026-10-18.md",
+      "sha256Before": "bf88a0fc09374f988d21bfe4b07521036faf28ad01433ec97a6e13743b5086ab",
+      "sha256After": "815a562f1a65553a5454977c507199f36337c76a4da569f64b9190676a1ded66",
+      "gitBlobSha256Before": "bf88a0fc09374f988d21bfe4b07521036faf28ad01433ec97a6e13743b5086ab",
+      "gitBlobSha256After": "815a562f1a65553a5454977c507199f36337c76a4da569f64b9190676a1ded66"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.51.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.51.md",
+      "sha256Before": "8103d0e57b5bbcce3735b5f2a3db1fefd29e32ccca2a5aa6c2b3df7cd8190464",
+      "sha256After": "8103d0e57b5bbcce3735b5f2a3db1fefd29e32ccca2a5aa6c2b3df7cd8190464",
+      "gitBlobSha256Before": "8103d0e57b5bbcce3735b5f2a3db1fefd29e32ccca2a5aa6c2b3df7cd8190464",
+      "gitBlobSha256After": "8103d0e57b5bbcce3735b5f2a3db1fefd29e32ccca2a5aa6c2b3df7cd8190464"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.78.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.78.md",
+      "sha256Before": "7d51cbec2eebd4625361a478434499c2e02c4e1b7e29ee7f67fcde1884a653db",
+      "sha256After": "7d51cbec2eebd4625361a478434499c2e02c4e1b7e29ee7f67fcde1884a653db",
+      "gitBlobSha256Before": "7d51cbec2eebd4625361a478434499c2e02c4e1b7e29ee7f67fcde1884a653db",
+      "gitBlobSha256After": "7d51cbec2eebd4625361a478434499c2e02c4e1b7e29ee7f67fcde1884a653db"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.79.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.79.md",
+      "sha256Before": "a9f927a4cb4715c3e8fbbaa4b4ca9c4ae7e277d352bc034be8f349eec3bbe1fd",
+      "sha256After": "f882055d5a8f9ae04c8f7cf8ccf663fa2ba1719026205ba0282661a68ba43008",
+      "gitBlobSha256Before": "a9f927a4cb4715c3e8fbbaa4b4ca9c4ae7e277d352bc034be8f349eec3bbe1fd",
+      "gitBlobSha256After": "f882055d5a8f9ae04c8f7cf8ccf663fa2ba1719026205ba0282661a68ba43008"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.80.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.80.md",
+      "sha256Before": "3fd16ff976c50fd6198f4e82188aba04ef59a7b18675380f7a105a8b9c8a9ed0",
+      "sha256After": "3fd16ff976c50fd6198f4e82188aba04ef59a7b18675380f7a105a8b9c8a9ed0",
+      "gitBlobSha256Before": "3fd16ff976c50fd6198f4e82188aba04ef59a7b18675380f7a105a8b9c8a9ed0",
+      "gitBlobSha256After": "3fd16ff976c50fd6198f4e82188aba04ef59a7b18675380f7a105a8b9c8a9ed0"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.81.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.81.md",
+      "sha256Before": "7726f550acf4d621493eb9a0919bcf61b93a90222841e76b24a0486aaaa8bab0",
+      "sha256After": "7726f550acf4d621493eb9a0919bcf61b93a90222841e76b24a0486aaaa8bab0",
+      "gitBlobSha256Before": "7726f550acf4d621493eb9a0919bcf61b93a90222841e76b24a0486aaaa8bab0",
+      "gitBlobSha256After": "7726f550acf4d621493eb9a0919bcf61b93a90222841e76b24a0486aaaa8bab0"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.82.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.82.md",
+      "sha256Before": "1fcc7506d1f1e89a0e0d370d5d7ac5bab59e43a7e9975dc7dc76f9f0ced2390b",
+      "sha256After": "e7e7dee7ba24da20598326e95208e8b1df13ad575188979f412fc9b1a270c9b7",
+      "gitBlobSha256Before": "1fcc7506d1f1e89a0e0d370d5d7ac5bab59e43a7e9975dc7dc76f9f0ced2390b",
+      "gitBlobSha256After": "e7e7dee7ba24da20598326e95208e8b1df13ad575188979f412fc9b1a270c9b7"
+    },
+    {
+      "from": "docs/EDITED_VOICE_2.20.83.md",
+      "to": "docs/releases/notes/EDITED_VOICE_2.20.83.md",
+      "sha256Before": "5fb8bc99bc3098b9af180a0e5d7ba279a3b37e93d84a093bbbda5e26259e287d",
+      "sha256After": "122f48c5ba1ad768f6b4a5c5c6a5a35b879e67ee0adc7ba75d9de0e603e20cc5",
+      "gitBlobSha256Before": "5fb8bc99bc3098b9af180a0e5d7ba279a3b37e93d84a093bbbda5e26259e287d",
+      "gitBlobSha256After": "122f48c5ba1ad768f6b4a5c5c6a5a35b879e67ee0adc7ba75d9de0e603e20cc5"
+    },
+    {
+      "from": "docs/MARKER_AUDIT_2.20.57.md",
+      "to": "docs/releases/notes/MARKER_AUDIT_2.20.57.md",
+      "sha256Before": "b5fc4941fa1c4c289f4256066dae3067c6911a0be816428a354ba5fdaf590755",
+      "sha256After": "b5fc4941fa1c4c289f4256066dae3067c6911a0be816428a354ba5fdaf590755",
+      "gitBlobSha256Before": "b5fc4941fa1c4c289f4256066dae3067c6911a0be816428a354ba5fdaf590755",
+      "gitBlobSha256After": "b5fc4941fa1c4c289f4256066dae3067c6911a0be816428a354ba5fdaf590755"
+    },
+    {
+      "from": "docs/MARKER_AUDIT_2026-10-17.md",
+      "to": "docs/reviews/MARKER_AUDIT_2026-10-17.md",
+      "sha256Before": "f8366ad38a85ec30da1646e49a4dbcdf717cffeec51adeadd887e209c984dcd1",
+      "sha256After": "1e5a541ac8f430becc9cf29f47960851d638e6e6a6718e1d59b9039568a7273b",
+      "gitBlobSha256Before": "f8366ad38a85ec30da1646e49a4dbcdf717cffeec51adeadd887e209c984dcd1",
+      "gitBlobSha256After": "1e5a541ac8f430becc9cf29f47960851d638e6e6a6718e1d59b9039568a7273b"
+    },
+    {
+      "from": "docs/MARKER_RECONCILIATION_2026-10-17.md",
+      "to": "docs/reviews/MARKER_RECONCILIATION_2026-10-17.md",
+      "sha256Before": "294d530dd89bf9c8dbee6573a4d590237149e77a341c777871fc5c9426aa2950",
+      "sha256After": "7ae184f8b91c05b2d7f238fbcbb4fe468748cd5bd9a5bed421a7a0d44913ab05",
+      "gitBlobSha256Before": "294d530dd89bf9c8dbee6573a4d590237149e77a341c777871fc5c9426aa2950",
+      "gitBlobSha256After": "7ae184f8b91c05b2d7f238fbcbb4fe468748cd5bd9a5bed421a7a0d44913ab05"
+    },
+    {
+      "from": "docs/MULTI_SRT_VOICE_PLAN_2026-10-17.md",
+      "to": "docs/reviews/MULTI_SRT_VOICE_PLAN_2026-10-17.md",
+      "sha256Before": "43ba3508c398d588479d6723662d96e4512b3520ed1cf87b5467c6ac3a373c8b",
+      "sha256After": "43ba3508c398d588479d6723662d96e4512b3520ed1cf87b5467c6ac3a373c8b",
+      "gitBlobSha256Before": "43ba3508c398d588479d6723662d96e4512b3520ed1cf87b5467c6ac3a373c8b",
+      "gitBlobSha256After": "43ba3508c398d588479d6723662d96e4512b3520ed1cf87b5467c6ac3a373c8b"
+    },
+    {
+      "from": "docs/MULTILINGUAL_ASR_REVIEW_2026-10-18.md",
+      "to": "docs/research/asr/MULTILINGUAL_ASR_REVIEW_2026-10-18.md",
+      "sha256Before": "6be6e43aa9da837538bdf24a66c97dacad839066627782670a3bbd7f190e3b6c",
+      "sha256After": "6be6e43aa9da837538bdf24a66c97dacad839066627782670a3bbd7f190e3b6c",
+      "gitBlobSha256Before": "6be6e43aa9da837538bdf24a66c97dacad839066627782670a3bbd7f190e3b6c",
+      "gitBlobSha256After": "6be6e43aa9da837538bdf24a66c97dacad839066627782670a3bbd7f190e3b6c"
+    },
+    {
+      "from": "docs/NOTIFICATION_CHANNEL_REDESIGN_2026-10-18.md",
+      "to": "docs/reviews/NOTIFICATION_CHANNEL_REDESIGN_2026-10-18.md",
+      "sha256Before": "96de85ce589684328bfeba74aee18f35778a2a17dd52e9cc46a17b4c3c72e835",
+      "sha256After": "58c0145e00bff1a15300c48f344c8983d286a32db6cb5f8567aaeef6e8bd4744",
+      "gitBlobSha256Before": "96de85ce589684328bfeba74aee18f35778a2a17dd52e9cc46a17b4c3c72e835",
+      "gitBlobSha256After": "58c0145e00bff1a15300c48f344c8983d286a32db6cb5f8567aaeef6e8bd4744"
+    },
+    {
+      "from": "docs/NOTIFICATION_CHANNEL_REVIEW_2026-10-15.md",
+      "to": "docs/reviews/NOTIFICATION_CHANNEL_REVIEW_2026-10-15.md",
+      "sha256Before": "6e549c5f468ffebe89cc2e12c3001be1e11b6891912cc06245616c91b96d4a79",
+      "sha256After": "6184ff756cfb4e6e5c06a204ac68250aff6b5c088270b4b2d3412f896913cc8e",
+      "gitBlobSha256Before": "6e549c5f468ffebe89cc2e12c3001be1e11b6891912cc06245616c91b96d4a79",
+      "gitBlobSha256After": "6184ff756cfb4e6e5c06a204ac68250aff6b5c088270b4b2d3412f896913cc8e"
+    },
+    {
+      "from": "docs/NOTIFICATION_UX_REDESIGN_2026-10-17.md",
+      "to": "docs/reviews/NOTIFICATION_UX_REDESIGN_2026-10-17.md",
+      "sha256Before": "1af994d6a71eff1e779a9b36d314139fd6ed93e0636d4d3d0db49342fcb0733a",
+      "sha256After": "1af994d6a71eff1e779a9b36d314139fd6ed93e0636d4d3d0db49342fcb0733a",
+      "gitBlobSha256Before": "1af994d6a71eff1e779a9b36d314139fd6ed93e0636d4d3d0db49342fcb0733a",
+      "gitBlobSha256After": "1af994d6a71eff1e779a9b36d314139fd6ed93e0636d4d3d0db49342fcb0733a"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.30.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.30.md",
+      "sha256Before": "e1d24c25a65fb356219695a9c8b352f7d6e5e119755d0ebde35535364f7a3763",
+      "sha256After": "e1d24c25a65fb356219695a9c8b352f7d6e5e119755d0ebde35535364f7a3763",
+      "gitBlobSha256Before": "e1d24c25a65fb356219695a9c8b352f7d6e5e119755d0ebde35535364f7a3763",
+      "gitBlobSha256After": "e1d24c25a65fb356219695a9c8b352f7d6e5e119755d0ebde35535364f7a3763"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.31.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.31.md",
+      "sha256Before": "836016f7dcef7bebd2e6d6774efb89d665ea0fa68dcfdaeb2387c9b4e8e53fa0",
+      "sha256After": "9eebf873ff21b6aaeadf8aa19ef29f2a85c3c00c802680899039a1b89ddaa73b",
+      "gitBlobSha256Before": "836016f7dcef7bebd2e6d6774efb89d665ea0fa68dcfdaeb2387c9b4e8e53fa0",
+      "gitBlobSha256After": "9eebf873ff21b6aaeadf8aa19ef29f2a85c3c00c802680899039a1b89ddaa73b"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.32.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.32.md",
+      "sha256Before": "cab9a63064cd46c4a0476f5d893596f512b7cc97286204e4d6f46136755232f6",
+      "sha256After": "cab9a63064cd46c4a0476f5d893596f512b7cc97286204e4d6f46136755232f6",
+      "gitBlobSha256Before": "af346794c1fbf097c2edf7a46efc8d3bdf2407d7087aab4417d32a2593910975",
+      "gitBlobSha256After": "af346794c1fbf097c2edf7a46efc8d3bdf2407d7087aab4417d32a2593910975"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.33.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.33.md",
+      "sha256Before": "8099338057d33de79ad14bf53d679ea7cafd9222329a1cc444c9192803ed9ad6",
+      "sha256After": "8099338057d33de79ad14bf53d679ea7cafd9222329a1cc444c9192803ed9ad6",
+      "gitBlobSha256Before": "7cca0f0cf9d1b2860ac5cc5d1b9fb7df4f467d794a731b6367ec486e3ff44620",
+      "gitBlobSha256After": "7cca0f0cf9d1b2860ac5cc5d1b9fb7df4f467d794a731b6367ec486e3ff44620"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.34.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.34.md",
+      "sha256Before": "1dd8370c03f8ed8985270bcf53f56a04b3b6aa75ae1f0de3f6bc4a0821c1c090",
+      "sha256After": "1dd8370c03f8ed8985270bcf53f56a04b3b6aa75ae1f0de3f6bc4a0821c1c090",
+      "gitBlobSha256Before": "1dd8370c03f8ed8985270bcf53f56a04b3b6aa75ae1f0de3f6bc4a0821c1c090",
+      "gitBlobSha256After": "1dd8370c03f8ed8985270bcf53f56a04b3b6aa75ae1f0de3f6bc4a0821c1c090"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.35.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.35.md",
+      "sha256Before": "50aa6e7b0f6f6af3bdff1f5b398e36ab766d2baeb3ff4c7edb608f826c26aa66",
+      "sha256After": "50aa6e7b0f6f6af3bdff1f5b398e36ab766d2baeb3ff4c7edb608f826c26aa66",
+      "gitBlobSha256Before": "50aa6e7b0f6f6af3bdff1f5b398e36ab766d2baeb3ff4c7edb608f826c26aa66",
+      "gitBlobSha256After": "50aa6e7b0f6f6af3bdff1f5b398e36ab766d2baeb3ff4c7edb608f826c26aa66"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.36.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.36.md",
+      "sha256Before": "7efbd7556ad1150d85354d76fb5617de7e677b36e1f35fa535cdc3b2692f32d5",
+      "sha256After": "7efbd7556ad1150d85354d76fb5617de7e677b36e1f35fa535cdc3b2692f32d5",
+      "gitBlobSha256Before": "7e9ece1ed20b145023666c7c8ddf6052f11aaaff2a7b593cc5ff07e63b03627c",
+      "gitBlobSha256After": "7e9ece1ed20b145023666c7c8ddf6052f11aaaff2a7b593cc5ff07e63b03627c"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.37.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.37.md",
+      "sha256Before": "eb4ed4cf5e91fc2f36a2acebb0ab08706e3a865e8497dde6588a2bd281ca5ab9",
+      "sha256After": "eb4ed4cf5e91fc2f36a2acebb0ab08706e3a865e8497dde6588a2bd281ca5ab9",
+      "gitBlobSha256Before": "17aa89322d972149dddccad897eabd9154f0ea9e2fbcf082e37bb90319312e01",
+      "gitBlobSha256After": "17aa89322d972149dddccad897eabd9154f0ea9e2fbcf082e37bb90319312e01"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.38.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.38.md",
+      "sha256Before": "bf62e31b11ebaefa30279958841534c1f3f4cd18f1ae0cffe08207b65ccc77c2",
+      "sha256After": "bf62e31b11ebaefa30279958841534c1f3f4cd18f1ae0cffe08207b65ccc77c2",
+      "gitBlobSha256Before": "bf62e31b11ebaefa30279958841534c1f3f4cd18f1ae0cffe08207b65ccc77c2",
+      "gitBlobSha256After": "bf62e31b11ebaefa30279958841534c1f3f4cd18f1ae0cffe08207b65ccc77c2"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.39.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.39.md",
+      "sha256Before": "ed7ed99447f5dc253bef1a84c46ef982980da66c5475dfc61aab4a3ac29aea0b",
+      "sha256After": "ed7ed99447f5dc253bef1a84c46ef982980da66c5475dfc61aab4a3ac29aea0b",
+      "gitBlobSha256Before": "ed7ed99447f5dc253bef1a84c46ef982980da66c5475dfc61aab4a3ac29aea0b",
+      "gitBlobSha256After": "ed7ed99447f5dc253bef1a84c46ef982980da66c5475dfc61aab4a3ac29aea0b"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.40.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.40.md",
+      "sha256Before": "f5532a69c09bb84586b185a4da663a364f6b5b131b9675eed021260a1302d880",
+      "sha256After": "f5532a69c09bb84586b185a4da663a364f6b5b131b9675eed021260a1302d880",
+      "gitBlobSha256Before": "f5532a69c09bb84586b185a4da663a364f6b5b131b9675eed021260a1302d880",
+      "gitBlobSha256After": "f5532a69c09bb84586b185a4da663a364f6b5b131b9675eed021260a1302d880"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.41.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.41.md",
+      "sha256Before": "8c84634a626df260e7b376ad48f5ba955a55db27a2dda0d2237cf0010d23e891",
+      "sha256After": "8c84634a626df260e7b376ad48f5ba955a55db27a2dda0d2237cf0010d23e891",
+      "gitBlobSha256Before": "8c84634a626df260e7b376ad48f5ba955a55db27a2dda0d2237cf0010d23e891",
+      "gitBlobSha256After": "8c84634a626df260e7b376ad48f5ba955a55db27a2dda0d2237cf0010d23e891"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.42.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.42.md",
+      "sha256Before": "88877513aa2f75cb8b7f16564a1cd6401463b0e493cde3d7ed6dc77ec1c39dd0",
+      "sha256After": "256947256c38ad051dba2708805ce71539103bab8d253c2f2dd102eae44e7a27",
+      "gitBlobSha256Before": "88877513aa2f75cb8b7f16564a1cd6401463b0e493cde3d7ed6dc77ec1c39dd0",
+      "gitBlobSha256After": "256947256c38ad051dba2708805ce71539103bab8d253c2f2dd102eae44e7a27"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.44.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.44.md",
+      "sha256Before": "31dc8145f0ec5afa276068be31de4d50f4fb4f03606bdb63323c01aceda931c0",
+      "sha256After": "31dc8145f0ec5afa276068be31de4d50f4fb4f03606bdb63323c01aceda931c0",
+      "gitBlobSha256Before": "feff9566f4f744f85d8e83f84a3e7ed216a4cb1ffb3c226d5710abc74c78402f",
+      "gitBlobSha256After": "feff9566f4f744f85d8e83f84a3e7ed216a4cb1ffb3c226d5710abc74c78402f"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.45.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.45.md",
+      "sha256Before": "5154e19eee0f62ab119fe8b98d3bf72403d9b47b54aba8c6a76ba9196fd6098f",
+      "sha256After": "5154e19eee0f62ab119fe8b98d3bf72403d9b47b54aba8c6a76ba9196fd6098f",
+      "gitBlobSha256Before": "5154e19eee0f62ab119fe8b98d3bf72403d9b47b54aba8c6a76ba9196fd6098f",
+      "gitBlobSha256After": "5154e19eee0f62ab119fe8b98d3bf72403d9b47b54aba8c6a76ba9196fd6098f"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.50.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.50.md",
+      "sha256Before": "7a33459a1c946522769caa8f0c23d55c8c75220036250db47b1e1fe7880419c5",
+      "sha256After": "7a33459a1c946522769caa8f0c23d55c8c75220036250db47b1e1fe7880419c5",
+      "gitBlobSha256Before": "7a33459a1c946522769caa8f0c23d55c8c75220036250db47b1e1fe7880419c5",
+      "gitBlobSha256After": "7a33459a1c946522769caa8f0c23d55c8c75220036250db47b1e1fe7880419c5"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.52.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.52.md",
+      "sha256Before": "3a3e6702c5951c94ca2eb8e9b98602ce382984789f9d07b1c247fcf278458ac8",
+      "sha256After": "3a3e6702c5951c94ca2eb8e9b98602ce382984789f9d07b1c247fcf278458ac8",
+      "gitBlobSha256Before": "3a3e6702c5951c94ca2eb8e9b98602ce382984789f9d07b1c247fcf278458ac8",
+      "gitBlobSha256After": "3a3e6702c5951c94ca2eb8e9b98602ce382984789f9d07b1c247fcf278458ac8"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.53.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.53.md",
+      "sha256Before": "edbf9472fa6974a791bd5a8e9a926891cc438c2af47c413627697ee37489ac3c",
+      "sha256After": "edbf9472fa6974a791bd5a8e9a926891cc438c2af47c413627697ee37489ac3c",
+      "gitBlobSha256Before": "edbf9472fa6974a791bd5a8e9a926891cc438c2af47c413627697ee37489ac3c",
+      "gitBlobSha256After": "edbf9472fa6974a791bd5a8e9a926891cc438c2af47c413627697ee37489ac3c"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.65.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.65.md",
+      "sha256Before": "904e78919b30f2377e236312b341ddebfd5e9dd5b574c3903edca44a1e3e49e8",
+      "sha256After": "904e78919b30f2377e236312b341ddebfd5e9dd5b574c3903edca44a1e3e49e8",
+      "gitBlobSha256Before": "904e78919b30f2377e236312b341ddebfd5e9dd5b574c3903edca44a1e3e49e8",
+      "gitBlobSha256After": "904e78919b30f2377e236312b341ddebfd5e9dd5b574c3903edca44a1e3e49e8"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.68.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.68.md",
+      "sha256Before": "a513cacb8457220608ba3a85f9d4b5409002924c9c453d311aa9ab2ff7ab8811",
+      "sha256After": "a513cacb8457220608ba3a85f9d4b5409002924c9c453d311aa9ab2ff7ab8811",
+      "gitBlobSha256Before": "a513cacb8457220608ba3a85f9d4b5409002924c9c453d311aa9ab2ff7ab8811",
+      "gitBlobSha256After": "a513cacb8457220608ba3a85f9d4b5409002924c9c453d311aa9ab2ff7ab8811"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.69.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.69.md",
+      "sha256Before": "511a1a52d0ce0c3d3b780b13b09208ccc3fd9d206d61e7f093f173de3a19bd14",
+      "sha256After": "511a1a52d0ce0c3d3b780b13b09208ccc3fd9d206d61e7f093f173de3a19bd14",
+      "gitBlobSha256Before": "511a1a52d0ce0c3d3b780b13b09208ccc3fd9d206d61e7f093f173de3a19bd14",
+      "gitBlobSha256After": "511a1a52d0ce0c3d3b780b13b09208ccc3fd9d206d61e7f093f173de3a19bd14"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.70.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.70.md",
+      "sha256Before": "9e464f39e4f841597695197e3264a34ededa1e13d727631d1866581df2829e6e",
+      "sha256After": "9e464f39e4f841597695197e3264a34ededa1e13d727631d1866581df2829e6e",
+      "gitBlobSha256Before": "9e464f39e4f841597695197e3264a34ededa1e13d727631d1866581df2829e6e",
+      "gitBlobSha256After": "9e464f39e4f841597695197e3264a34ededa1e13d727631d1866581df2829e6e"
+    },
+    {
+      "from": "docs/NOTIFICATIONS_2.20.71.md",
+      "to": "docs/releases/notes/NOTIFICATIONS_2.20.71.md",
+      "sha256Before": "a39c3743f043a07e2a30b99ed6216fdb170410f2c1d2d67fb3533cf43f3472b8",
+      "sha256After": "a39c3743f043a07e2a30b99ed6216fdb170410f2c1d2d67fb3533cf43f3472b8",
+      "gitBlobSha256Before": "a39c3743f043a07e2a30b99ed6216fdb170410f2c1d2d67fb3533cf43f3472b8",
+      "gitBlobSha256After": "a39c3743f043a07e2a30b99ed6216fdb170410f2c1d2d67fb3533cf43f3472b8"
+    },
+    {
+      "from": "docs/QWEN_ADAPTER_CTC_TRIAL_2026-10-18.md",
+      "to": "docs/research/asr/QWEN_ADAPTER_CTC_TRIAL_2026-10-18.md",
+      "sha256Before": "cfee5c50042fc946095c2a011e79dd8f9fc8b6f0f53e706d9a61f5d3f4f071e7",
+      "sha256After": "2e5ac1ba0f2a6b99bf4882dd3a84ce4b32ec08fbf35c4733aa547e0cb7716069",
+      "gitBlobSha256Before": "cfee5c50042fc946095c2a011e79dd8f9fc8b6f0f53e706d9a61f5d3f4f071e7",
+      "gitBlobSha256After": "2e5ac1ba0f2a6b99bf4882dd3a84ce4b32ec08fbf35c4733aa547e0cb7716069"
+    },
+    {
+      "from": "docs/QWEN_CAPTION_WORKFLOW_2026-10-18.md",
+      "to": "docs/research/asr/QWEN_CAPTION_WORKFLOW_2026-10-18.md",
+      "sha256Before": "b0ec9d63f07e1b5bdd077267c0304c86df2d9078a5c16184a65f6306c9351a99",
+      "sha256After": "3d73c41c4277af40fb48f4e50ba000c58085ba1eee77979c154f30ecad298af6",
+      "gitBlobSha256Before": "b0ec9d63f07e1b5bdd077267c0304c86df2d9078a5c16184a65f6306c9351a99",
+      "gitBlobSha256After": "3d73c41c4277af40fb48f4e50ba000c58085ba1eee77979c154f30ecad298af6"
+    },
+    {
+      "from": "docs/QWEN_LIVE_WORKER_2026-10-18.md",
+      "to": "docs/research/asr/QWEN_LIVE_WORKER_2026-10-18.md",
+      "sha256Before": "27c2e05b86761eb628d701d648970fa669d6cd409788889e55ac902be9c7ca75",
+      "sha256After": "cd64ea98127e9b3f3246c224793ab88a94475a376fed80c13fda03506e0b9c66",
+      "gitBlobSha256Before": "27c2e05b86761eb628d701d648970fa669d6cd409788889e55ac902be9c7ca75",
+      "gitBlobSha256After": "cd64ea98127e9b3f3246c224793ab88a94475a376fed80c13fda03506e0b9c66"
+    },
+    {
+      "from": "docs/QWEN_PANEL_JOB_2026-10-18.md",
+      "to": "docs/research/asr/QWEN_PANEL_JOB_2026-10-18.md",
+      "sha256Before": "1e68908c8d5d9792959e3193c81ebbacf2b5540ae284e3ef3414264731219206",
+      "sha256After": "a1a454dfc9af6ea109b8d8964a3b59dd7597b9ee1b539409d0477ca5651672b5",
+      "gitBlobSha256Before": "1e68908c8d5d9792959e3193c81ebbacf2b5540ae284e3ef3414264731219206",
+      "gitBlobSha256After": "a1a454dfc9af6ea109b8d8964a3b59dd7597b9ee1b539409d0477ca5651672b5"
+    },
+    {
+      "from": "docs/REVIEW_MARKERS_2.20.47.md",
+      "to": "docs/releases/notes/REVIEW_MARKERS_2.20.47.md",
+      "sha256Before": "34923b88b2bf85556cf80e0a7895be2e802bbf622e8f126998f2d1326dc94b93",
+      "sha256After": "34923b88b2bf85556cf80e0a7895be2e802bbf622e8f126998f2d1326dc94b93",
+      "gitBlobSha256Before": "34923b88b2bf85556cf80e0a7895be2e802bbf622e8f126998f2d1326dc94b93",
+      "gitBlobSha256After": "34923b88b2bf85556cf80e0a7895be2e802bbf622e8f126998f2d1326dc94b93"
+    },
+    {
+      "from": "docs/REVIEW_MARKERS_2.20.48.md",
+      "to": "docs/releases/notes/REVIEW_MARKERS_2.20.48.md",
+      "sha256Before": "d6ebcf0c7d4689b6b117c30ac4dd505fba8f50b0eb1dee8bec7f50527f4c4c19",
+      "sha256After": "d6ebcf0c7d4689b6b117c30ac4dd505fba8f50b0eb1dee8bec7f50527f4c4c19",
+      "gitBlobSha256Before": "d6ebcf0c7d4689b6b117c30ac4dd505fba8f50b0eb1dee8bec7f50527f4c4c19",
+      "gitBlobSha256After": "d6ebcf0c7d4689b6b117c30ac4dd505fba8f50b0eb1dee8bec7f50527f4c4c19"
+    },
+    {
+      "from": "docs/REVIEW_MARKERS_2.20.55.md",
+      "to": "docs/releases/notes/REVIEW_MARKERS_2.20.55.md",
+      "sha256Before": "96a95ba14170cf79db69a5ab2e9874127940cfd4a1504948b398303e179d8b20",
+      "sha256After": "fe90c6913e9c720911d77ac93c0ff95ce83600a68bb1480a5eda1f642a576533",
+      "gitBlobSha256Before": "96a95ba14170cf79db69a5ab2e9874127940cfd4a1504948b398303e179d8b20",
+      "gitBlobSha256After": "fe90c6913e9c720911d77ac93c0ff95ce83600a68bb1480a5eda1f642a576533"
+    },
+    {
+      "from": "docs/REVIEW_MARKERS_2.20.58.md",
+      "to": "docs/releases/notes/REVIEW_MARKERS_2.20.58.md",
+      "sha256Before": "f8b2b5c0f7ba8c4553b7afb45f64e2b6d1806c9fb8a4bcfc3b9b85291e5f5deb",
+      "sha256After": "a602147b7ddc946afc61e0bd1a03ffb3961c567106c9cb03f3b55d3883cf9684",
+      "gitBlobSha256Before": "f8b2b5c0f7ba8c4553b7afb45f64e2b6d1806c9fb8a4bcfc3b9b85291e5f5deb",
+      "gitBlobSha256After": "a602147b7ddc946afc61e0bd1a03ffb3961c567106c9cb03f3b55d3883cf9684"
+    },
+    {
+      "from": "docs/REVIEW_MARKERS_2.20.62.md",
+      "to": "docs/releases/notes/REVIEW_MARKERS_2.20.62.md",
+      "sha256Before": "74d5a614cc658d012b582f293384d21f52c127ad41de3c140f704269592fc7f3",
+      "sha256After": "74d5a614cc658d012b582f293384d21f52c127ad41de3c140f704269592fc7f3",
+      "gitBlobSha256Before": "74d5a614cc658d012b582f293384d21f52c127ad41de3c140f704269592fc7f3",
+      "gitBlobSha256After": "74d5a614cc658d012b582f293384d21f52c127ad41de3c140f704269592fc7f3"
+    },
+    {
+      "from": "docs/REVIEW_MARKERS_2.20.84.md",
+      "to": "docs/releases/notes/REVIEW_MARKERS_2.20.84.md",
+      "sha256Before": "04f1f9c3508766d73d149009d6da5f6700b855f975828a87f1b023270909fbaa",
+      "sha256After": "d2b85e9dd2bf98968a861e1aada7b92069348879eab33465b24959a5679cc5cb",
+      "gitBlobSha256Before": "04f1f9c3508766d73d149009d6da5f6700b855f975828a87f1b023270909fbaa",
+      "gitBlobSha256After": "d2b85e9dd2bf98968a861e1aada7b92069348879eab33465b24959a5679cc5cb"
+    },
+    {
+      "from": "docs/SRT_JOIN_2.20.54.md",
+      "to": "docs/releases/notes/SRT_JOIN_2.20.54.md",
+      "sha256Before": "47ca32d07afeacbc12f88d44795b0196b2f1b2eb88bce646fd3856c94d636bf4",
+      "sha256After": "47ca32d07afeacbc12f88d44795b0196b2f1b2eb88bce646fd3856c94d636bf4",
+      "gitBlobSha256Before": "47ca32d07afeacbc12f88d44795b0196b2f1b2eb88bce646fd3856c94d636bf4",
+      "gitBlobSha256After": "47ca32d07afeacbc12f88d44795b0196b2f1b2eb88bce646fd3856c94d636bf4"
+    },
+    {
+      "from": "docs/SRT_JOIN_2.20.63.md",
+      "to": "docs/releases/notes/SRT_JOIN_2.20.63.md",
+      "sha256Before": "46714f696c6da5f0b983c91b504397f4fe62594e55a6af985afcd081a0e1fa03",
+      "sha256After": "46714f696c6da5f0b983c91b504397f4fe62594e55a6af985afcd081a0e1fa03",
+      "gitBlobSha256Before": "8300de1d66318b5e42bc1d182423e6ec8410bc0af0e6904a6dd9a3c8c5294813",
+      "gitBlobSha256After": "8300de1d66318b5e42bc1d182423e6ec8410bc0af0e6904a6dd9a3c8c5294813"
+    },
+    {
+      "from": "docs/SRT_JOIN_2.20.66.md",
+      "to": "docs/releases/notes/SRT_JOIN_2.20.66.md",
+      "sha256Before": "c32a860ea84e11376d158c2c48412dbb672c7dece64c074808bb34010e24367b",
+      "sha256After": "c32a860ea84e11376d158c2c48412dbb672c7dece64c074808bb34010e24367b",
+      "gitBlobSha256Before": "c32a860ea84e11376d158c2c48412dbb672c7dece64c074808bb34010e24367b",
+      "gitBlobSha256After": "c32a860ea84e11376d158c2c48412dbb672c7dece64c074808bb34010e24367b"
+    },
+    {
+      "from": "docs/SRT_PRIORITY_2.20.49.md",
+      "to": "docs/releases/notes/SRT_PRIORITY_2.20.49.md",
+      "sha256Before": "2af40a9794bde8738f9e908e94cf434d884caa43a82be5d3b8bde10ef0617e36",
+      "sha256After": "2af40a9794bde8738f9e908e94cf434d884caa43a82be5d3b8bde10ef0617e36",
+      "gitBlobSha256Before": "2af40a9794bde8738f9e908e94cf434d884caa43a82be5d3b8bde10ef0617e36",
+      "gitBlobSha256After": "2af40a9794bde8738f9e908e94cf434d884caa43a82be5d3b8bde10ef0617e36"
+    },
+    {
+      "from": "docs/SUBTITLE_REFERENCE_TOLERANCE_2026-10-17.md",
+      "to": "docs/reviews/SUBTITLE_REFERENCE_TOLERANCE_2026-10-17.md",
+      "sha256Before": "e9a038d6fea984684efeef2256bcc300ca457134a138b88e704a11ab238795a7",
+      "sha256After": "0db5b7d0d8cd6c5d2048c046e340dc0ab526f32f0fb585ccb4dce94aa605e580",
+      "gitBlobSha256Before": "e9a038d6fea984684efeef2256bcc300ca457134a138b88e704a11ab238795a7",
+      "gitBlobSha256After": "0db5b7d0d8cd6c5d2048c046e340dc0ab526f32f0fb585ccb4dce94aa605e580"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.43.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.43.md",
+      "sha256Before": "02f337f70bfbc3c68dfad35ab573bd9f107395ca08888954b5c64bb7faeba8e5",
+      "sha256After": "02f337f70bfbc3c68dfad35ab573bd9f107395ca08888954b5c64bb7faeba8e5",
+      "gitBlobSha256Before": "02f337f70bfbc3c68dfad35ab573bd9f107395ca08888954b5c64bb7faeba8e5",
+      "gitBlobSha256After": "02f337f70bfbc3c68dfad35ab573bd9f107395ca08888954b5c64bb7faeba8e5"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.46.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.46.md",
+      "sha256Before": "fe43c66284746bf93ccb251b491ce460bfcf8d7df17ce6d3d57f7e9fd89416ea",
+      "sha256After": "fe43c66284746bf93ccb251b491ce460bfcf8d7df17ce6d3d57f7e9fd89416ea",
+      "gitBlobSha256Before": "6988af0969ce6b3fc1d6844b339272af16a6adc2de269fd4512e9454e6c6aa5d",
+      "gitBlobSha256After": "6988af0969ce6b3fc1d6844b339272af16a6adc2de269fd4512e9454e6c6aa5d"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.56.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.56.md",
+      "sha256Before": "83fa4880e12fb7dd0a45bda77d2af127a3ff334177d3af96afb2d9659424df71",
+      "sha256After": "83fa4880e12fb7dd0a45bda77d2af127a3ff334177d3af96afb2d9659424df71",
+      "gitBlobSha256Before": "83fa4880e12fb7dd0a45bda77d2af127a3ff334177d3af96afb2d9659424df71",
+      "gitBlobSha256After": "83fa4880e12fb7dd0a45bda77d2af127a3ff334177d3af96afb2d9659424df71"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.57.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.57.md",
+      "sha256Before": "f876f93203249bd3ced095a42de00a0387d4ea84984b77ecf10f7b7df5f7a90b",
+      "sha256After": "f876f93203249bd3ced095a42de00a0387d4ea84984b77ecf10f7b7df5f7a90b",
+      "gitBlobSha256Before": "f876f93203249bd3ced095a42de00a0387d4ea84984b77ecf10f7b7df5f7a90b",
+      "gitBlobSha256After": "f876f93203249bd3ced095a42de00a0387d4ea84984b77ecf10f7b7df5f7a90b"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.59.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.59.md",
+      "sha256Before": "84104f64c3ef1037be8e054f8d212012db512164e5465a022b8f5a42610b7c35",
+      "sha256After": "84104f64c3ef1037be8e054f8d212012db512164e5465a022b8f5a42610b7c35",
+      "gitBlobSha256Before": "84104f64c3ef1037be8e054f8d212012db512164e5465a022b8f5a42610b7c35",
+      "gitBlobSha256After": "84104f64c3ef1037be8e054f8d212012db512164e5465a022b8f5a42610b7c35"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.60.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.60.md",
+      "sha256Before": "7055b68e7b08d2978b811adf4992a7c00bed4f8ede9f7a80bea90c4c08423cdb",
+      "sha256After": "7055b68e7b08d2978b811adf4992a7c00bed4f8ede9f7a80bea90c4c08423cdb",
+      "gitBlobSha256Before": "7055b68e7b08d2978b811adf4992a7c00bed4f8ede9f7a80bea90c4c08423cdb",
+      "gitBlobSha256After": "7055b68e7b08d2978b811adf4992a7c00bed4f8ede9f7a80bea90c4c08423cdb"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.61.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.61.md",
+      "sha256Before": "8df80c5b8aa888a075e2856629712062df95bc72de20531f1b978e13d6d17605",
+      "sha256After": "8df80c5b8aa888a075e2856629712062df95bc72de20531f1b978e13d6d17605",
+      "gitBlobSha256Before": "8df80c5b8aa888a075e2856629712062df95bc72de20531f1b978e13d6d17605",
+      "gitBlobSha256After": "8df80c5b8aa888a075e2856629712062df95bc72de20531f1b978e13d6d17605"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.64.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.64.md",
+      "sha256Before": "bf5627cb3942d91cdca380ca330397a0d9f29d5650f7e8b7371e408aabcdedcf",
+      "sha256After": "bf5627cb3942d91cdca380ca330397a0d9f29d5650f7e8b7371e408aabcdedcf",
+      "gitBlobSha256Before": "bf5627cb3942d91cdca380ca330397a0d9f29d5650f7e8b7371e408aabcdedcf",
+      "gitBlobSha256After": "bf5627cb3942d91cdca380ca330397a0d9f29d5650f7e8b7371e408aabcdedcf"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.67.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.67.md",
+      "sha256Before": "6ed55983e5aa5379ab7648b9a5c3160980abf09137f9d00981f28d4d01858c9e",
+      "sha256After": "6ed55983e5aa5379ab7648b9a5c3160980abf09137f9d00981f28d4d01858c9e",
+      "gitBlobSha256Before": "6ed55983e5aa5379ab7648b9a5c3160980abf09137f9d00981f28d4d01858c9e",
+      "gitBlobSha256After": "6ed55983e5aa5379ab7648b9a5c3160980abf09137f9d00981f28d4d01858c9e"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.72.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.72.md",
+      "sha256Before": "90f58590f685375473456178323584f74af977abf51c4cbc1a2129fb1e8f8ae4",
+      "sha256After": "90f58590f685375473456178323584f74af977abf51c4cbc1a2129fb1e8f8ae4",
+      "gitBlobSha256Before": "90f58590f685375473456178323584f74af977abf51c4cbc1a2129fb1e8f8ae4",
+      "gitBlobSha256After": "90f58590f685375473456178323584f74af977abf51c4cbc1a2129fb1e8f8ae4"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.73.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.73.md",
+      "sha256Before": "4858fd94a3c80f862d6c4a19464a77af63618794c48fc16fd8e35ec1ba62c1b5",
+      "sha256After": "4858fd94a3c80f862d6c4a19464a77af63618794c48fc16fd8e35ec1ba62c1b5",
+      "gitBlobSha256Before": "4858fd94a3c80f862d6c4a19464a77af63618794c48fc16fd8e35ec1ba62c1b5",
+      "gitBlobSha256After": "4858fd94a3c80f862d6c4a19464a77af63618794c48fc16fd8e35ec1ba62c1b5"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.74.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.74.md",
+      "sha256Before": "556f396aeaf1a239b806918fb3920128709f7418731b6a3fd2ff409710e016d0",
+      "sha256After": "205b862ed58970cfd87c5358cac84b8aede3dc5e4849ee3d8f51682c9e443c4b",
+      "gitBlobSha256Before": "556f396aeaf1a239b806918fb3920128709f7418731b6a3fd2ff409710e016d0",
+      "gitBlobSha256After": "205b862ed58970cfd87c5358cac84b8aede3dc5e4849ee3d8f51682c9e443c4b"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.75.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.75.md",
+      "sha256Before": "bf887ef78316e370714e5e0ba6372cf7804001d675d7474b8d2876cb2e343475",
+      "sha256After": "79090860331fb01e062dd07ab6d3e1e2db7e38cf118b673a4295271956cc0849",
+      "gitBlobSha256Before": "0d9e35a39a8e10bf3707354d0ae660f4111a287da2df79ea0210e1cb8f0f32fe",
+      "gitBlobSha256After": "79090860331fb01e062dd07ab6d3e1e2db7e38cf118b673a4295271956cc0849"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.76.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.76.md",
+      "sha256Before": "77eefe6450b22025e28bb9f235a7c5e8254686218c6965251eba2febc1df5a0f",
+      "sha256After": "d8f6a4897168582aa4057898d029ca0739e49a0b7ab28c7acb5824acd677d535",
+      "gitBlobSha256Before": "241be526f225ecdaaa7195e697f547abd6d00a9ea94c0523b62ce770d5ae7e24",
+      "gitBlobSha256After": "d8f6a4897168582aa4057898d029ca0739e49a0b7ab28c7acb5824acd677d535"
+    },
+    {
+      "from": "docs/SUBTITLE_TIMING_2.20.77.md",
+      "to": "docs/releases/notes/SUBTITLE_TIMING_2.20.77.md",
+      "sha256Before": "8c6bdb6f75fba904ee6888b58546ceee31345c69c8941e72060990f75587f858",
+      "sha256After": "f560f352a3e1777d776e8fd441f470e710170199a756e5f293b09b17a96f09e3",
+      "gitBlobSha256Before": "246fc8bf83da811b440d50f69ee19814287c1c96f7c7d92cd2942898775a9046",
+      "gitBlobSha256After": "f560f352a3e1777d776e8fd441f470e710170199a756e5f293b09b17a96f09e3"
+    },
+    {
+      "from": "docs/TIMING_REUSE_REVIEW_2026-10-16.md",
+      "to": "docs/reviews/TIMING_REUSE_REVIEW_2026-10-16.md",
+      "sha256Before": "16f1a3ef124d185f15af5cb6b78b33423715d410ae10081b56b488c57584cdf6",
+      "sha256After": "16f1a3ef124d185f15af5cb6b78b33423715d410ae10081b56b488c57584cdf6",
+      "gitBlobSha256Before": "16f1a3ef124d185f15af5cb6b78b33423715d410ae10081b56b488c57584cdf6",
+      "gitBlobSha256After": "16f1a3ef124d185f15af5cb6b78b33423715d410ae10081b56b488c57584cdf6"
+    },
+    {
+      "from": "docs/UI_REVIEW_2026-10-10.md",
+      "to": "docs/reviews/UI_REVIEW_2026-10-10.md",
+      "sha256Before": "b39218307c5396377e161979843eb8995749a472ccf00a64452bd4902852bdf7",
+      "sha256After": "b39218307c5396377e161979843eb8995749a472ccf00a64452bd4902852bdf7",
+      "gitBlobSha256Before": "b39218307c5396377e161979843eb8995749a472ccf00a64452bd4902852bdf7",
+      "gitBlobSha256After": "b39218307c5396377e161979843eb8995749a472ccf00a64452bd4902852bdf7"
+    },
+    {
+      "from": "docs/VI_NUMERIC_ALIGNMENT_LABELS_2026-10-18.md",
+      "to": "docs/research/asr/VI_NUMERIC_ALIGNMENT_LABELS_2026-10-18.md",
+      "sha256Before": "05315d506080c16dec97730b905443cf51fdc60bc326d8f52d3a7e9487fe6d01",
+      "sha256After": "d1df24952856ad27a4f454e230b6594d91c6ff280744c5c764191e37e1f12918",
+      "gitBlobSha256Before": "05315d506080c16dec97730b905443cf51fdc60bc326d8f52d3a7e9487fe6d01",
+      "gitBlobSha256After": "d1df24952856ad27a4f454e230b6594d91c6ff280744c5c764191e37e1f12918"
+    },
+    {
+      "from": "docs/VIETNAMESE_ASR_NEXT_STEPS_2026-10-18.md",
+      "to": "docs/research/asr/VIETNAMESE_ASR_NEXT_STEPS_2026-10-18.md",
+      "sha256Before": "aff5c841392c6b82e84b93adcf5b774c1f5f349b0b1835120dab479a10fec904",
+      "sha256After": "ac2e39af5850111985d2dac124cf8a3b11dc74c7d9ab89ba8a29381a182f5dac",
+      "gitBlobSha256Before": "ae19066968a045679c37000f96cd4da8f81d16a289e25a19b6fe5cdbd2d841cf",
+      "gitBlobSha256After": "ac2e39af5850111985d2dac124cf8a3b11dc74c7d9ab89ba8a29381a182f5dac"
+    },
+    {
+      "from": "docs/VIETNAMESE_ASR_VARIANTS_2026-10-18.md",
+      "to": "docs/research/asr/VIETNAMESE_ASR_VARIANTS_2026-10-18.md",
+      "sha256Before": "2c477634c78e447271e38b721710c7f242542b42609a9013e10a5437cc7cacb4",
+      "sha256After": "b9922ded1bc16ef1bbf21d1cd932473f0ff74e98bcd79d60d081084cda1103c1",
+      "gitBlobSha256Before": "90a1b23b9d64e64a15cd77096a7b65bc561051aea6caa6fe3d8a16aaad4abc17",
+      "gitBlobSha256After": "b9922ded1bc16ef1bbf21d1cd932473f0ff74e98bcd79d60d081084cda1103c1"
+    },
+    {
+      "from": "docs/VOICE_BOUNDARY_FIX_2026-10-11.md",
+      "to": "docs/reviews/VOICE_BOUNDARY_FIX_2026-10-11.md",
+      "sha256Before": "e7939afbd5dd59fdb9314bb4a1eabe09624007c67cbbf24003b5cbbfebcfb821",
+      "sha256After": "e7939afbd5dd59fdb9314bb4a1eabe09624007c67cbbf24003b5cbbfebcfb821",
+      "gitBlobSha256Before": "e7939afbd5dd59fdb9314bb4a1eabe09624007c67cbbf24003b5cbbfebcfb821",
+      "gitBlobSha256After": "e7939afbd5dd59fdb9314bb4a1eabe09624007c67cbbf24003b5cbbfebcfb821"
+    },
+    {
+      "from": "docs/WHISPER_ENGINE_2.20.75_RECHECK_2026-10-18.md",
+      "to": "docs/research/asr/WHISPER_ENGINE_2.20.75_RECHECK_2026-10-18.md",
+      "sha256Before": "8785f301ee0132bdd943220b0a0495d42c22aa9a825c06f752a946fdf11a87f6",
+      "sha256After": "6df5347f357236e8f0f0b5309104a7971482939ad2e5e5235de08d2a51eb3097",
+      "gitBlobSha256Before": "51140cd690c3cc541de1866a3bbe74b7e5b4fbdf879fc874147fe7b2becf36b5",
+      "gitBlobSha256After": "6df5347f357236e8f0f0b5309104a7971482939ad2e5e5235de08d2a51eb3097"
+    },
+    {
+      "from": "docs/WHISPER_TEXT_ALIGNMENT_2026-10-18.md",
+      "to": "docs/research/asr/WHISPER_TEXT_ALIGNMENT_2026-10-18.md",
+      "sha256Before": "25d77e53c7a4a6860e018533f4716afbf71939e2d83ddcbec167a695e62efb25",
+      "sha256After": "d68d7aab6150040bed36c5ce1a116a8722337dfe72676e513fc93cd216fa013b",
+      "gitBlobSha256Before": "25d77e53c7a4a6860e018533f4716afbf71939e2d83ddcbec167a695e62efb25",
+      "gitBlobSha256After": "d68d7aab6150040bed36c5ce1a116a8722337dfe72676e513fc93cd216fa013b"
+    }
+  ]
+}

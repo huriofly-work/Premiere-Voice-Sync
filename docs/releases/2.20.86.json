@@ -1,0 +1,583 @@
+﻿{
+    "schemaVersion":  1,
+    "version":  "2.20.86",
+    "tag":  "v2.20.86",
+    "channel":  "prerelease",
+    "nativeAcceptance":  "pending-user-test",
+    "package":  {
+                    "sha256":  "DAD1CFF3CF3C7DDD080E51486F946E4E9BABEBFAE4489D7A047974C74998CED2",
+                    "bytes":  488806715,
+                    "filename":  "Premiere-Voice-Sync-2.20.86-Panel.zip"
+                },
+    "validationAtPackaging":  {
+                                  "packagePayloadFilesVerified":  74,
+                                  "zipEntriesVerified":  75,
+                                  "packagedNodeSuitesPassed":  20,
+                                  "regressionGroupsPassed":  71,
+                                  "powershellScriptsParsed":  149,
+                                  "externalWindowsIntegrationGroupsSkipped":  6,
+                                  "runtimeSourceMatches":  true,
+                                  "perCuePictureRegression":  true,
+                                  "directAndStagedMockParity":  true,
+                                  "continuousVoicePreserved":  true,
+                                  "invalidPlanRejectedBeforeMutation":  true,
+                                  "tailWordAtVoiceEndKeepsGroup":  true,
+                                  "realNativeSpeedMismatchStillMarked":  true
+                              },
+    "reportedNativeRun":  {
+                              "version":  "2.20.85",
+                              "localStart":  "2026-10-21T19:33:50+07:00",
+                              "localFinish":  "2026-10-21T19:41:57+07:00",
+                              "finalCaptions":  695,
+                              "voiceGroups":  158,
+                              "reviewMarkers":  74,
+                              "acceptance":  "failure reported by user: too few SRT-cue cuts, picture-voice drift, excessive markers"
+                          },
+    "historicalAlgorithm":  {
+                                "perCueHelper":  "v2.19.1:extension/engine/lib/TimelinePlan.ps1:New-RetimePlan",
+                                "touchingSourceCuesRemainSeparate":  true,
+                                "onlyActualSourceOverlapMerged":  true,
+                                "productionSentenceGroupingAlsoPresent":  true,
+                                "nativeUseOfRetiredHelperNotProven":  true,
+                                "retiredSpeedClampNotReactivated":  true
+                            },
+    "alienOfflineReplay":  {
+                               "shippingStages":  4,
+                               "historicalGeometry":  true,
+                               "sourceReferenceCues":  319,
+                               "retainedReferenceCues":  286,
+                               "pendingReferenceCues":  33,
+                               "independentlyRestoredReferences":  [
+                                                                       2,
+                                                                       175,
+                                                                       240,
+                                                                       281,
+                                                                       282,
+                                                                       289
+                                                                   ],
+                               "onlyProvenCanonicalTextChanged":  true,
+                               "rawRecognitionWords":  4503,
+                               "independentDtwWords":  4510,
+                               "allRecognitionWordsOwnedOnce":  true,
+                               "pictureGroupsBefore":  158,
+                               "pictureGroupsAfter":  302,
+                               "voiceGroupsBefore":  158,
+                               "voiceGroupsAfter":  234,
+                               "certifiedAcousticBoundaries":  231,
+                               "pictureOnlyCuts":  68,
+                               "manualCaptionCells":  269,
+                               "manualCaptionCellsRefined":  232,
+                               "localCaptionRetries":  60,
+                               "manualBlocks":  56,
+                               "blocksWithRemainingEstimatedTiming":  17,
+                               "estimatedTimingRegions":  25,
+                               "unmatchedTextRegions":  31,
+                               "sourceGapReviewRanges":  7,
+                               "reviewIssues":  67,
+                               "predictedReviewMarkerPositions":  62,
+                               "expectedRetimeDoesNotCreateSpeedMarkers":  true,
+                               "nativeSpeedMarkersNotPredicted":  true,
+                               "finalCaptions":  695,
+                               "allSourcePictureFramesPreserved":  true,
+                               "allPhysicalVoiceFramesPreserved":  true,
+                               "newOmissions":  0,
+                               "sourceSrtMp3FilesUnchanged":  7,
+                               "projectActionsPerformed":  false,
+                               "finalSrtSha256":  "293CF8D224E93B1D2ADC1DF972385590FA2A050E3CE4F66FC228EEC1A7C84394",
+                               "recognitionBackend":  "cuda",
+                               "cacheHits":  248,
+                               "cacheMisses":  0,
+                               "nativeCalls":  0,
+                               "postRecognitionStagesReplayedAfterTailGuard":  3
+                           },
+    "timingFit":  {
+                      "note":  "Fit diagnostic using exact full-cue DTW on same data used for anchors; not held-out gold, listening or native acceptance.",
+                      "before":  {
+                                     "count":  84,
+                                     "median":  0.08516863561033006,
+                                     "p95":  0.6711063158846287,
+                                     "max":  1.1561240752480444
+                                 },
+                      "after":  {
+                                    "count":  84,
+                                    "median":  0.06213476914160765,
+                                    "p95":  0.1632792395771503,
+                                    "max":  0.23619827804452598
+                                },
+                      "cues":  [
+                                   {
+                                       "cue":  2,
+                                       "before":  0.14257363636363607,
+                                       "after":  0.045393316953319385
+                                   },
+                                   {
+                                       "cue":  7,
+                                       "before":  0.04837403162054699,
+                                       "after":  0.21295109090909392
+                                   },
+                                   {
+                                       "cue":  17,
+                                       "before":  0.6630169131508694,
+                                       "after":  0.08234092472685006
+                                   },
+                                   {
+                                       "cue":  19,
+                                       "before":  0.5245776797895871,
+                                       "after":  0.13668330396367878
+                                   },
+                                   {
+                                       "cue":  32,
+                                       "before":  0.01779752086110875,
+                                       "after":  0.017797520861051908
+                                   },
+                                   {
+                                       "cue":  33,
+                                       "before":  0.016091656818161937,
+                                       "after":  0.01609165681819036
+                                   },
+                                   {
+                                       "cue":  44,
+                                       "before":  0.11298009813944532,
+                                       "after":  0.10335941730411946
+                                   },
+                                   {
+                                       "cue":  49,
+                                       "before":  0.045401352049935895,
+                                       "after":  0.08962571655484908
+                                   },
+                                   {
+                                       "cue":  52,
+                                       "before":  0.011014103433581113,
+                                       "after":  0.011014103433552691
+                                   },
+                                   {
+                                       "cue":  55,
+                                       "before":  0.15001339220583532,
+                                       "after":  0.15001339220583532
+                                   },
+                                   {
+                                       "cue":  65,
+                                       "before":  0.6711063158846287,
+                                       "after":  0.18706363219797595
+                                   },
+                                   {
+                                       "cue":  68,
+                                       "before":  0.1129342727273297,
+                                       "after":  0.11293427272727286
+                                   },
+                                   {
+                                       "cue":  73,
+                                       "before":  1.1522194399286718,
+                                       "after":  0.04522476160792621
+                                   },
+                                   {
+                                       "cue":  75,
+                                       "before":  0.12804188740045674,
+                                       "after":  0.04823646050914476
+                                   },
+                                   {
+                                       "cue":  77,
+                                       "before":  0.10261993939388958,
+                                       "after":  0.10261993939388958
+                                   },
+                                   {
+                                       "cue":  85,
+                                       "before":  0.02425867018871486,
+                                       "after":  0.02425867018871486
+                                   },
+                                   {
+                                       "cue":  91,
+                                       "before":  0.20869739885347371,
+                                       "after":  0.0491723763213372
+                                   },
+                                   {
+                                       "cue":  96,
+                                       "before":  0.14544005627107026,
+                                       "after":  0.08070421598756639
+                                   },
+                                   {
+                                       "cue":  97,
+                                       "before":  0.07379382922562172,
+                                       "after":  0.00624283319280039
+                                   },
+                                   {
+                                       "cue":  98,
+                                       "before":  0.05431792449240902,
+                                       "after":  0.05431792449252271
+                                   },
+                                   {
+                                       "cue":  99,
+                                       "before":  0.04115204427489516,
+                                       "after":  0.04115204427489516
+                                   },
+                                   {
+                                       "cue":  101,
+                                       "before":  0.15028021848365825,
+                                       "after":  0.1502802184836014
+                                   },
+                                   {
+                                       "cue":  106,
+                                       "before":  0.9743419481774254,
+                                       "after":  0.021891507807367816
+                                   },
+                                   {
+                                       "cue":  108,
+                                       "before":  0.1271449038209198,
+                                       "after":  0.05332118588762569
+                                   },
+                                   {
+                                       "cue":  112,
+                                       "before":  0.018166419022350055,
+                                       "after":  0.018166419022463742
+                                   },
+                                   {
+                                       "cue":  113,
+                                       "before":  0.08404712242241885,
+                                       "after":  0.08404712242241885
+                                   },
+                                   {
+                                       "cue":  117,
+                                       "before":  0.42806855760932194,
+                                       "after":  0.0990500642230927
+                                   },
+                                   {
+                                       "cue":  125,
+                                       "before":  0.08516863561033006,
+                                       "after":  0.08516863561033006
+                                   },
+                                   {
+                                       "cue":  127,
+                                       "before":  0.08161975636335228,
+                                       "after":  0.08161975636346597
+                                   },
+                                   {
+                                       "cue":  129,
+                                       "before":  0.46341598141725626,
+                                       "after":  0.16142320321159787
+                                   },
+                                   {
+                                       "cue":  132,
+                                       "before":  0.0471459997729653,
+                                       "after":  0.047145999773078984
+                                   },
+                                   {
+                                       "cue":  133,
+                                       "before":  0.06619119204265189,
+                                       "after":  0.0661911920425382
+                                   },
+                                   {
+                                       "cue":  138,
+                                       "before":  0.05388537555006678,
+                                       "after":  0.020608318438121387
+                                   },
+                                   {
+                                       "cue":  141,
+                                       "before":  0.06213476914160765,
+                                       "after":  0.06213476914160765
+                                   },
+                                   {
+                                       "cue":  142,
+                                       "before":  0.02435109149200798,
+                                       "after":  0.024351091491894294
+                                   },
+                                   {
+                                       "cue":  144,
+                                       "before":  0.12046955569644524,
+                                       "after":  0.12046955569633155
+                                   },
+                                   {
+                                       "cue":  145,
+                                       "before":  0.06857183282386359,
+                                       "after":  0.06857183282397727
+                                   },
+                                   {
+                                       "cue":  147,
+                                       "before":  0.15322389524465052,
+                                       "after":  0.07790082878273097
+                                   },
+                                   {
+                                       "cue":  148,
+                                       "before":  0.0696230210860449,
+                                       "after":  0.06962302108615859
+                                   },
+                                   {
+                                       "cue":  155,
+                                       "before":  0.8883801844120853,
+                                       "after":  0.08233359882513014
+                                   },
+                                   {
+                                       "cue":  157,
+                                       "before":  0.050977608540733854,
+                                       "after":  0.05097760854062017
+                                   },
+                                   {
+                                       "cue":  158,
+                                       "before":  0.014023725123252007,
+                                       "after":  0.01402372512313832
+                                   },
+                                   {
+                                       "cue":  161,
+                                       "before":  0.36547925421052696,
+                                       "after":  0.03579221528605103
+                                   },
+                                   {
+                                       "cue":  164,
+                                       "before":  0.12872000772074443,
+                                       "after":  0.23619827804452598
+                                   },
+                                   {
+                                       "cue":  166,
+                                       "before":  0.4212452708085266,
+                                       "after":  0.015519900656045138
+                                   },
+                                   {
+                                       "cue":  167,
+                                       "before":  0.06048443731606312,
+                                       "after":  0.06048443731617681
+                                   },
+                                   {
+                                       "cue":  169,
+                                       "before":  0.10080894390762296,
+                                       "after":  0.10080894390773665
+                                   },
+                                   {
+                                       "cue":  172,
+                                       "before":  0.0248524783639823,
+                                       "after":  0.1626797542692202
+                                   },
+                                   {
+                                       "cue":  173,
+                                       "before":  0.022377812710828948,
+                                       "after":  0.022377812710942635
+                                   },
+                                   {
+                                       "cue":  184,
+                                       "before":  1.1561240752480444,
+                                       "after":  0.07745053850783279
+                                   },
+                                   {
+                                       "cue":  194,
+                                       "before":  0.19813519251067646,
+                                       "after":  0.03316558902668021
+                                   },
+                                   {
+                                       "cue":  199,
+                                       "before":  1.0175652409778877,
+                                       "after":  0.0303646196327918
+                                   },
+                                   {
+                                       "cue":  203,
+                                       "before":  0.3617897611597982,
+                                       "after":  0.09436368103831683
+                                   },
+                                   {
+                                       "cue":  206,
+                                       "before":  0.14537221024170321,
+                                       "after":  0.16623316203174454
+                                   },
+                                   {
+                                       "cue":  208,
+                                       "before":  0.22581798742510273,
+                                       "after":  0.1335346667366366
+                                   },
+                                   {
+                                       "cue":  210,
+                                       "before":  0.3372508868657178,
+                                       "after":  0.1761894475380359
+                                   },
+                                   {
+                                       "cue":  211,
+                                       "before":  0.04205277013511477,
+                                       "after":  0.04205277013522846
+                                   },
+                                   {
+                                       "cue":  215,
+                                       "before":  0.049686819288353945,
+                                       "after":  0.011034514001153184
+                                   },
+                                   {
+                                       "cue":  227,
+                                       "before":  0.45366083953774705,
+                                       "after":  0.15477651868661724
+                                   },
+                                   {
+                                       "cue":  236,
+                                       "before":  0.05500323930777995,
+                                       "after":  0.05500323930766626
+                                   },
+                                   {
+                                       "cue":  252,
+                                       "before":  0.0031674262288561295,
+                                       "after":  0.10250703420831542
+                                   },
+                                   {
+                                       "cue":  254,
+                                       "before":  0.00862985060553001,
+                                       "after":  0.03836734768731276
+                                   },
+                                   {
+                                       "cue":  259,
+                                       "before":  0.018058501764926405,
+                                       "after":  0.01805850176504009
+                                   },
+                                   {
+                                       "cue":  266,
+                                       "before":  0.13085759780233275,
+                                       "after":  0.08187292575166794
+                                   },
+                                   {
+                                       "cue":  269,
+                                       "before":  0.04793708328952562,
+                                       "after":  0.04793708328952562
+                                   },
+                                   {
+                                       "cue":  270,
+                                       "before":  0.017697873174029155,
+                                       "after":  0.01769787317380178
+                                   },
+                                   {
+                                       "cue":  275,
+                                       "before":  0.24936682827024015,
+                                       "after":  0.09345352531818207
+                                   },
+                                   {
+                                       "cue":  278,
+                                       "before":  0.022476118213944574,
+                                       "after":  0.02247611821439932
+                                   },
+                                   {
+                                       "cue":  280,
+                                       "before":  0.6416083517422067,
+                                       "after":  0.016205285297701266
+                                   },
+                                   {
+                                       "cue":  283,
+                                       "before":  0.2740892265906041,
+                                       "after":  0.1632792395771503
+                                   },
+                                   {
+                                       "cue":  285,
+                                       "before":  0.020211190848840488,
+                                       "after":  0.020211190848840488
+                                   },
+                                   {
+                                       "cue":  286,
+                                       "before":  0.01370300575172223,
+                                       "after":  0.01370300575172223
+                                   },
+                                   {
+                                       "cue":  289,
+                                       "before":  0.019129042679423947,
+                                       "after":  0.019129042679196573
+                                   },
+                                   {
+                                       "cue":  290,
+                                       "before":  0.10369111727982272,
+                                       "after":  0.10369111727982272
+                                   },
+                                   {
+                                       "cue":  293,
+                                       "before":  0.020626894782708405,
+                                       "after":  0.020626894782253657
+                                   },
+                                   {
+                                       "cue":  294,
+                                       "before":  0.05966077177822626,
+                                       "after":  0.05966077177868101
+                                   },
+                                   {
+                                       "cue":  295,
+                                       "before":  0.08136466256451058,
+                                       "after":  0.08136466256428321
+                                   },
+                                   {
+                                       "cue":  296,
+                                       "before":  0.12912083741298375,
+                                       "after":  0.1291208374134385
+                                   },
+                                   {
+                                       "cue":  298,
+                                       "before":  0.03805817895818109,
+                                       "after":  0.03805817895840846
+                                   },
+                                   {
+                                       "cue":  299,
+                                       "before":  0.010968702085392579,
+                                       "after":  0.010968702085165205
+                                   },
+                                   {
+                                       "cue":  304,
+                                       "before":  0.13081223648464402,
+                                       "after":  0.1154456427796049
+                                   },
+                                   {
+                                       "cue":  306,
+                                       "before":  0.15121472452597118,
+                                       "after":  0.030993854507414653
+                                   },
+                                   {
+                                       "cue":  307,
+                                       "before":  0.05086895939962233,
+                                       "after":  0.07089380520119448
+                                   },
+                                   {
+                                       "cue":  316,
+                                       "before":  0.16390036184725432,
+                                       "after":  0.07007541474786194
+                                   }
+                               ]
+                  },
+    "historicalReplay":  {
+                             "islandReferenceCues":  30,
+                             "islandFinalCaptions":  66,
+                             "reportedSourceGapFrames":  125,
+                             "sourceGapsProtected":  27,
+                             "sourceGapsPending":  1,
+                             "deliberatelyMismatchedReference":  "103",
+                             "raw102Preserved":  true,
+                             "mismatchFinalCaptions":  65,
+                             "falseReferenceNotRestored":  true,
+                             "shortReferences":  27,
+                             "letterLabelReferences":  199,
+                             "sourceAndVoiceFramesPreserved":  true
+                         },
+    "reviewedPaths":  [
+                          "historical per-cue helper versus production grouping",
+                          "normal measured SRT cues",
+                          "manual raw-DTW and whole-cue DTW cuts",
+                          "picture-only subdivisions with continuous A2",
+                          "actual DTW canonical caption recovery",
+                          "additive DTW preserves existing picture anchors",
+                          "speed merge preserves per-cue picture",
+                          "direct host executor",
+                          "staged host executor: baseline/fast/no-delay",
+                          "caption-only unchanged",
+                          "strict omission map unchanged and excluded from picture refinement",
+                          "trimmed fallback unchanged",
+                          "review marker mapping, ownership and reconciliation",
+                          "package and installation parity"
+                      ],
+    "knownLimitations":  [
+                             "Replay uses historical geometry and the same model/data used for timing anchors. It is not native Premiere or independent listening/gold acceptance.",
+                             "62 review positions are predicted from the final output; genuine native retime read/mismatch markers can add positions. Pending references/review regions are not confirmed ASR error counts.",
+                             "Unresolved text and estimated timing still require localized review; no claim of perfect recognition or one picture clip per every SRT cue.",
+                             "Strict verified-omission and trimmed inputs keep their conservative paths. No estimated timing or recovered caption text grants omission/cut authority.",
+                             "No Premiere Save/Undo, forced application close, live project mutation, auto-merge or stable promotion."
+                         ],
+    "installation":  {
+                         "version":  "2.20.86",
+                         "previousVersion":  "2.20.86",
+                         "installedFiles":  66,
+                         "preservedFiles":  6280,
+                         "preservedDirectories":  22,
+                         "cepRegistryUnchanged":  true,
+                         "registryWritesSkipped":  true,
+                         "notificationShortcutRegistered":  true,
+                         "premiereClosedAtSetup":  true,
+                         "projectActionsPerformed":  false,
+                         "nativeHelperLaunched":  false,
+                         "previousPanelBackup":  "F:\\Tools\\Premiere Voice Sync\\dist\\_installation-2.20.86-20261021T135454Z\\previous-panel",
+                         "packageSha256":  "DAD1CFF3CF3C7DDD080E51486F946E4E9BABEBFAE4489D7A047974C74998CED2",
+                         "nativeAcceptance":  "pending-user-test"
+                     }
+}

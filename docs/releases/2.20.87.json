@@ -1,0 +1,102 @@
+{
+    "schemaVersion":  1,
+    "version":  "2.20.87",
+    "tag":  "v2.20.87",
+    "channel":  "prerelease",
+    "nativeAcceptance":  "pending-user-test",
+    "package":  {
+                    "sha256":  "0DF0B671161CB63F96E669EDC27AC07E1F3BBE0A6E6B08098F6E48B6C0527824",
+                    "bytes":  488808099,
+                    "filename":  "Premiere-Voice-Sync-2.20.87-Panel.zip"
+                },
+    "validationAtPackaging":  {
+                                  "packagePayloadFilesVerified":  74,
+                                  "zipEntriesVerified":  75,
+                                  "packagedNodeSuitesPassed":  21,
+                                  "regressionGroupsPassed":  72,
+                                  "powershellScriptsParsed":  150,
+                                  "externalWindowsIntegrationGroupsSkipped":  6,
+                                  "runtimeSourceMatches":  true,
+                                  "installedRuntimeFiles":  66,
+                                  "directAndStagedMockParity":  true,
+                                  "fullAndCompactNativeCallParity":  true,
+                                  "noDelaySpeedPairsMaximum":  4,
+                                  "abortAtBatchBoundaryAddsNoEdits":  true,
+                                  "staleOrPartialProgressDoesNotInventLiveness":  true,
+                                  "pendingStopKeepsNativeOperationVisible":  true
+                              },
+    "reportedNativeRun":  {
+                              "version":  "2.20.86",
+                              "localStart":  "2026-10-21T21:05:10+07:00",
+                              "timelineStart":  "2026-10-21T21:10:54+07:00",
+                              "lastPendingCall":  "Retiming V1-A1",
+                              "lastPendingCallAt":  "2026-10-21T21:24:00.293+07:00",
+                              "alignmentMilliseconds":  246307,
+                              "planningMilliseconds":  89687,
+                              "prepareMilliseconds":  273734,
+                              "noDelayDisabledBatchLimits":  true,
+                              "windowsResponding":  true,
+                              "modalObserved":  false,
+                              "acceptance":  "User reported a long stall and Stop also waiting. Exact blocked native method not known."
+                          },
+    "retainedAlienPlanProjection":  {
+                                        "sourceBytes":  3874932,
+                                        "compactBytes":  889562,
+                                        "sourceObjects":  12208,
+                                        "compactObjects":  1212,
+                                        "sourceCaptions":  695,
+                                        "pictureGroups":  302,
+                                        "voiceGroups":  234,
+                                        "certifiedCuts":  231,
+                                        "geometryVoiceMarkersExactlyPreserved":  true,
+                                        "sourceUnmodified":  true,
+                                        "nativePremiereCalls":  0
+                                    },
+    "batchMockReproduction":  {
+                                  "before":  {
+                                                 "nativeSpeedCalls":  44,
+                                                 "returnedWithinSpeedLoop":  false,
+                                                 "done":  false
+                                             },
+                                  "after":  {
+                                                "nativeSpeedCalls":  4,
+                                                "returnedWithinSpeedLoop":  true,
+                                                "done":  false
+                                            },
+                                  "nativePremiereCalls":  0,
+                                  "note":  "Native mocks compare old shipping86 executor with87; not native timing evidence"
+                              },
+    "reviewedPaths":  [
+                          "Auto edit default and diagnostic",
+                          "direct executor native calls",
+                          "staged baseline/fast/no-delay limits",
+                          "SRT-cue picture / continuous A2 / DTW speed merge / omission invariants unchanged",
+                          "caption-only compact import identity/snapshot/marker scope",
+                          "pause/stop/recovery and pending-host lock",
+                          "native trace owned-file validation, IO failure, partial/stale read",
+                          "package/source/install parity"
+                      ],
+    "knownLimitations":  [
+                             "This fixes an identified unbounded scheduling path and reduces the measured native payload. It does not prove the exact cause of the native86 stall or that Premiere will no longer stall.",
+                             "Stop is processed between batches. A single blocked native call cannot safely be preempted; no fake timeout/cancellation or automatic retry.",
+                             "Native trace is best effort and identifies the last entered/completed instrumented operation, not every native accessor.",
+                             "The ongoing86 task cannot be patched live. No Premiere Save/Undo or forced close was performed.",
+                             "Native responsiveness/cancellation, import/playback/timing/markers remain pending. No stable promotion or PR merge."
+                         ],
+    "installation":  {
+                         "version":  "2.20.87",
+                         "previousVersion":  "2.20.86",
+                         "installedFiles":  66,
+                         "preservedFiles":  6296,
+                         "preservedDirectories":  25,
+                         "cepRegistryUnchanged":  true,
+                         "registryWritesSkipped":  true,
+                         "notificationShortcutRegistered":  true,
+                         "premiereClosedAtSetup":  true,
+                         "projectActionsPerformed":  false,
+                         "nativeHelperLaunched":  false,
+                         "previousPanelBackup":  "F:\\Tools\\Premiere Voice Sync\\dist\\_installation-2.20.87-20261021T152527Z\\previous-panel",
+                         "packageSha256":  "0DF0B671161CB63F96E669EDC27AC07E1F3BBE0A6E6B08098F6E48B6C0527824",
+                         "nativeAcceptance":  "pending-user-test"
+                     }
+}

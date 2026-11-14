@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.81",
+  "tag": "v2.20.81",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "EB10C1E11FD2BD548B5AAC783A8C983F220DE22076B5AB4D5F2BFFD3B89B1B55",
+    "bytes": 488786997,
+    "filename": "Premiere-Voice-Sync-2.20.81-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "packagePayloadFilesVerified": 73,
+    "zipEntriesVerified": 74,
+    "packagedNodeSuitesPassed": 20,
+    "regressionGroupsPassed": 66,
+    "powershellScriptsParsed": 143,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "installedPanelFilesVerified": 65,
+    "preservedUserFiles": 6189,
+    "preservedUserDirectories": 22,
+    "cepRegistryUnchanged": true,
+    "previousPanelBackupVerified": true
+  },
+  "defaults": {
+    "sourceNoDialogueGapSeconds": 0.5,
+    "uiAndHtml": true,
+    "missingPersistedField": true,
+    "missingJobField": true,
+    "directDtwFallback": true,
+    "preservedExplicitSavedSeconds": [
+      1,
+      2
+    ],
+    "preservedCustomJobSeconds": 1.5,
+    "settingsSchemaUnchanged": true,
+    "acousticCutGuardsUnchanged": true
+  },
+  "offlineAutoEditReplay": {
+    "thresholdOmittedFromJob": true,
+    "effectiveThresholdSeconds": 0.5,
+    "referenceCuesRetained": 30,
+    "finalCaptions": 66,
+    "protectedSourceGaps": 27,
+    "pendingSourceGaps": [
+      {
+        "leftCue": 5,
+        "rightCue": 6,
+        "sourceStartFrame": 679,
+        "sourceEndFrame": 701,
+        "sourceStart": 22.64,
+        "sourceEnd": 23.36
+      }
+    ],
+    "reportedGapOutputFrames": 125,
+    "voiceConserved": true,
+    "sourcePicturePartition": true,
+    "originalSourceMp3SrtHashesPreserved": true,
+    "captionSrtSha256": "AE1EB5769083804D40664281772307EC4C99C56A8CE26EF7DA64A63B9ECCEC93",
+    "byteIdenticalTo": "2.20.80 with explicit 0.5s"
+  },
+  "knownLimitations": [
+    "Native Premiere import/razor/retime/playback/caption timing/markers/Save acceptance remains pending. Offline replay uses historical saved clip geometry, not a current live timeline.",
+    "Explicit saved thresholds remain unchanged; restore defaults to adopt 0.5s in an existing profile with another saved value. No settings-schema migration or user-data overwrite.",
+    "All 2.20.80 edit/caption safeguards remain: source cue5-6 gap0.72s lacks a safe voice cut and remains marked for review; estimated timings and manual blocks retain their protections.",
+    "Production remains Whisper Small. No automatic PR merge or stable promotion."
+  ]
+}

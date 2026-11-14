@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.79",
+  "tag": "v2.20.79",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "bytes": 488786178,
+    "sha256": "8B01E9153C4400D42C11F1B2E1488383265B757BA04B3484E453B8188B7286B5",
+    "filename": "Premiere-Voice-Sync-2.20.79-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "preservedUserFiles": 6185,
+    "packagePayloadFilesVerified": 73,
+    "packagedNodeSuitesPassed": 20,
+    "cepRegistryUnchanged": true,
+    "preservedUserDirectories": 22,
+    "previousPanelBackupVerified": true,
+    "installedPanelFilesVerified": 65,
+    "zipEntriesVerified": 74,
+    "regressionGroupsPassed": 65,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "powershellScriptsParsed": 142
+  },
+  "offlineAutoEditReplay": {
+    "referenceCuesRetained": 30,
+    "pictureOmissions": 0,
+    "captionSrtSha256": "266205D8D6FD43129418FB5E9A04A786294EAF3A23D4D5E65382EAE0532823F4",
+    "byteIdenticalTo": "2.20.78",
+    "sourceMp3SrtHashesPreserved": true,
+    "regularFinalCaptionMarkers": 2,
+    "recoveryBoundaryCuts": 0,
+    "clipGeometry": "previously saved metadata, not current live timeline",
+    "finalCaptions": 66
+  },
+  "manualFallbackReplay": {
+    "sourcePicturePartitionVerified": true,
+    "realIslandMedia": true,
+    "pendingReferenceCueIndices": [
+      7,
+      11,
+      20
+    ],
+    "raw102Retained": true,
+    "voiceConserved": true,
+    "captionTimingQuality": "estimated",
+    "falseReferenceResurrected": false,
+    "finalCaptionMarkers": 48,
+    "manualBlocks": 5,
+    "cutsInsideManualBlocks": 0,
+    "finalCaptions": 65,
+    "deliberatelyMismatchedReference": true
+  },
+  "historicalCaptionReplay": {
+    "antarcticaReferenceCuesRetained": 255,
+    "letterLabelCuesRetained": 199,
+    "whisperCacheMisses": 0,
+    "whisperCacheHits": 113,
+    "antarcticaFinalCaptions": 468,
+    "shortCuesRetained": 27,
+    "antarcticaByteIdenticalTo": "2.20.78"
+  },
+  "knownLimitations": [
+    "Native Premiere import/razor/retime/playback/timing/markers/Save acceptance remains pending. Offline replay is not current live sequence evidence.",
+    "Production remains Whisper Small. A manual block permits coarse retiming only and cannot authorize omission, internal cuts or measured word/DTW timing.",
+    "Only ordered unique exact sentence anchors, valid source/voice bounds, and bounded same-chapter windows qualify. Missing anchors, ambiguous order, cross-chapter uncertainty or budgets exceeded still stop before mutation.",
+    "Unverified reference text is not restored. ASR wording can remain wrong; final markers and completion explicitly require manual text/timing review. The deliberate reference mismatch is a mechanism test, not audio ground truth.",
+    "Any tentative omissions in a manual-fallback job are retained for review. Fully verified omission jobs continue to use the strict resolver/source map.",
+    "The saved project changed externally after the 2.20.78 diagnosis. MP3/SRT hashes match; this replay uses older saved clip geometry and a fresh read-only project hash snapshot."
+  ]
+}

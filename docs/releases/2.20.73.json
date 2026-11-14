@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.73",
+  "tag": "v2.20.73",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "filename": "Premiere-Voice-Sync-2.20.73-Panel.zip",
+    "bytes": 488772390,
+    "sha256": "A1F9A4CCBD57E03C19CC6C4D357956D1510FC19C3F119A528AE55982A7A5CBE4"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 55,
+    "powershellScriptsParsed": 126,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "packagedNodeSuitesPassed": 20,
+    "packagePayloadFilesVerified": 71,
+    "installedPanelFilesVerified": 63
+  },
+  "knownLimitations": [
+    "Premiere playback, caption import and native end-to-end acceptance remain pending.",
+    "Reconstructed Antarctica audio retains 253/255 source cues, up from 250/255 with no previously retained cue lost. Cues 138 and 207 remain unresolved. This reconstruction does not reproduce the original native mix/effects.",
+    "Model selection is unchanged: Whisper small. ASR model comparison and multilingual notes are research only; current priority is Vietnamese and SRT correctness."
+  ]
+}

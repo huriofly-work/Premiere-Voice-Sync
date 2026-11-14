@@ -1,0 +1,13 @@
+Vietnamese caption phrase list
+
+The phrase list vi-caption-phrases.txt is derived from VnVocab in RDRsegmenter:
+https://github.com/datquocnguyen/RDRsegmenter
+Source revision: e15dfcaca292af2e049a9ef5a258fedf4dc236e6
+Source VnVocab SHA-256: 0A47C5B55BBCE163029D37730A67B9479740388695C29C106C112B815613EAA5
+Copyright (C) 2017-2019 Dat Quoc Nguyen
+Licensed under Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+The source vocabulary was reduced to two-syllable phrases and normalized to
+Unicode NFC. Additional user-reported phrases are maintained separately in
+vi-caption-overrides.txt. Both lists are offline splitting aids, not a
+complete Vietnamese-language dictionary.

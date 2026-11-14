@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.78",
+  "tag": "v2.20.78",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "bytes": 488780816,
+    "sha256": "FEDA5CD0E46083CFE42DD6189E4FD599F9B8B9EB6F6AC38A87DA4CC309233515",
+    "filename": "Premiere-Voice-Sync-2.20.78-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "regressionGroupsPassed": 64,
+    "zipEntriesVerified": 73,
+    "powershellScriptsParsed": 140,
+    "packagedNodeSuitesPassed": 20,
+    "packagePayloadFilesVerified": 72,
+    "preservedUserDirectories": 22,
+    "cepRegistryUnchanged": true,
+    "previousPanelBackupVerified": true,
+    "preservedUserFiles": 6186,
+    "installedPanelFilesVerified": 64
+  },
+  "knownLimitations": [
+    "Native Premiere import/playback/razor/retime/word timing/markers/Save acceptance remains pending. Saved-clip reconstruction is not a live timeline or native mix.",
+    "Production remains Whisper small. Recovery uses shared subtitle text selection but independently requires complete observed spans or exact contextual spoken-digit grouping. It cannot authorize picture omission or word DTW.",
+    "Recovered cue boundaries are merged for review. Actual partial cuts, unknown speech and mixed omissions plus insufficient text evidence still stop at the original strict resolver.",
+    "Island offline full Auto edit pipeline retains30/30 SRT cues in66 final captions; no picture omissions or cuts at recovered cue11 boundaries. Whole picture partition and voice conservation through speed merge verified.",
+    "Historical cached selection replays retain27 Short and199 A/C cues; full Small Antarctica replay retains255/255 in468 captions and is byte-identical to2.20.77, with113 ASR cache hits and0 misses."
+  ],
+  "offlineAutoEditReplay": {
+    "referenceCuesRetained": 30,
+    "finalCaptions": 66,
+    "recoveredCueIndices": [
+      11
+    ],
+    "pictureOmissions": 0,
+    "recoveryBoundaryCuts": 0,
+    "sourceFilesPreserved": true,
+    "captionSrtSha256": "266205D8D6FD43129418FB5E9A04A786294EAF3A23D4D5E65382EAE0532823F4"
+  }
+}

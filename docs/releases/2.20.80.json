@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.80",
+  "tag": "v2.20.80",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "75C5056F27944C4173EDFF85514180BB86D812B87B00466C8EEACB7DB2E84556",
+    "bytes": 488788836,
+    "filename": "Premiere-Voice-Sync-2.20.80-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "packagePayloadFilesVerified": 73,
+    "packagedNodeSuitesPassed": 20,
+    "zipEntriesVerified": 74,
+    "regressionGroupsPassed": 66,
+    "installedPanelFilesVerified": 65,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "cepRegistryUnchanged": true,
+    "powershellScriptsParsed": 143,
+    "preservedUserDirectories": 22,
+    "preservedUserFiles": 6187,
+    "previousPanelBackupVerified": true
+  },
+  "offlineAutoEditReplay": {
+    "finalCaptions": 66,
+    "pendingSourceGaps": [
+      {
+        "leftCue": 5,
+        "sourceStart": 22.64,
+        "rightCue": 6,
+        "reason": "no safe voice cut",
+        "sourceEnd": 23.36
+      }
+    ],
+    "sourceSubtitleGapsAtThreshold": 28,
+    "quietDurationSeconds": 0.484024,
+    "reportedGapOutputFrames": 125,
+    "reportedGapOutputStart": 46.7,
+    "referenceCuesRetained": 30,
+    "voiceConserved": true,
+    "protectedSourceGaps": 27,
+    "reportedGapSourceFrames": [
+      1448,
+      1573
+    ],
+    "sourcePicturePartition": true,
+    "regularGapMarkers": 1,
+    "originalSourceMp3SrtHashesPreserved": true,
+    "regularRecoveredCaptionMarkers": 2,
+    "voiceCutSeconds": 34.4,
+    "rawDtwLeftSpeechEnd": 34.15846545454545,
+    "rawDtwRightSpeechStart": 34.642557272727274,
+    "thresholdSeconds": 0.5,
+    "captionSrtSha256": "AE1EB5769083804D40664281772307EC4C99C56A8CE26EF7DA64A63B9ECCEC93",
+    "sparseWordTimingStillEstimated": true,
+    "reportedGapOutputEnd": 50.866667
+  },
+  "manualFallbackReplay": {
+    "pendingSourceGaps": 24,
+    "finalCaptions": 65,
+    "protectedSourceGaps": 4,
+    "internalManualBlockCuts": 0,
+    "manualCaptionMarkers": 48,
+    "deliberatelyWrongReference": true,
+    "manualBlocks": 5,
+    "sourcePictureAndVoicePreserved": true,
+    "sourceGapMarkers": 24
+  },
+  "historicalCaptionReplay": {
+    "antarcticaFinalCaptions": 468,
+    "antarcticaByteIdenticalTo": "2.20.79",
+    "whisperCacheMisses": 0,
+    "shortCuesRetained": 27,
+    "whisperCacheHits": 113,
+    "antarcticaReferenceCuesRetained": 255,
+    "letterLabelCuesRetained": 199
+  },
+  "knownLimitations": [
+    "Native Premiere import/razor/retime/playback/caption timing/markers/Save acceptance remains pending. Offline replay uses historical saved clip geometry, not a current live timeline.",
+    "SRT identifies a requested picture gap, not a safe voice cut. Existing confidence/silence guards remain; recovered cues need independent unique raw-DTW edge context and guarded measured quiet. Estimated word spans are not promoted to DTW.",
+    "Source cue5-6 gap0.72s remains unsplit because a safe voice cut was not found. It is explicitly reported and marked in final V1 coordinates; the other27 of28 gaps at0.5s are preserved.",
+    "Manual review blocks remain indivisible; the deliberate reference mismatch retains4 gaps and reports24 for review instead of cutting inside uncertain speech. This is a mechanism test, not audio ground truth.",
+    "The old native job was deleted by normal cleanup and old workflow logs did not retain algorithm values. Persisted UI settings and installed-runtime tests establish correct0.5s propagation; the new planner log records five consumed numeric settings for future audit.",
+    "Production remains Whisper Small. No stable promotion or automatic PR merge."
+  ]
+}

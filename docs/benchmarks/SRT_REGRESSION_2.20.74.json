@@ -1,0 +1,63 @@
+{
+  "version": "2.20.74",
+  "sourceFilesUnchanged": true,
+  "sourceProjectSha256": "6300c7cc68c495e5d1407eed90eff51970582b35906aaeb6f75c7af9c744cb5e",
+  "sourceSrtSha256": "82dd6df284661c219009b446ba4d81ebcdda9b7edd70c4598ce6962c164b98b4",
+  "engineSourceSha256": "e94b85af0bb046b61a54632268219bcb33b184712721b742be9dd876145962bd",
+  "historicalReplay": [
+    {
+      "Case": ".tmp-consciousness-2.20.64",
+      "Words": 334,
+      "References": 615,
+      "Retained": 27,
+      "Expected": 27,
+      "Evidence": "Main cached segment-timestamp replay, not native timing acceptance"
+    },
+    {
+      "Case": ".tmp-letter-reference-2.20.67",
+      "Words": 2346,
+      "References": 210,
+      "Retained": 199,
+      "Expected": 199,
+      "Evidence": "Main cached segment-timestamp replay, not native timing acceptance"
+    }
+  ],
+  "engineRuns": [
+    {
+      "model": "small",
+      "selected": 255,
+      "total": 255,
+      "captionCount": 468,
+      "unresolved": [],
+      "finalRetainedSrtSequenceExact": true,
+      "unresolvedAsrUnchanged": true,
+      "noInterleavedUnexpectedAsrOrDuplicates": true,
+      "realOutroUnchangedFrom73": true,
+      "positiveNonoverlappingTiming": true,
+      "estimatedTimingRegions": 2,
+      "recognitionBackend": "cuda",
+      "fallbackReason": "",
+      "srtSha256": "fb5840456a940026c3a2483404af588c1846819039b602d4bf65595c1ae4e15a"
+    },
+    {
+      "model": "medium",
+      "selected": 254,
+      "total": 255,
+      "captionCount": 466,
+      "unresolved": [
+        138
+      ],
+      "finalRetainedSrtSequenceExact": true,
+      "unresolvedAsrUnchanged": true,
+      "noInterleavedUnexpectedAsrOrDuplicates": true,
+      "realOutroUnchangedFrom73": true,
+      "positiveNonoverlappingTiming": true,
+      "estimatedTimingRegions": 8,
+      "recognitionBackend": "cuda",
+      "fallbackReason": "",
+      "srtSha256": "a10ed648fe642e00989ee35ac7f6373cf08a79f5bbacadb0ea3b0091894e44ef"
+    }
+  ],
+  "nativeAcceptance": "pending-user-test",
+  "productionModel": "small"
+}

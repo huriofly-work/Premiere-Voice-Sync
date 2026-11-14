@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "archiveSha256": "106a2030eff8998e4ef320fe72e263a78449e9040386ee27c41ea80b001b601b",
+  "files": [
+    {"path":"whisper-cli.exe","sha256":"789fddb0f05c0c28043b3c4f3bcf15a0ae839df24292c60f90c4edb8d02a5ab5"},
+    {"path":"whisper.dll","sha256":"0c76791ffda66ce58b6247424ca750a4b1bff12fd52928abb81de3037172ce1b"},
+    {"path":"ggml.dll","sha256":"3063b832600f58fb0e15af50a9ace99dbc15de02b8cb325df64390bfbcf22796"},
+    {"path":"ggml-base.dll","sha256":"2fdf1dea0cbab9d796d1a6c2bca672a3784c5faec2f1df2a3812212fa7409747"},
+    {"path":"ggml-cpu-x64.dll","sha256":"b338f13d391470fd3dab3029df226f6306ca8140c69bc381725e39507b4d59f4"},
+    {"path":"ggml-cpu-sse42.dll","sha256":"25db1975a6664ae7f77db3bce0ee6f35d4894514717a39cf97f833bf56a7d2c4"},
+    {"path":"ggml-cpu-sandybridge.dll","sha256":"695b93cd2a2b4d30c60b722d0ff92870b308af82bf76be45a1ceb9aea8c3f611"},
+    {"path":"ggml-cpu-haswell.dll","sha256":"cb4b01954b8b7bec4d891024192d3ed80c43102a4d17447ceefc4e183632df1f"},
+    {"path":"ggml-cpu-skylakex.dll","sha256":"37ee8dd2620aa8e350f50ccc22e3fd3995ef63edb696d42c12830b06ef81ff28"},
+    {"path":"ggml-cpu-icelake.dll","sha256":"e97d8c4744c92e74190979a7d87a690d02d26373724d203722284e1cc837becb"},
+    {"path":"ggml-cpu-cascadelake.dll","sha256":"9ab872d0e6e0dd6c5becd585cc84e1684ddfc603443904bc007af4a14e4a52fb"},
+    {"path":"ggml-cpu-cannonlake.dll","sha256":"63c136e823b85e519a2fd5d5085c7f28e9b07a7d23df99b6e2abd05dbcf4b47c"},
+    {"path":"ggml-cpu-alderlake.dll","sha256":"e9e27720fd14a33e86d13c1c8fee5a6afbf6a702e8472abb84cde23ccb4fb654"},
+    {"path":"ggml-cuda.dll","sha256":"bdf5ba84f7014eaa8a4fae7a090ce222edf03432ef8d39d57fb615beea5c68ac"},
+    {"path":"cublas64_12.dll","sha256":"e40202fe4223c1cd2d2dce7beec59e1ed61c7801bd827309183be9b50e358f4c"},
+    {"path":"cublasLt64_12.dll","sha256":"2a896460bef60ed57ef32b0875812f355a6984e671d638bb632f5e8c1d7a831f"},
+    {"path":"cudart64_12.dll","sha256":"d28e42265da7462162a54da6b7a99ea4fa2caf8139d862bb500db875d0b32dfc"},
+    {"path":"nvblas64_12.dll","sha256":"e42a77405e6e4b1cc661dcfcddead35ec62dcf59c6f9be1a3b5fab73d1f4c616"},
+    {"path":"nvrtc-builtins64_124.dll","sha256":"79888dba26c51475ea21fc7b47d2b9dd5b1ffaecc8e5ea22a49fa5f5a722eb43"},
+    {"path":"nvrtc64_120_0.dll","sha256":"3aa3cd8aa10437e212760c0e1ed730807811ec3bc330216dbfde4b26211d2243"},
+    {"path":"parakeet.dll","sha256":"06105aab777f365309b47a3952f574f28bfea56ab459a55b5f460c02aab9ef8f"},
+    {"path":"SDL2.dll","sha256":"de23db1694a3c7a4a735e7ecd3d214b2023cc2267922c6c35d30c7fc7370d677"}
+  ]
+}

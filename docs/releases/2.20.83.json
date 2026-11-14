@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.83",
+  "tag": "v2.20.83",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "53BEA0B06D2E1ED8C55577C62D135099D4BF1985AD36845BA67691BE7D64E6C4",
+    "bytes": 488791575,
+    "filename": "Premiere-Voice-Sync-2.20.83-Panel.zip"
+  },
+  "validationAtPackaging": {
+    "packagePayloadFilesVerified": 73,
+    "zipEntriesVerified": 74,
+    "packagedNodeSuitesPassed": 20,
+    "regressionGroupsPassed": 69,
+    "powershellScriptsParsed": 146,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "runtimeSourceMatches": true
+  },
+  "recognitionPolicy": {
+    "qualityFailure": "complete-with-review",
+    "anchoredUnresolvedRegion": "preserve-whole-picture-and-voice-no-internal-cuts",
+    "unmappedRegion": "preserve-timeline-no-native-edit-or-caption-import",
+    "emptyRecognition": "complete-analysis-with-review",
+    "captionEdgeFailure": "keep-useful-primary-review-uncovered-range",
+    "technicalIoAndCancel": "propagate-without-reporting-success",
+    "omissionAndTimingGuardsWeakened": false
+  },
+  "alienReplay": {
+    "referenceCues": 319,
+    "retainedReferenceCues": 276,
+    "pendingReferenceCues": 43,
+    "manualBlocks": 56,
+    "wholePreservedRegions": 4,
+    "finalCaptions": 695,
+    "observedWords": 4503,
+    "observedWordsOwnedExactlyOnceAtRecognitionStage": true,
+    "allPhysicalVoiceFramesPreserved": true,
+    "manualCaptionCellsPreserved": true,
+    "allSourcePictureFramesPreserved": true,
+    "noNewOmissions": true,
+    "sourceVoiceSrtFilesUnchanged": 7,
+    "projectSnapshotHistorical": true,
+    "projectActionsPerformed": false,
+    "finalSrtSha256": "872E4704D90646D8DD796B6E6B1AB131537EDBC4E3310D41EC37A52E44389B18",
+    "voiceConservedThroughSpeedMerge": true,
+    "nativePremiereCalls": 0,
+    "nativeAcceptance": "pending-user-test"
+  },
+  "historicalReplay": {
+    "islandReferenceCuesRetained": 30,
+    "islandFinalCaptions": 66,
+    "islandSrtSha256": "AE1EB5769083804D40664281772307EC4C99C56A8CE26EF7DA64A63B9ECCEC93",
+    "protectedSourceGaps": 27,
+    "pendingSourceGaps": 1,
+    "mismatchedReferenceManualBlocks": 5,
+    "mismatchedReferenceFinalCaptions": 65,
+    "mismatchedPendingReferenceCueIndices": [
+      7,
+      11,
+      20
+    ],
+    "shortReferencesRetained": 27,
+    "letterLabelReferencesRetained": 199,
+    "sourcePictureAndVoiceConserved": true,
+    "falseReferenceNotRestored": true
+  },
+  "knownLimitations": [
+    "43 Alien reference cues remain pending manual review. Review counts are not confirmed ASR-error counts; no accuracy improvement or model change is claimed. Production remains Whisper Small.",
+    "Offline replay uses historical saved geometry; the user project was saved after the earlier snapshot. Seven SRT/MP3 files remain unchanged; no native Premiere calls or Save/Undo were performed.",
+    "Native Premiere import/razor/retime/playback/caption timing/markers/Save acceptance remains pending.",
+    "Whole-region preservation exceeds the automatic retry limits without authorizing internal cuts or omissions; unmapped jobs preserve the timeline and report analysis-only completion.",
+    "No automatic PR merge or stable promotion."
+  ],
+  "installation": {
+    "previousVersion": "2.20.82",
+    "installedFiles": 65,
+    "preservedFiles": 6260,
+    "preservedDirectories": 22,
+    "cepRegistryUnchanged": true,
+    "registryWritesSkipped": true,
+    "notificationShortcutRegistered": true,
+    "premiereClosedAtSetup": true,
+    "projectActionsPerformed": false,
+    "nativeHelperLaunched": false,
+    "packageSha256": "53BEA0B06D2E1ED8C55577C62D135099D4BF1985AD36845BA67691BE7D64E6C4",
+    "nativeAcceptance": "pending-user-test",
+    "verificationPasses": 2,
+    "finalPass": "refreshed unpublished local candidate after adding empty-recognition guard"
+  }
+}

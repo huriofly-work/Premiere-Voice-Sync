@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.75",
+  "tag": "v2.20.75",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "filename": "Premiere-Voice-Sync-2.20.75-Panel.zip",
+    "bytes": 488776678,
+    "sha256": "9A218B318E9E9806DB1B43293B196BB23915954B8424DC2143476EC6FFAA59FF"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 58,
+    "powershellScriptsParsed": 131,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "packagedNodeSuitesPassed": 20,
+    "packagePayloadFilesVerified": 72,
+    "zipEntriesVerified": 73,
+    "installedPanelFilesVerified": 64,
+    "preservedUserFiles": 4767,
+    "preservedUserDirectories": 22,
+    "previousPanelBackupVerified": true,
+    "cepRegistryUnchanged": true
+  },
+  "knownLimitations": [
+    "Production remains Whisper small. This adapter refactor does not improve outside-SRT transcription or install Qwen/multilingual routing.",
+    "Offline full-engine Small captions are byte-identical to 2.20.74:255/255 source cues,468 captions. Historical replays preserve27/199 cues. Positive/nonoverlapping captions are not acoustic timing acceptance.",
+    "User confirmed SRT retention on a real 2.20.74 rerun; outside-SRT spelling errors remain. This scoped report does not establish all timing/marker/Auto edit acceptance or native acceptance of 2.20.75.",
+    "Vietnamese CTC research aligned candidates for3/4 frozen Qwen outro transcripts; unsupported digit6 in No6 rejected. All timing remains unverified, without gold word boundaries or production eligibility."
+  ]
+}

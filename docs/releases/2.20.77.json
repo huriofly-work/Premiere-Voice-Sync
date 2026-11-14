@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.77",
+  "tag": "v2.20.77",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "filename": "Premiere-Voice-Sync-2.20.77-Panel.zip",
+    "bytes": 488777910,
+    "sha256": "4B9E8592480260DEB0583F0D75ABCEAABA60567850D21D5E3F2BBDDBF74858FC"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 59,
+    "powershellScriptsParsed": 132,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "packagedNodeSuitesPassed": 20,
+    "packagePayloadFilesVerified": 72,
+    "zipEntriesVerified": 73,
+    "installedPanelFilesVerified": 64,
+    "preservedUserFiles": 4767,
+    "preservedUserDirectories": 22,
+    "previousPanelBackupVerified": true,
+    "cepRegistryUnchanged": true
+  },
+  "knownLimitations": [
+    "Native Premiere import/playback/word timing/markers/Auto edit acceptance remains pending. Reconstructed audio lacks native mix/effects.",
+    "Production remains Whisper small. Primary DTW reuse is limited to empty or wholly estimated local accepted supplements and does not guarantee transcription accuracy.",
+    "Same full-engine Antarctica replay: Small/Medium/Turbo/Large-v3 retain255/254/254/255 of255 SRT cues; Medium/Turbo cue138 is unresolved. Final outro errors against77 user-reference tokens are7/5/3/3, versus7/9/75/3 on76.",
+    "All models still misspell Null Seek. Medium reference edge750.26s remains unverified across the preceding measured silence. Local DTW/mixed behavior is unchanged; no model is promoted by this sample.",
+    "Large-v3 prior quiz failure and Qwen timing integration remain open in the research backlog."
+  ]
+}
