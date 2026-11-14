@@ -27,5 +27,5 @@ Repo khởi tạo lại ngày 14/11/2026 và chưa có release
 ([lý do](maintenance/REPO_RESTART_2026-11-14.md)). Trước đó stable đã nghiệm thu là
 2.20.25; [2.20.90](releases/notes/ASR_TURBO_2.20.90.md) là prerelease mới nhất,
 còn chờ nghiệm thu trên Premiere. Nghiên cứu cue-first, chọn model ASR và Qwen đã đóng
-ngày 13/11/2026; mã, test và báo cáo của chúng đã gỡ khỏi repo (còn trong lịch
-sử Git). Không coi test/CI hoặc việc sắp xếp này là nghiệm thu native.
+ngày 13/11/2026; mã, test và báo cáo của chúng đã gỡ khỏi repo (chỉ còn trong
+bản sao lưu lịch sử repo cũ, ngoài GitHub). Không coi test/CI hoặc việc sắp xếp này là nghiệm thu native.

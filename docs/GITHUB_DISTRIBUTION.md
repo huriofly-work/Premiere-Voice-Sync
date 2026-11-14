@@ -36,15 +36,5 @@ Gói phát hành được chọn theo hash đã kiểm chứng; không tự buil
 một ZIP khác cùng version mà không xác minh lại. Không ghi đè asset đã công
 bố bằng `--clobber`; phát hành version mới khi byte hoặc runtime thay đổi.
 
-## Đồng bộ 2.20.72
-
-Đợt đồng bộ này gom mã nguồn/test/tài liệu tích lũy sau commit 2.20.27, gồm
-SRT join, timing/recovery, marker, pause/cancel và thông báo Windows. PR có
-phạm vi lớn hơn riêng hai lib sửa ở 2.20.72; release notes phải nói rõ điều đó.
-
-ZIP 2.20.72 được giữ nguyên đúng byte của gói đã kiểm/cài local, hash ở
-`releases/2.20.72.json`. Source hiện có thêm tài liệu nghiên cứu/quy trình và
-kết quả xác minh sau khi gói được tạo; đây không phải tính năng ASR đa ngôn
-ngữ mới trong bộ cài. Runtime baseline vẫn Whisper small; ưu tiên hiện tại
-là sửa SRT/tiếng Việt. Nghiệm thu native và các cue còn chưa giải quyết được
-ghi rõ trong metadata và release notes.
+Ghi chú đợt đồng bộ 2.20.72 (repo cũ) nằm trong `releases/2.20.72.json` và
+[CHANGELOG](../CHANGELOG.md).

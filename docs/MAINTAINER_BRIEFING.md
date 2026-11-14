@@ -71,8 +71,10 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
 
 ## Where the work stands
 
-- Released line: 2.20.90 prerelease (Whisper large-v3-turbo; installed on the
-  user's machine 2026-11-13, native acceptance pending); stable/Latest stays 2.20.25.
+- Released line (old repo): 2.20.90 prerelease (Whisper large-v3-turbo; installed
+  on the user's machine 2026-11-13, native acceptance pending); the accepted stable
+  was 2.20.25. The repository restarted on 2026-11-14 with no releases; 2.20.91
+  will be the first public one.
 - Direction (2026-11-13): build the big update in small releases on the 2.20.x
   engine and panel. The cue-first rewrite, ASR model-selection research, Qwen and a
   separate result sequence were closed and their code, tests and reports removed

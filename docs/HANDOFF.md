@@ -1,13 +1,13 @@
 # Bàn giao kỹ thuật Premiere Voice Sync
 
-Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
+Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
 
 ## Git, bản phát hành và bản cài
 
 | Hạng mục | Trạng thái đã đối chiếu |
 | --- | --- |
-| Checkout | `F:\Tools\Premiere Voice Sync`, nhánh mặc định `main`. Ngày 13/11: PR #98 (gỡ Qwen), #99 (dữ liệu dev có thể xóa), #100 (Whisper large-v3-turbo là model duy nhất), #101 (release 2.20.90), #102 (ghi bản cài) đã merge; sau đó là đợt dọn cue-first/nghiên cứu ASR. |
-| Nhánh cũ | Các nhánh/PR Codex cũ có tip trong [inventory](maintenance/BRANCH_INVENTORY_2026-11-04.json). Nhánh mới dùng tiền tố `claude/`. |
+| Checkout | `F:\Tools\Premiere Voice Sync`, nhánh mặc định `main`. Ngày 13/11 (repo cũ): PR #98 (gỡ Qwen), #99 (dữ liệu dev có thể xóa), #100 (Whisper large-v3-turbo là model duy nhất), #101 (release 2.20.90), #102 (ghi bản cài) đã merge; sau đó là đợt dọn cue-first/nghiên cứu ASR. Repo mới 14/11: #2 (Dependabot, template issue/PR) và #3 (Dependabot nâng `actions/checkout`) đã merge. `main` có thay đổi panel (bỏ hook cue-first) chưa nằm trong bản nào; bản kế 2.20.91 là bản public đầu tiên. |
+| Nhánh cũ | Các nhánh/PR Codex cũ (repo cũ) có tip trong [inventory](maintenance/BRANCH_INVENTORY_2026-11-04.json). Nhánh mới dùng tiền tố `claude/`. |
 | Release trên GitHub | Repo được khởi tạo lại ngày 14/11/2026 bằng một commit snapshot ([lý do](maintenance/REPO_RESTART_2026-11-14.md)) và chưa có release; bản đầu tiên phát hành sau. Trong lịch sử cũ (đã lưu trữ ngoài GitHub, SHA dưới đây không có trong repo này): stable Latest v2.20.25; prerelease v2.20.90 công bố 13/11, tag tại `3e2faff06332ac7ee78c9bb2d7b033689020e049`, ZIP 1.535.356.630 byte, SHA-256 `CE627B55113CAE2B815E37C0EE90E85C6D4F0DA68EAE1B1C45BE650F0E7C86F5` (Whisper large-v3-turbo); trước đó v2.20.89 tại `7e682ae4ce9a281f36bf1bb95f22ef4c76ba6837` (Small) và v2.20.88 tại `0802eb62b39522084cf22ae6c686e7f95139151d`. Mã không kèm license mã nguồn mở (bảo lưu mọi quyền), thành phần bên thứ ba liệt kê ở [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md). |
 | Bản trên máy | 13/11 user duyệt cài 2.20.90 bằng `dist/Install-Verified-2.20.90-20261113.ps1`; panel 2.20.89 sao lưu ở `dist/_install-2.20.90-20261113T092930Z/previous-panel`. Kết quả `verified.json`: 73 file panel đúng hash, 6.317 file dữ liệu người dùng, registry CEP và source không đổi; runtime chỉ có `ggml-large-v3-turbo.bin`, `Assert-PvsRuntimeLock` đạt. Chưa mở Premiere; nghiệm thu native pending. Các bản cài/rollback trước (2.20.89, 2.20.88, script `dist/Restore-Verified-2.20.0-20261103.ps1`) vẫn giữ trong `dist/`, chỉ chạy theo quyết định riêng của user. |
 
@@ -34,6 +34,12 @@ Xem [kiến trúc](ARCHITECTURE.md), [cấu trúc repo](PROJECT_LAYOUT.md) và [
 - 2.20.90: Whisper large-v3-turbo thay Small, là model duy nhất. Replay Nam Cực giữ 254/255 câu SRT (cue 138 chuyển sửa tay); CPU chậm hơn Small khoảng 2 lần. [Ghi chú](releases/notes/ASR_TURBO_2.20.90.md). Native pending.
 - Đã đóng: nghiên cứu cue-first (S0–S10), chọn model ASR, Qwen, sequence kết quả riêng (Q5). Mã, test và báo cáo đã gỡ; lý do và phần còn giá trị ghi ở [bộ nhớ hồi quy](REGRESSION_MEMORY.md). Không đề xuất lại các hướng này.
 - Auto edit tiếp tục sửa trên sequence template đang mở như 2.20.x.
+
+## Việc còn lại (14/11/2026)
+
+- Trước bản 2.20.91 (bản public đầu): gói mới chỉ có link GPL v3 của FFmpeg trong [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md), cần kèm toàn văn license; chạy kiểm phát hành trước khi gắn tag.
+- Ruleset `Protect main` chưa bắt CI xanh; bật sau khi workflow lọc thay đổi ở cấp job, để PR chỉ sửa tài liệu không bị treo.
+- Test để lại các thư mục `.tmp-*-tests` ở root (đã gitignore); chỉ xoá theo danh sách user xác nhận.
 
 ## Bài học còn áp dụng
 
