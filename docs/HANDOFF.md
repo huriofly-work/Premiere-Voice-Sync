@@ -62,7 +62,7 @@ Chạy tại root bằng Windows PowerShell. Máy có Windows PowerShell 5.1 và
 | Syntax và mô phỏng JS | `node --check extension/js/main.js`, `node --check extension/js/security.js`, `node tests/unit/speed-merge-host.js`, `node tools/Build-DiagnosticExecutor.js --check`. |
 | Metadata | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Verify-GitHubDistribution.ps1`. |
 
-Sáu nhóm bỏ qua bởi `-NoWindowsIntegration` gồm `Test-InstallerLifecycle.ps1`, `Test-InstallRollback.ps1`, `Test-PanelRegistry.ps1`, `Test-NotificationShortcut.ps1`, `Test-NativeNotifications.ps1`, `Test-IncidentNotifications.ps1`. CI chỉ chạy trên pull request có đổi code; PR chỉ đổi Markdown/`docs/` (trừ `docs/releases/*.json`) không chạy CI. Native import/playback/timing/marker và hành vi lúc dừng cần kiểm riêng trên Premiere với user.
+Sáu nhóm bỏ qua bởi `-NoWindowsIntegration` gồm `Test-InstallerLifecycle.ps1`, `Test-InstallRollback.ps1`, `Test-PanelRegistry.ps1`, `Test-NotificationShortcut.ps1`, `Test-NativeNotifications.ps1`, `Test-IncidentNotifications.ps1`. CI chạy trên mọi pull request: job `changes` xem PR có đổi code không; PR chỉ đổi Markdown/`docs/` (trừ `docs/releases/*.json`) thì job `regression-tests` được bỏ qua (GitHub tính là đạt). Native import/playback/timing/marker và hành vi lúc dừng cần kiểm riêng trên Premiere với user.
 
 ## Quyết định cần giữ
 

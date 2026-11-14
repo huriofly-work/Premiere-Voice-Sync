@@ -50,8 +50,9 @@ keeps manual markers. Cache keys on SHA-256 of audio+model+executable+argv.
   `tests/manual` hold fixtures and media/Premiere procedures. Six Windows
   integration groups are skipped with `-NoWindowsIntegration`. CI
   (`windows-ci.yml`) runs that plus JS syntax checks and
-  `tools/Verify-GitHubDistribution.ps1`, only on pull requests that change code
-  (Markdown and `docs/` changes skip it, except `docs/releases/*.json`).
+  `tools/Verify-GitHubDistribution.ps1` on every pull request; its `changes` job
+  skips `regression-tests` when only Markdown and `docs/` change (except
+  `docs/releases/*.json`), and a skipped job counts as passed.
 - Every behavioral fix: reproducing regression first, trace all related/fallback
   workflows, add the case to the suite, update REGRESSION_MEMORY, then report what
   automation proved versus what only Premiere can prove.
