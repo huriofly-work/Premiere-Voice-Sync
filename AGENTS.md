@@ -6,8 +6,8 @@
   review passes ran; two passes from one provider are not independent review.
 - Ask the user first, every time: commit, push, open or merge a PR, build or
   publish a release, install, each native Premiere run, UX or safety changes.
-- Work beyond the approved plan is allowed when it serves the task; report what
-  was added and why.
+- Small work outside the approved plan is fine when it serves the task; report
+  what was added and why. Larger additions need approval first.
 
 ## Invariants not visible in the code
 
@@ -55,10 +55,11 @@ linter or typecheck; syntax parsing does not replace them.
 - Before changing engine behavior, read [docs/REGRESSION_MEMORY.md](docs/REGRESSION_MEMORY.md)
   and the tests for that path. Prove new native capabilities first
   ([feasibility policy](docs/DEVELOPMENT_FEASIBILITY_POLICY.md)).
-- Each fix: trace the cause through related and fallback paths, add a reproducing
-  regression, run it and the standard suite, record cause, invariant, test and
-  result in REGRESSION_MEMORY (pending if incomplete). Use a project-local
-  TEMP/TMP if the sandbox blocks temp; never change runtime logic for tests.
+- Each fix: trace the cause through related and fallback paths, write a
+  reproducing regression before the fix, run it and the standard suite, record
+  cause, invariant, test and result in REGRESSION_MEMORY (pending if
+  incomplete). Use a project-local TEMP/TMP if the sandbox blocks temp; never
+  change runtime logic for tests.
 - A selected SRT does not prove retained text: check final captions, including
   splits, supplements, numbers, letter labels and genuine extra speech. Hard cases
   go to manual review per [ASR_ACCEPTANCE_POLICY.md](docs/ASR_ACCEPTANCE_POLICY.md).
