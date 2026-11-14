@@ -36,13 +36,23 @@
       "PowerShell(gh release list:*)",
       "PowerShell(gh issue list:*)",
       "PowerShell(gh repo view:*)",
-      "PowerShell(gh label list:*)"
+      "PowerShell(gh label list:*)",
+      "PowerShell(git branch --list:*)",
+      "Bash(git merge-base:*)",
+      "Bash(node tests/unit/speed-merge-host.js)",
+      "PowerShell(node tests/unit/speed-merge-host.js)"
+    ],
+    "ask": [
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-release.ps1:*)",
+      "PowerShell(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-release.ps1:*)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/setup-engine.ps1:*)",
+      "PowerShell(powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/setup-engine.ps1:*)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-notifications.ps1:*)",
+      "PowerShell(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-notifications.ps1:*)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/install.ps1:*)",
+      "PowerShell(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/install.ps1:*)"
     ],
     "deny": [
-      "PowerShell(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-release.ps1:*)",
-      "PowerShell(powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/setup-engine.ps1:*)",
-      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File installer/build-release.ps1:*)",
-      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/setup-engine.ps1:*)",
       "Bash(git reset --hard:*)",
       "Bash(git stash:*)",
       "Bash(git clean:*)",
