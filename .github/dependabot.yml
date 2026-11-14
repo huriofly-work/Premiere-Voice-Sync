@@ -1,0 +1,11 @@
+# Only GitHub Actions has a dependency manifest here; runtime binaries are
+# hash-pinned in the engine lock files and updated by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    open-pull-requests-limit: 2
