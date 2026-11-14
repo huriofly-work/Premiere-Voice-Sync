@@ -23,7 +23,9 @@ foreach ($required in @(
     'extension\engine\lib\vi-caption-phrases.LICENSE.txt',
     'Release still contains protected payload',
     "Copy-Item -LiteralPath (Join-Path `$projectRoot 'THIRD_PARTY_NOTICES.md') -Destination `$staging -Force",
-    "'THIRD_PARTY_NOTICES.md'"
+    "'THIRD_PARTY_NOTICES.md'",
+    "Copy-Item -LiteralPath (Join-Path `$projectRoot 'licenses\GPL-3.0.txt') -Destination (Join-Path `$staging 'licenses') -Force",
+    "'licenses\GPL-3.0.txt'"
 )) {
     if ($buildSource.IndexOf($required,[StringComparison]::Ordinal) -lt 0) { throw "OPEN_SOURCE_BUILD_INVARIANT_MISSING:$required" }
 }
@@ -45,6 +47,18 @@ foreach ($runtimeFile in @($packageFiles | Where-Object { $_ -like 'extension\en
 }
 foreach ($phrase in @('GPL v3','https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz','MIT','zlib','Apache 2.0')) {
     if ($notices.IndexOf($phrase,[StringComparison]::Ordinal) -lt 0) { throw "THIRD_PARTY_NOTICE_TERM_MISSING:$phrase" }
+}
+
+# FFmpeg is GPL v3: the package must carry the full license text, not only a
+# link. The text is committed (never fetched at build time) and hash-pinned.
+$gplRelative = 'licenses\GPL-3.0.txt'
+$gplSha256 = '3972DC9744F6499F0F9B2DBF76696F2AE7AD8AF9B23DDE66D6AF86C9DFB36986'
+if ($gplRelative -notin $packageFiles) { throw 'GPL_LICENSE_NOT_IN_PACKAGE_ALLOWLIST' }
+$gplPath = Join-Path $projectRoot $gplRelative
+if (-not (Test-Path -LiteralPath $gplPath -PathType Leaf)) { throw 'GPL_LICENSE_MISSING' }
+if ((Get-FileHash -LiteralPath $gplPath -Algorithm SHA256).Hash -ne $gplSha256) { throw 'GPL_LICENSE_HASH_MISMATCH' }
+foreach ($phrase in @('licenses/GPL-3.0.txt',$gplSha256.ToLowerInvariant())) {
+    if ($notices.IndexOf($phrase,[StringComparison]::Ordinal) -lt 0) { throw "GPL_LICENSE_NOTICE_MISSING:$phrase" }
 }
 
 . $releaseCommon

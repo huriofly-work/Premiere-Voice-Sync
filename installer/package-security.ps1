@@ -4,7 +4,7 @@
 function Get-PvsPackageFiles {
     param([string]$Root)
     $files = @(
-        'Setup-Panel.cmd','Remove-Panel.cmd','README.md','HUONG_DAN_SU_DUNG.md','THONG_BAO.md','THIRD_PARTY_NOTICES.md',
+        'Setup-Panel.cmd','Remove-Panel.cmd','README.md','HUONG_DAN_SU_DUNG.md','THONG_BAO.md','THIRD_PARTY_NOTICES.md','licenses\GPL-3.0.txt',
         'scripts\install.ps1','scripts\uninstall.ps1','scripts\package-security.ps1',
         'extension\CSXS\manifest.xml','extension\index.html','extension\css\styles.css',
         'extension\js\main.js','extension\js\security.js','extension\jsx\host.jsx','extension\jsx\diagnostic-executor.jsx',

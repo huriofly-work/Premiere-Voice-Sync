@@ -13,3 +13,4 @@ VERSION text eol=lf
 *.dll binary
 *.bin binary
 *.zip binary
+licenses/*.txt text eol=lf

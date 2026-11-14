@@ -43,6 +43,9 @@ foreach ($command in $commands) {
 }
 # Third-party runtime (FFmpeg GPL v3, whisper.cpp/ggml, SDL2, model) ships with its notices.
 Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD_PARTY_NOTICES.md') -Destination $staging -Force
+# GPL v3 requires its full text to accompany the FFmpeg binary.
+New-Item -ItemType Directory -Path (Join-Path $staging 'licenses') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $projectRoot 'licenses\GPL-3.0.txt') -Destination (Join-Path $staging 'licenses') -Force
 $readme=[IO.File]::ReadAllText((Join-Path $projectRoot 'README.md'),[Text.Encoding]::UTF8)
 $guide=[IO.File]::ReadAllText((Join-Path $projectRoot 'docs\USER_GUIDE.md'),[Text.Encoding]::UTF8)
 # Keep the notification/test handoff readable inside the standalone ZIP.
@@ -83,7 +86,7 @@ $required = @(
     'extension\engine\runtime\bin\ffmpeg.exe', 'extension\engine\runtime\bin\whisper-cli.exe',
     'extension\engine\runtime\models\ggml-large-v3-turbo.bin',
     'scripts\install.ps1', 'scripts\uninstall.ps1',
-    'THIRD_PARTY_NOTICES.md'
+    'THIRD_PARTY_NOTICES.md', 'licenses\GPL-3.0.txt'
 )
 $required += $commands
 foreach ($relative in $required) {

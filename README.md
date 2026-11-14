@@ -116,7 +116,7 @@ Nếu máy đang dùng bản EXE cũ của tool, thiết lập mới kiểm tra 
 
 ZIP giữ nguyên JavaScript giao diện, ExtendScript điều khiển Premiere, PowerShell engine và các thư viện script ở dạng đọc được. Quy trình build không mã hóa, làm rối, đóng gói thành `.pvsbin` hay tạo loader giải mã. Người dùng có thể kiểm tra trực tiếp mã đang được cài trong thư mục extension.
 
-Gói phát hành vẫn không chứa lịch sử Git, file test và công cụ build vì các thành phần đó không cần thiết để extension hoạt động. Gói có kèm `THIRD_PARTY_NOTICES.md` liệt kê nguồn và giấy phép của FFmpeg, whisper.cpp, SDL2, model Whisper và danh sách cụm từ tiếng Việt.
+Gói phát hành vẫn không chứa lịch sử Git, file test và công cụ build vì các thành phần đó không cần thiết để extension hoạt động. Gói có kèm `THIRD_PARTY_NOTICES.md` liệt kê nguồn và giấy phép của FFmpeg, whisper.cpp, SDL2, model Whisper và danh sách cụm từ tiếng Việt, cùng toàn văn giấy phép GPL v3 của FFmpeg trong `licenses/GPL-3.0.txt`.
 
 ### Bản quyền
 
