@@ -104,7 +104,7 @@ Các giá trị nhập đều được kiểm tra kiểu số và miền hợp l
 ### Gói ZIP: Thiết lập panel / Gỡ panel
 
 1. Đóng Adobe Premiere Pro.
-2. Giải nén đầy đủ `Premiere-Voice-Sync-2.20.88-Panel.zip` từ người phát hành (bản chờ kiểm thử; dùng Release 2.20.25 nếu cần bản đã nghiệm thu).
+2. Giải nén đầy đủ `Premiere-Voice-Sync-<phiên bản>-Panel.zip` tải từ trang Releases, sau khi đối chiếu SHA-256 với ghi chú Release.
 3. Mở thư mục vừa giải nén, nhấp đúp **Setup-Panel.cmd** và chờ thông báo hoàn tất.
 4. Mở Premiere Pro, sau đó vào `Window > Extensions (Legacy) > Premiere Voice Sync`.
 
@@ -177,7 +177,7 @@ Bộ test trên kiểm tra mã nguồn, planner, giao diện và vòng đời b�
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\installer\build-release.ps1
 ```
 
-Gói `Premiere-Voice-Sync-2.20.88-Panel.zip` được tạo trong `dist`, chứa một thư mục phiên bản duy nhất, Setup-Panel.cmd, Remove-Panel.cmd và HUONG_DAN_SU_DUNG.md. Có helper EXE nhỏ chỉ cho thông báo Windows và mở panel khi người dùng bấm; mã C# đi kèm. Không chứa EXE installer, test, downloads, VAD, ffprobe, pipeline XML hay code rehearsal cũ. Cache audio và log tự lưu được giữ nguyên. Auto edit mặc định không delay như baseline đã nghiệm thu. Giao diện mới và bản sửa điểm cắt chưa nghiệm thu native; Release stable 2.20.25 vẫn giữ nguyên. Xem [hướng dẫn sử dụng](docs/USER_GUIDE.md) và [đánh giá tăng tốc](docs/PERFORMANCE_REVIEW.md).
+Gói `Premiere-Voice-Sync-<VERSION>-Panel.zip` (theo file `VERSION`) được tạo trong `dist`, chứa một thư mục phiên bản duy nhất, Setup-Panel.cmd, Remove-Panel.cmd và HUONG_DAN_SU_DUNG.md. Có helper EXE nhỏ chỉ cho thông báo Windows và mở panel khi người dùng bấm; mã C# đi kèm. Không chứa EXE installer, test, downloads, VAD, ffprobe, pipeline XML hay code rehearsal cũ. Cache audio và log tự lưu được giữ nguyên. Auto edit mặc định không delay như baseline đã nghiệm thu. Xem [hướng dẫn sử dụng](docs/USER_GUIDE.md) và [đánh giá tăng tốc](docs/PERFORMANCE_REVIEW.md).
 
 `build-release.ps1` sao chép nguyên mã nguồn vận hành vào vùng staging, kiểm tra không còn payload `.pvsbin`, rồi tính checksum và nén ZIP. Công cụ IExpress/Setup.exe đã được loại bỏ. Phát hành một ZIP và công bố SHA-256 trong ghi chú Release; người dùng không cần mang theo file checksum riêng.
 
