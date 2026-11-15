@@ -221,6 +221,12 @@ f=fixture([owned(2)]);stats=apply(f.seq,[{start:9,end:10,reason:"outside"}],[{st
 stats=apply({timebase:254016000000/30},[{start:1,end:2,reason:"api"}],[{start:0,end:4}],"edit");assert.equal(stats.reviewMarkerFailureCount,1);
 assert(main.includes("plan.reviewMarkers = buildReviewMarkers(alignment, plan)"));
 assert(main.includes("result.reviewMarkers = buildReviewMarkers(result, null)"));
+{
+  const messages=[],scope={log:m=>messages.push(m),runWarning(){}};
+  vm.runInNewContext(main.slice(main.indexOf("  function logReviewMarkers("),main.indexOf("  function logReviewMarkers(")+main.slice(main.indexOf("  function logReviewMarkers(")).indexOf("\n  function ",10)),scope);
+  scope.logReviewMarkers({reviewMarkerCount:3,reviewMarkerClipCount:2,reviewMarkerSequenceFallbackCount:1},[],null);
+  assert(messages[0].includes("2 trên clip voice"));assert(messages[0].includes("1 trên thước timeline (dự phòng)"));
+}
 const preservedManual={name:"My review",comments:"User marker",start:{seconds:3}},preservedOther=owned(4,"captions"),preservedOutside=owned(90,"edit");
 f=fixture(Array.from({length:620},(_,i)=>owned(i/10,"edit")).concat([preservedManual,preservedOther,preservedOutside]));
 stats=apply(f.seq,denseMarkers,[{start:0,end:70}],"edit");

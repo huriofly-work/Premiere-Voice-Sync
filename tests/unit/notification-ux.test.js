@@ -21,6 +21,10 @@ for(const stored of [null,"true","false"])assert.equal(fixture(stored).api.exter
 for(const [stored,expected] of [[null,true],["true",true],["false",false]])assert.equal(fixture(null,stored).api.sound(),expected,"Sound defaults on and preserves explicit opt-out");
 const soundSettings=fixture();soundSettings.api.setSound(false);assert.equal(soundSettings.storage.get("pvs.notificationSound"),"false");assert.equal(soundSettings.api.sound(),false);
 const routine=fixture();routine.api.begin("edit");
+const fallback=fixture();fallback.api.begin("edit");
+fallback.api.markers({ownedMarkerSequenceFallbackCount:1,ownedMarkerSequenceFallbacks:[{start:1,end:2,name:"VOICE SYNC - Kiem tra toc do",reason:"Clip source mapping unavailable"}]},[]);
+assert(fallback.controls.log.textContent.includes("1 marker tốc độ/căn voice trên thước timeline (dự phòng)"),"#1 fallback count must be logged");
+assert(fallback.controls.log.textContent.includes("Clip source mapping unavailable"),"#1 fallback reason must be logged");
 routine.api.log("DTW_DIAGNOSTIC warning with PRIVATE_TRANSCRIPT", "warn");
 routine.api.warning("CPU recovered successfully");routine.api.warning("Cleanup file only");
 routine.api.context().startedAt=Date.now()-600000;

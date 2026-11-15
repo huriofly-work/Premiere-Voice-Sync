@@ -1,7 +1,7 @@
 "use strict";
 const assert=require("assert"),fs=require("fs"),path=require("path"),vm=require("vm");
 const host=fs.readFileSync(path.join(__dirname,"../../extension/jsx/host.jsx"),"utf8");
-const start=host.indexOf("    function projectItemKey(trackItem)");
+const start=host.indexOf("    function readSpeedPercent(item)");
 const end=host.indexOf("    function planOwnedClipMarker",start);
 assert(start>0&&end>start);
 const c=vm.createContext({$:{_PVS:{}},timelineMutated:false,clearedClipMarkerCount:0});
@@ -14,7 +14,7 @@ for(const m of [speed,voice,{name:"VOICE SYNC - Da gop hinh",comments:"merged\n"
 for(const m of [{name:speed.name,comments:"My note"},{name:"VOICE SYNC - personal",comments:speed.comments},{name:"My marker",comments:tag},{name:"VOICE SYNC - Kiem tra can voice",comments:"review this"},{name:"VOICE SYNC - old unknown",comments:""}])assert(!c.isOwnedClipMarker(m));
 function item(id,sourceStart,sourceEnd,values){
   const markers={getFirstMarker:()=>values[0]||null,getNextMarker:m=>values[values.indexOf(m)+1]||null,deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker:()=>{throw Error("NO_NEW_MARKER_EXPECTED");}};
-  return {name:id,projectItem:{nodeId:id,getMarkers:()=>markers},start:{seconds:0},end:{seconds:sourceEnd-sourceStart},inPoint:{seconds:sourceStart},outPoint:{seconds:sourceEnd}};
+  return {getSpeed:()=>1,name:id,projectItem:{nodeId:id,getMarkers:()=>markers},start:{seconds:0},end:{seconds:sourceEnd-sourceStart},inPoint:{seconds:sourceStart},outPoint:{seconds:sourceEnd}};
 }
 function marker(spec,seconds){return Object.assign({},spec,{start:{seconds}});}
 const manual=marker({name:speed.name,comments:"My note"},4),unknown=marker({name:"VOICE SYNC - unknown",comments:""},5);
@@ -37,3 +37,23 @@ assert.throws(()=>c.markerCleanupOwners(seq,main,0,"nested",1,[{name:"missing",e
 assert.strictEqual(values.length,5,"Owner mapping preflight cannot delete markers.");
 assert.equal(c.projectItemKey({name:"same",projectItem:{name:"same"}}),"","Display names cannot identify marker owners.");
 console.log("MARKER_OWNERSHIP_OK:new-tag;exact-legacy-signatures;manual-and-unknown-preserved;half-open-source-scope;shared-owner-union;read-only-preparation;durable-identity");
+
+// #5 cleanup uses placement's mapping, never an invented 100% speed.
+{
+  const failures=[];let passed=0;
+  for(const mode of ["unreadable","reverse","remap","scaled"]){try{
+    const voice=item("cleanup-voice",2,6,[]);
+    if(mode==="unreadable")voice.getSpeed=()=>{throw Error("unreadable");};
+    if(mode==="reverse")voice.isSpeedReversed=()=>true;
+    if(mode==="remap")voice.components=[{matchName:"ADBE Time Remapping"}];
+    if(mode==="scaled")voice.getSpeed=()=>110;
+    const voiceClips=[voice];voiceClips.numItems=1;
+    const owners=c.markerCleanupOwners({audioTracks:[{clips:original},{clips:voiceClips}]},main,0,"nested",1,[{name:voice.name,start:0,end:4}]);
+    const entry=owners.find(o=>o.Item===voice),groups={};
+    assert(entry);assert.deepEqual(JSON.parse(JSON.stringify(entry.Ranges)),mode==="scaled"?[{start:2.2,end:6.6000000000000005}]:[],"#5 "+mode+" cleanup range");
+    c.prepareClipMarkerGroup(entry,groups,30);assert.equal(c.$._PVS._markerTools.commit(entry.Group).failures.length,0);
+    passed++;
+  }catch(e){failures.push(mode+": "+e.message);}}
+  console.log("PR37_CLEANUP_CASES:passed="+passed+";failed="+failures.length);
+  if(failures.length)throw Error(failures.join("\n"));
+}
