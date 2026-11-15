@@ -1,5 +1,58 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #28 — Rút gọn ghi chú marker theo số Cue cuối (15/11/2026)
+
+- **Yêu cầu/nguyên nhân.** User chạy thật thấy ghi chú dài, lặp vùng giây và
+  nhãn “Đoạn phân tích” không tương ứng caption nhìn thấy trong Premiere.
+  Panel sinh lý do dài; host thêm số khối nội bộ và khoảng thời gian vào mỗi dòng.
+- **Định dạng mới.** `Cue 4: chữ khác SRT – nghe lại`, hoặc `Cue 20–24:
+  timing ước lượng – kiểm mép`. Lấy `Index` của caption cuối phủ vùng issue;
+  caption-only dùng caption cuối có sẵn, thiếu thì dùng indices cue sẵn có.
+  Không có caption phủ vùng thì bỏ nhãn, viết hoa đầu câu. Không trích nguyên
+  lời người dùng, không thêm khoảng giây hay số khối phân tích. Giữ confidence
+  đến ba chữ số thập phân như trước, bỏ số 0 cuối; giữ số frame/SRT cần thiết.
+  Lý do engine chỉ giữ chi tiết ngắn về La Mã/số hoặc nhãn chữ cái khi có.
+- **Gộp chữ.** Các issue cùng frame vẫn tạo đúng một marker. Bỏ dòng trùng
+  nhãn/lý do dù bounds khác nhau; gộp cùng nhãn nếu dòng <=65 ký tự. Cặp chữ
+  khác SRT + timing ước lượng thành `chữ khác SRT, timing ước lượng – nghe lại`;
+  cặp khác giữ cả hai hành động nếu khác nhau. Dòng dài giữ riêng, không mất lý do.
+- **Invariant.** Giữ nguyên tên marker, ownership tag, vị trí, màu, nhóm frame,
+  scope và reconciliation. Marker định dạng cũ cùng name/tag vẫn được nhận và
+  thay thế. Không đổi clip marker tốc độ, điều kiện sinh issue, caption/engine,
+  quyền DTW/cut/omission hay nhật ký phục hồi. Native postcheck dùng caption
+  phủ vùng; failure trên timeline dựng dở không suy nhãn từ plan chưa hoàn tất.
+  Lỗi gốc vẫn ở report, marker failure chỉ ghi lỗi thao tác và hướng dẫn thử lại.
+  Plan rút gọn chỉ giữ thêm `Index/Start/End` của caption để native postcheck
+  có nhãn; vẫn bỏ Text/proof. Host giữ ES3; executor sinh lại từ nguồn, không sửa tay.
+- **Test trước sửa.** Năm ca mới fail với `SHORT_MARKER_REGRESSION_FAILED`:
+  khối manual có timing + chữ cùng Cue, range Cue 20–24, vùng không caption,
+  dòng trùng khác bounds và thay marker cũ. Log chỉ ở `_local/short-marker-text/`.
+- **Kiểm chứng trước suite dài.** Năm file JS review-markers,
+  marker-reconciliation, marker-ownership, diagnostic-executor và notification-ux
+  đều đạt. Có 12 ca format mới và hai ca native caption phủ/không phủ; kiểm cả
+  caption-only, confidence, chi tiết engine, dòng dài, duplicate sau gộp và parity
+  executor ở ba profile. Entry này được ghi trước khi chạy standard suite.
+  Suite lần đầu dừng ở assertion “number review” cũ trong caption-only-host
+  (nay ghi hoa đầu dòng khi không có Cue); đã cập nhật fixture/assertion theo
+  định dạng thật. Thêm regression plan rút gọn fail trước sửa vì mất nhãn;
+  sau giữ geometry thì đạt cả full/compact x stable/ba profile (8 tổ hợp).
+  Suite lần hai dừng ở assertion `[null,null]` cũ của host-executor-input;
+  đã cập nhật để khóa đúng geometry và không mang Text sang host.
+  Test caption-only-host và host-executor-input đều đạt; tổng bảy file JS liên quan.
+  Standard suite cuối đạt **70 nhóm/130 PS parse**; sáu nhóm Windows integration
+  bỏ qua (InstallerLifecycle, InstallRollback, PanelRegistry, NotificationShortcut,
+  NativeNotifications, IncidentNotifications). Syntax main/security, executor parity
+  và Acorn ES3 cho host/executor/caption-input đều đạt; diff không lỗi whitespace.
+- **Replay local.** Dựng ghi chú bằng host mock từ alignment/plan near-match sẵn có:
+  6 issue vẫn thành 6 marker; bounds issue, vị trí, tên và màu bằng trước sửa.
+  Ba comment trước/sau chỉ ở `_local/short-marker-text/replay-comments.md`, không
+  đưa lời người dùng vào repo. Không chạy lại engine/media/Premiere.
+  Codex viết sửa và một lượt tự rà diff/shared/fallback paths; Claude đọc diff
+  và chạy lại standard suite cùng bảy test JS marker. Chữ marker nay có tiếng
+  Việt có dấu sinh trong host: executor sinh lại đã escape `\uXXXX`, còn
+  `host.jsx` vốn đã có chuỗi tiếng Việt; hiển thị thật vẫn cần kiểm trên
+  Premiere. **Native Premiere pending**.
+
 ## Issue #26 — Khôi phục SRT gần khớp một từ trong khối sửa tay (15/11/2026)
 
 - **Yêu cầu/nguyên nhân.** Sau #22, manual cell vẫn giữ ASR khi chỉ sai một

@@ -10,7 +10,7 @@ vm.runInNewContext(main.replace('  document.addEventListener("DOMContentLoaded",
 const api=context.window.testHostInput,copy=o=>JSON.parse(JSON.stringify(o));
 const fields=[...new Set([...host.matchAll(/\bplan\.([A-Za-z][A-Za-z0-9_]*)/g)].map(m=>m[1]))];
 const source={};fields.forEach(k=>source[k]=k);
-source.captions=[{Text:"canonical SRT"},{Text:"speech"}];source.summary={captionCueCount:2,speedWarningCount:3,diagnostic:"private"};
+source.captions=[{Index:20,Start:1,End:2,Text:"canonical SRT"},{Index:21,Start:2,End:3,Text:"speech"}];source.summary={captionCueCount:2,speedWarningCount:3,diagnostic:"private"};
 source.acousticEditBoundaryProofs=Array.from({length:10000},(_,i)=>({Text:"private words",Start:i,End:i+1,Exact:true}));
 source.manualReviewBlocks=[{captionCells:source.acousticEditBoundaryProofs}];
 source.nativeProgressPath="untrusted external path";
@@ -18,7 +18,8 @@ const before=JSON.stringify(source),compact=copy(api.project(source,"edit"));
 assert.equal(JSON.stringify(source),before,"Projection never changes full evidence/text output.");
 for(const k of fields)if(k!=="nativeProgressPath")assert(k in compact,"A new host field requires explicit projection review: "+k);
 assert(!("nativeProgressPath" in compact),"Only the owned writer may assign progress paths.");
-assert.deepStrictEqual(compact.captions,[null,null]);assert.deepStrictEqual(compact.summary,{captionCueCount:2,speedWarningCount:3});
+assert.deepStrictEqual(compact.captions,[{Index:20,Start:1,End:2},{Index:21,Start:2,End:3}]);assert.deepStrictEqual(compact.summary,{captionCueCount:2,speedWarningCount:3});
+assert(!JSON.stringify(compact.captions).includes("Text"), "Native marker labels need geometry, never narration text.");
 assert(!compact.manualReviewBlocks&&!compact.acousticEditBoundaryProofs);
 assert(JSON.stringify(compact).length<before.length*.02,"Recognition graphs must not cross the native boundary.");
 const captionBody=host.slice(host.indexOf('$._PVS.applyCaptionOnly = function'),host.indexOf('$._PVS._timecodeFromSeconds = function'));

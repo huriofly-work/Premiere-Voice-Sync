@@ -966,7 +966,7 @@ $._PVS._markerTools = (function () {
 }());
 
 // Sequence markers use final timeline seconds and never modify clip media.
-$._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow) {
+$._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions) {
     var stats = { reviewMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     if (issues === undefined) return stats; // Older plans have no review contract.
     var tag = "[PremiereVoiceSync:review-marker:v1:" + workflow + "]";
@@ -979,6 +979,49 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow) {
         return false;
     }
     function failure(message) { stats.reviewMarkerFailures.push(String(message)); stats.reviewMarkerFailureCount++; }
+    function cueLabel(issue, start, end) {
+        var indices = issue.captionIndices ? issue.captionIndices.slice(0) : [], sorted = [], labels = [];
+        if (!indices.length && issue.captionIndex) indices = [issue.captionIndex];
+        if (!indices.length && captions) {
+            for (var c = 0; c < captions.length; c++) if (captions[c] && Number(captions[c].Start) < end && Number(captions[c].End) > start) indices.push(captions[c].Index);
+        }
+        for (var i = 0; i < indices.length; i++) if (isFinite(Number(indices[i])) && Number(indices[i]) > 0) sorted.push(Number(indices[i]));
+        sorted.sort(function (a, b) { return a - b; });
+        for (var n = 0; n < sorted.length; n++) {
+            var first = sorted[n], last = first;
+            while (n + 1 < sorted.length && sorted[n + 1] <= last + 1) last = sorted[++n];
+            labels.push(String(first) + (last > first ? "–" + last : ""));
+        }
+        return labels.length ? "Cue " + labels.join(", ") + ": " : "";
+    }
+    function shortNotes(notes) {
+        var unique = [], lines = [];
+        for (var i = 0; i < notes.length; i++) {
+            var note = notes[i], duplicate = false;
+            for (var u = 0; u < unique.length; u++) if (unique[u].label === note.label && unique[u].reason === note.reason) duplicate = true;
+            if (duplicate) continue;
+            unique.push(note);
+            var merged = false;
+            for (var j = 0; note.label && j < lines.length; j++) {
+                if (lines[j].label !== note.label) continue;
+                var a = lines[j].reason.split(" – "), b = note.reason.split(" – "), combined = "";
+                if (a.length !== 2 || b.length !== 2) continue;
+                if ((a[0] === "timing ước lượng" && b[0] === "chữ khác SRT") || (b[0] === "timing ước lượng" && a[0] === "chữ khác SRT")) {
+                    combined = "chữ khác SRT, timing ước lượng – nghe lại";
+                } else {
+                    combined = a[0] + (a[0] === b[0] ? "" : ", " + b[0]) + " – " + a[1] + (a[1] === b[1] ? "" : ", " + b[1]);
+                }
+                if (combined && (note.label + combined).length <= 65) { lines[j].reason = combined; merged = true; break; }
+            }
+            if (!merged) lines.push({ label: note.label, reason: note.reason });
+        }
+        var result = [];
+        for (var l = 0; l < lines.length; l++) {
+            var text = lines[l].reason;
+            result.push(lines[l].label + (lines[l].label ? text : text.charAt(0).toUpperCase() + text.substring(1)));
+        }
+        return result.join("\n");
+    }
     try {
         if (!isFinite(fps) || fps <= 0 || !ranges || !ranges.length) throw new Error("Review marker scope/frame rate missing.");
         // Preflight all coordinates before touching any marker.
@@ -989,11 +1032,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow) {
             for (var g = 0; g < groups.length; g++) if (groups[g].frame === frame) { group = groups[g]; break; }
             if (!group) { group = { frame: frame, end: end, notes: [], error: false }; groups.push(group); }
             group.end = Math.max(group.end, end);
-            var noteLabel = issue.captionIndex ? "Caption " + issue.captionIndex + (issue.referenceCueIndex ? " (SRT " + issue.referenceCueIndex + ")" : "") + ": " : (issue.cueIndex ? "Đoạn phân tích " + issue.cueIndex + ": " : "");
-            var note = noteLabel + String(issue.reason || "Can kiem tra") + " [" + start.toFixed(3) + " - " + end.toFixed(3) + "s]";
-            var duplicate = false;
-            for (var n = 0; n < group.notes.length; n++) if (group.notes[n] === note) duplicate = true;
-            if (!duplicate) group.notes.push(note);
+            group.notes.push({ label: cueLabel(issue, start, end), reason: String(issue.reason || "cần kiểm tra") });
             if (issue.severity === "error") group.error = true;
         }
         var markers = seq.markers;
@@ -1010,7 +1049,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow) {
             for (; candidate <= last; candidate++) if ($._PVS._markerTools.available(group, candidate / fps)) break;
             if (candidate > last) throw new Error("No free frame inside review interval.");
             $._PVS._markerTools.add(group, { seconds: candidate / fps, name: name,
-                comments: target.notes.join("\n") + "\n" + tag, color: target.error ? 1 : 4 });
+                comments: shortNotes(target.notes) + "\n" + tag, color: target.error ? 1 : 4 });
         }
         var result = $._PVS._markerTools.commit(group);
         stats.reviewMarkerCount = result.count;
@@ -1174,7 +1213,7 @@ $._PVS.executePlan = function (planPath) {
         return true;
     }
     function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, allowTerminalEndFallback) {
-        pendingNativeReview = { start: Number(item.start.seconds), end: Number(item.end.seconds), reason: "Native retime failed: " + label, severity: "error" };
+        pendingNativeReview = { start: Number(item.start.seconds), end: Number(item.end.seconds), reason: "đổi speed lỗi (" + label.replace(" segment ", " ") + ") – kiểm tra trước khi thử lại", severity: "error" };
         var destinationSeconds = desiredFrames / fps;
         var durationTimecode = $._PVS._timecodeFromSeconds(destinationSeconds, fps);
         var savedSourceTicks = Number(item.outPoint.ticks) - Number(item.inPoint.ticks);
@@ -1383,7 +1422,7 @@ $._PVS.executePlan = function (planPath) {
             var delta = new Time();
             delta.ticks = String(Math.round(deltaTicks));
             timelineMutated = true;
-            pendingNativeReview = { start: Number(item.start.seconds), end: Number(item.end.seconds), reason: "Native move failed: " + item.name + "; destination frame=" + destinationFrame, severity: "error" };
+            pendingNativeReview = { start: Number(item.start.seconds), end: Number(item.end.seconds), reason: "dời clip lỗi, đích frame " + destinationFrame + " – kiểm tra trước khi thử lại", severity: "error" };
             noteNative("before", "move");
             item.move(delta);
             noteNative("after", "move");
@@ -1482,7 +1521,7 @@ $._PVS.executePlan = function (planPath) {
         for (var cutKey in cutFrames) if (cutFrames.hasOwnProperty(cutKey)) cuts.push(Number(cutKey));
         cuts.sort(function (a, b) { return a - b; });
         for (var cutIndex = 0; cutIndex < cuts.length; cutIndex++) {
-            pendingNativeReview = {start:cuts[cutIndex]/fps,end:(cuts[cutIndex]+1)/fps,reason:"Linked razor failed at source timeline cut.",severity:"error"};
+            pendingNativeReview = {start:cuts[cutIndex]/fps,end:(cuts[cutIndex]+1)/fps,reason:"cắt V1/A1 lỗi – kiểm tra trước khi thử lại",severity:"error"};
             timelineMutated = true;
             noteNative("before", "razor");
             if (!qeVideoTrack.razor($._PVS._timecodeFromSeconds(cuts[cutIndex] / fps, fps), true, false)) throw new Error("Linked razor failed at frame " + cuts[cutIndex] + ".");
@@ -1522,7 +1561,7 @@ $._PVS.executePlan = function (planPath) {
         for (var omitIndex = omittedPieceFlags.length - 1; omitIndex >= 0; omitIndex--) {
             if (!omittedPieceFlags[omitIndex]) continue;
             var omittedVideoId = String(videoPieces[omitIndex].nodeId), omittedAudioId = String(audioPieces[omitIndex].nodeId);
-            pendingNativeReview = {start:Number(videoPieces[omitIndex].start.seconds),end:Number(videoPieces[omitIndex].end.seconds),reason:"Remove picture/original audio for a verified omitted SRT range.",severity:"error"};
+            pendingNativeReview = {start:Number(videoPieces[omitIndex].start.seconds),end:Number(videoPieces[omitIndex].end.seconds),reason:"bỏ hình/âm gốc lỗi – kiểm tra trước khi thử lại",severity:"error"};
             timelineMutated = true;
             videoPieces[omitIndex].remove(false, false);
             // Some hosts also remove the linked counterpart. Do not reuse a
@@ -1668,7 +1707,7 @@ $._PVS.executePlan = function (planPath) {
         for (var voiceKey in voiceCutFrames) if (voiceCutFrames.hasOwnProperty(voiceKey)) voiceCuts.push(Number(voiceKey));
         voiceCuts.sort(function (a, b) { return a - b; });
         for (var voiceCutIndex = 0; voiceCutIndex < voiceCuts.length; voiceCutIndex++) {
-            pendingNativeReview = {start:voiceCuts[voiceCutIndex]/fps,end:(voiceCuts[voiceCutIndex]+1)/fps,reason:"Voice razor failed at source timeline cut.",severity:"error"};
+            pendingNativeReview = {start:voiceCuts[voiceCutIndex]/fps,end:(voiceCuts[voiceCutIndex]+1)/fps,reason:"cắt voice lỗi – kiểm tra trước khi thử lại",severity:"error"};
             timelineMutated = true;
             noteNative("before", "razor");
             qeVoiceTrack.razor($._PVS._timecodeFromSeconds(voiceCuts[voiceCutIndex] / fps, fps), false, false);
@@ -1855,24 +1894,24 @@ $._PVS.executePlan = function (planPath) {
             var reviewVideo = videoPieces[reviewIndex], reviewAudio = audioPieces[reviewIndex];
             var reviewStart = Math.round(Number(sourceSegments[reviewIndex].NewStart) * fps);
             var reviewEnd = reviewStart + durationFramesOf(reviewVideo);
-            if (Math.abs(frameOf(reviewVideo.start) - reviewStart) > validationToleranceFrames || Math.abs(frameOf(reviewAudio.start) - reviewStart) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "V1/A1 position differs from plan.");
-            if (Math.abs(frameOf(reviewVideo.start) - frameOf(reviewAudio.start)) > validationToleranceFrames || Math.abs(frameOf(reviewVideo.end) - frameOf(reviewAudio.end)) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "V1/A1 boundaries differ.");
+            if (Math.abs(frameOf(reviewVideo.start) - reviewStart) > validationToleranceFrames || Math.abs(frameOf(reviewAudio.start) - reviewStart) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "V1/A1 lệch vị trí kế hoạch – kiểm tra");
+            if (Math.abs(frameOf(reviewVideo.start) - frameOf(reviewAudio.start)) > validationToleranceFrames || Math.abs(frameOf(reviewVideo.end) - frameOf(reviewAudio.end)) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "mép V1/A1 lệch nhau – kiểm tra");
             var reviewLinked = false;
             try {
                 var reviewLinks = reviewVideo.getLinkedItems();
                 for (var reviewLink = 0; reviewLink < reviewLinks.length; reviewLink++) if (String(reviewLinks[reviewLink].nodeId) === String(reviewAudio.nodeId)) reviewLinked = true;
             } catch (ignoreReviewLink) {}
-            if (!reviewLinked) addNativeReview(reviewStart, reviewEnd, "V1/A1 link could not be verified.");
-            if (readSpeedPercent(reviewVideo) === null || readSpeedPercent(reviewAudio) === null) addNativeReview(reviewStart, reviewEnd, "Premiere speed metadata unavailable; check playback.", "review");
+            if (!reviewLinked) addNativeReview(reviewStart, reviewEnd, "chưa xác minh liên kết V1/A1 – kiểm tra");
+            if (readSpeedPercent(reviewVideo) === null || readSpeedPercent(reviewAudio) === null) addNativeReview(reviewStart, reviewEnd, "không đọc được speed – kiểm tra phát", "review");
         }
         for (var reviewVoice = 0; reviewVoice < speechPieces.length; reviewVoice++) {
             var reviewVoiceStart = Math.round(Number(speechPlans[reviewVoice].NewVoiceStart) * fps);
-            if (Math.abs(frameOf(speechPieces[reviewVoice].start) - reviewVoiceStart) > validationToleranceFrames) addNativeReview(reviewVoiceStart, reviewVoiceStart + durationFramesOf(speechPieces[reviewVoice]), "Voice position differs from plan.");
+            if (Math.abs(frameOf(speechPieces[reviewVoice].start) - reviewVoiceStart) > validationToleranceFrames) addNativeReview(reviewVoiceStart, reviewVoiceStart + durationFramesOf(speechPieces[reviewVoice]), "voice lệch vị trí kế hoạch – kiểm tra");
         }
-        for (var reviewGap = 0; reviewGap < videoCoverageGaps.length; reviewGap++) addNativeReview(videoCoverageGaps[reviewGap].previousEndFrame, videoCoverageGaps[reviewGap].nextStartFrame, "Video coverage gap: " + videoCoverageGaps[reviewGap].gapFrames + " frames.");
-        for (var reviewSpeed = 0; reviewSpeed < speedConvergenceFailures.length; reviewSpeed++) addNativeReview(speedConvergenceFailures[reviewSpeed].startFrame, speedConvergenceFailures[reviewSpeed].startFrame + speedConvergenceFailures[reviewSpeed].desiredFrames, "Speed duration did not converge: " + speedConvergenceFailures[reviewSpeed].label);
-        if (finalVideoTailDeltaFrames !== 0 || finalAudioTailDeltaFrames !== 0) addNativeReview(Math.min(finalVideoEndFrame, finalAudioEndFrame, plannedEndFrame) - 1, plannedEndFrame, "Video/audio tail differs from plan: V1=" + finalVideoTailDeltaFrames + ", A1=" + finalAudioTailDeltaFrames + " frames.");
-        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit");
+        for (var reviewGap = 0; reviewGap < videoCoverageGaps.length; reviewGap++) addNativeReview(videoCoverageGaps[reviewGap].previousEndFrame, videoCoverageGaps[reviewGap].nextStartFrame, "hở hình " + videoCoverageGaps[reviewGap].gapFrames + " frame – kiểm tra");
+        for (var reviewSpeed = 0; reviewSpeed < speedConvergenceFailures.length; reviewSpeed++) addNativeReview(speedConvergenceFailures[reviewSpeed].startFrame, speedConvergenceFailures[reviewSpeed].startFrame + speedConvergenceFailures[reviewSpeed].desiredFrames, "độ dài sau speed chưa khớp (" + speedConvergenceFailures[reviewSpeed].label.replace(" segment ", " ") + ") – kiểm tra");
+        if (finalVideoTailDeltaFrames !== 0 || finalAudioTailDeltaFrames !== 0) addNativeReview(Math.min(finalVideoEndFrame, finalAudioEndFrame, plannedEndFrame) - 1, plannedEndFrame, "đuôi hình/tiếng lệch kế hoạch: V1=" + finalVideoTailDeltaFrames + ", A1=" + finalAudioTailDeltaFrames + " frame – kiểm tra");
+        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions);
         var captionFile = new File(plan.captionSrtPath);
         var captionCreated = false;
         var captionTemporaryBinRemoved = false;
@@ -2039,7 +2078,7 @@ $._PVS.executePlan = function (planPath) {
         // location on a partially built timeline. Never guess from a global
         // error, a cancellation, or a changed active sequence.
         if (pendingNativeReview && timelineMutated && workingSequence && app.project.activeSequence && String(app.project.activeSequence.sequenceID) === String(workingSequence.sequenceID)) {
-            pendingNativeReview.reason += "; " + e.message + "; timeline is partially built; inspect before retry.";
+            // Raw error stays in report.error; the marker carries the action.
             reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, [pendingNativeReview], [{start:pendingNativeReview.start,end:pendingNativeReview.end}], "failure");
         }
     } finally {

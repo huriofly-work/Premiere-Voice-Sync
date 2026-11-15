@@ -7,18 +7,96 @@ assert(start > 0 && end > start);
 const ui = vm.createContext({ fixedAlgorithm: { confidence: 0.55 } });
 vm.runInContext(main.slice(start, end), ui);
 const build = (report, plan) => JSON.parse(JSON.stringify(ui.buildReviewMarkers(report, plan)));
+// Issue #28: exercise panel-to-host comments, including legacy ownership.
+{
+  const context = vm.createContext({ $: { _PVS: {} } });
+  vm.runInContext(fs.readFileSync(path.join(root, "extension/jsx/host.jsx"), "utf8"), context);
+  const tag = "[PremiereVoiceSync:review-marker:v1:edit]", failures = [];
+  function comments(issues, initial = []) {
+    const values = initial.slice();
+    const markers = { getFirstMarker: () => values[0] || null, getNextMarker: m => values[values.indexOf(m) + 1] || null,
+      deleteMarker: m => values.splice(values.indexOf(m), 1), createMarker: seconds => {
+        const m = { name: "", comments: "", start: { seconds }, setColorByIndex(c) { this.color = c; }, getColorByIndex() { return this.color; } };
+        values.push(m); return m;
+      } };
+    const stats = context.$._PVS._applyReviewMarkers({ timebase: 254016000000 / 30, markers }, issues, [{ start: 0, end: 30 }], "edit");
+    assert.equal(stats.reviewMarkerFailureCount, 0);
+    assert.equal(values.length, 1);
+    return values[0].comments;
+  }
+  function test(name, fn) { try { fn(); console.log("SHORT_MARKER_PASS: " + name); } catch (e) { failures.push(name + ": " + e.message); } }
+  const block = { cueIndex: 3, cueIndices: [8], captionCells: [{ Text: "ASR variant", ReferenceCueIndices: [] }] };
+  const captions = [{ Index: 4, SourceCueIndex: 3, Start: 1, End: 2, ManualCaptionCellIndex: 0, CaptionTimingQuality: "estimated" },
+    { Index: 5, SourceCueIndex: 3, Start: 2, End: 3, CaptionTimingQuality: "dtw", IndependentSpeechEdges: true }];
+  test("manual timing and text merge on final Cue", () => {
+    const note = comments(build({ autoEditManualReviewBlocks: [block] }, { captions }));
+    assert.equal(note, "Cue 4: chữ khác SRT, timing ước lượng – nghe lại\n" + tag);
+    assert(!/Đoạn phân tích|\[\d.*s\]/.test(note));
+  });
+  test("final caption range Cue 20–24", () => {
+    const p = { captions: Array.from({ length: 5 }, (_, i) => ({ Index: 20 + i, SourceCueIndex: 3, Start: 1 + i, End: 2 + i })) };
+    assert.equal(comments(build({ autoEditManualReviewBlocks: [{ cueIndex: 3, cueIndices: [8] }] }, p)), "Cue 20–24: timing ước lượng – kiểm mép\n" + tag);
+  });
+  test("uncovered issue has no cue label", () => {
+    assert.equal(comments(build({ captionTimingEstimatedRanges: [{ start: 7, end: 8 }] }, null)), "Timing ước lượng – kiểm tra\n" + tag);
+  });
+  test("duplicate comments collapse despite different bounds", () => {
+    assert.equal(comments([{ start: 1, end: 2, captionIndex: 4, reason: "chữ khác SRT – nghe lại" },
+      { start: 1.001, end: 3, captionIndex: 4, reason: "chữ khác SRT – nghe lại" }]), "Cue 4: chữ khác SRT – nghe lại\n" + tag);
+  });
+  test("legacy name and tag remain owned and replaced", () => {
+    const old = { name: "VOICE SYNC - Can kiem tra", comments: "Đoạn phân tích 3: Timing caption ước lượng [1.000 - 2.000s]\n" + tag, start: { seconds: 1 },
+      color: 4, setColorByIndex(c) { this.color = c; }, getColorByIndex() { return this.color; } };
+    assert.equal(comments([{ start: 1, end: 2, captionIndex: 4, reason: "chữ khác SRT – nghe lại" }], [old]), "Cue 4: chữ khác SRT – nghe lại\n" + tag);
+    assert.equal(old.name, "VOICE SYNC - Can kiem tra");
+  });
+  test("caption-only uses final caption indices", () => {
+    assert.equal(comments(build({ reviewCueRanges: [{ Index: 3, Start: 1, End: 2 }],
+      reviewCaptionRanges: [{ Index: 9, SourceCueIndex: 3, Start: 1, End: 2 }], captionTimingReviewCues: [3] }, null)),
+    "Cue 9: timing chưa xác minh – kiểm mép\n" + tag);
+  });
+  test("uncovered issue ignores internal block number", () => {
+    assert.equal(comments([{ start: 7, end: 8, cueIndex: 99, reason: "hở hình 3 frame – kiểm tra" }]), "Hở hình 3 frame – kiểm tra\n" + tag);
+  });
+  test("duplicate still collapses after merge", () => {
+    const issues = build({ autoEditManualReviewBlocks: [block] }, { captions });
+    assert.equal(comments(issues.concat(issues)), "Cue 4: chữ khác SRT, timing ước lượng – nghe lại\n" + tag);
+  });
+  test("long notes stay separate without losing reasons", () => {
+    const reasons = ["SRT chưa khớp, dùng chữ máy nghe – kiểm tra", "chữ máy nghe (ngoài SRT) – kiểm tra"];
+    assert.equal(comments(reasons.map(reason => ({ start: 1, end: 2, captionIndex: 4, reason }))),
+      reasons.map(reason => "Cue 4: " + reason).join("\n") + "\n" + tag);
+  });
+  test("short notes retain both different actions", () => {
+    assert.equal(comments(["timing ước lượng – kiểm tra", "timing ước lượng – kiểm mép"].map(reason => ({ start: 1, end: 2, captionIndex: 4, reason }))),
+      "Cue 4: timing ước lượng – kiểm tra, kiểm mép\n" + tag);
+  });
+  test("confidence keeps existing precision", () => {
+    for (const confidence of [0.4, 0.526]) {
+      assert.equal(build({ cues: [{ Index: 3, Start: 1, End: 2, Confidence: confidence }] }, null)[0].reason,
+        "căn lời kém tin cậy (" + confidence + ") – nghe lại");
+    }
+  });
+  test("essential engine reasons stay short", () => {
+    for (const [reason, detail] of [["Giữ chữ SRT; chỉ khác cách viết cấp độ La Mã/chữ số", "La Mã/số"],
+      ["Giữ nhãn chữ cái SRT đã khớp giữa hai câu lân cận", "nhãn chữ cái"]]) {
+      assert.equal(build({ referenceReviewCues: [{ start: 1, end: 2, reason }] }, null)[0].reason, "chữ SRT khác voice (" + detail + ") – nghe lại");
+    }
+  });
+  assert.deepEqual(failures, [], "SHORT_MARKER_REGRESSION_FAILED\n" + failures.join("\n"));
+}
 const partialReason = "Giữ chữ SRT khớp phần lớn; nhận diện thiếu/khác một vài từ, cần kiểm tra chữ và timing";
 const partialMarkers = build({ referenceReviewCues: [{ start: 1, end: 2, cueIndex: 2, reason: partialReason }],
   referenceSupplementRanges: [{ start: 3, end: 4, referenceCueIndices: [5] }, { start: 6, end: 7, referenceCueIndices: [] }] }, null);
 assert.equal(partialMarkers.length, 2);
-assert(partialMarkers.every(m => m.reason.includes("Đã thêm chữ tự nhận diện")));
+assert(partialMarkers.every(m => m.reason === "chữ máy nghe (ngoài SRT) – kiểm tra"));
 assert(!partialMarkers.some(m => m.reason.includes("cue SRT 5")), "Candidate SRT indices are not a localized content diagnosis.");
 assert(!partialMarkers.some(m => m.reason.includes("ngoài phần SRT đã xác minh")));
 const retainedWithTiming = { referenceReviewCues: [{ start: 1, end: 2, cueIndex: 2, reason: partialReason }],
   captionTimingEstimatedRanges: [{ start: 1, end: 2, reason: "unverified" }] };
 assert.equal(build(retainedWithTiming, null).length, 1, "Retained SRT must not hide an independent timing warning.");
 assert.equal(retainedWithTiming.referenceReviewCues.length, 1, "Keep diagnostic data in the report/log.");
-assert(build({ referenceReviewCues: [{ start: 1, end: 2, reason: "asr-spelling-variant" }] }, null)[0].reason.includes("asr-spelling-variant"));
+assert.equal(build({ referenceReviewCues: [{ start: 1, end: 2, reason: "asr-spelling-variant" }] }, null)[0].reason, "chữ SRT khác voice – nghe lại");
 const plan = { captions: [
   { Index: 1, SourceCueIndex: 7, Start: 1, End: 2, Text: "Không có số." }, { Index: 2, SourceCueIndex: 7, Start: 2, End: 3, Text: "Năm 1979." },
   { Index: 3, SourceCueIndex: 8, Start: 5, End: 6, Text: "Lời tiếp theo." }
@@ -32,10 +110,11 @@ const report = { cues: [{ Index: 7, Confidence: 0.4 }, { Index: 8, Confidence: 1
 const mapped = build(report, plan);
 const recoveryMarkers = build({ autoEditReferenceRecoveredCueIndices: [7] }, Object.assign({}, plan, { captionMappingReviewCues: [] }));
 assert.deepEqual(recoveryMarkers.map(m => [m.start, m.end, m.cueIndex]), [[1, 2, 7], [2, 3, 7]], "Recovered Auto edit SRT reviews follow every final split caption.");
-assert(recoveryMarkers.every(m => m.reason.includes("Đã phục hồi chữ SRT")));
+assert(recoveryMarkers.every(m => m.reason === "đã khôi phục chữ SRT – nghe lại"));
 const manualMarkers = build({ autoEditManualReviewBlocks: [{cueIndex:7,cueIndices:[7,8,9]}] }, Object.assign({}, plan, {captionMappingReviewCues:[]}));
 assert.deepEqual(manualMarkers.map(m => [m.start,m.end,m.cueIndex]), [[1,3,7]], "A block-level timing review must not expand into one marker per split caption.");
-assert(manualMarkers.every(m => m.reason.includes("7, 8, 9") && m.reason.includes("ước lượng")));
+assert(manualMarkers.every(m => m.reason === "timing ước lượng – kiểm mép"));
+assert.deepEqual(manualMarkers[0].captionIndices, [1, 2]);
 assert(main.includes('manualSummary.pendingReferenceCues'), "Completion separates unmatched text from estimated block timing.");
 const denseCaptions=Array.from({length:400},(_,i)=>({Index:i+1,SourceCueIndex:7,Start:10+i/10,End:10+(i+1)/10,Text:"Chữ đã giữ.",ManualCaptionCellIndex:i<390?0:1}));
 const denseBlock={cueIndex:7,cueIndices:[7,8],pendingReferenceCueIndices:[8],retainedReferenceCueIndices:[7],captionCells:[{Text:"Chữ SRT đã giữ.",ReferenceCueIndices:[7]},{Text:"Chữ tự nhận diện cần rà.",ReferenceCueIndices:[]}]};
@@ -43,8 +122,9 @@ const denseReport={cues:[{Index:7,Confidence:0,ManualEditBlock:true}],captionTim
 const densePlan={captions:denseCaptions,segments:[],captionMappingReviewCues:[],manualReviewBlocks:[denseBlock]};
 const denseMarkers=build(denseReport,densePlan);
 assert.deepEqual(denseMarkers.map(m=>[m.start,m.end]),[[10,50],[49,50]],"Four hundred display captions produce one timing region and one localized unmatched-text region.");
-assert(!denseMarkers.some(m=>m.reason.includes("Độ tin cậy")||m.reason.includes("Chưa xác minh mốc DTW")),"Synthetic Confidence=0/no-DTW permissions must not become recognition diagnoses.");
-assert(denseMarkers[1].reason.includes("391–400")&&!denseMarkers[1].reason.includes("Chữ SRT đã giữ"),"Review only the raw-ASR cell, without flagging retained SRT text.");
+assert(!denseMarkers.some(m=>m.reason.includes("kém tin cậy")||m.reason.includes("timing chưa xác minh")),"Synthetic Confidence=0/no-DTW permissions must not become recognition diagnoses.");
+assert.equal(denseMarkers[1].reason, "chữ khác SRT – nghe lại");
+assert.deepEqual(denseMarkers[1].captionIndices, Array.from({length:10},(_,i)=>391+i), "Review only the raw-ASR cell, without flagging retained SRT text.");
 assert.deepEqual(JSON.parse(JSON.stringify(ui.manualReviewSummary(densePlan))),{timingBlocks:1,pendingReferenceCues:1});
 const nearPlan=JSON.parse(JSON.stringify(densePlan));
 nearPlan.manualReviewBlocks[0].captionCells[1]={Text:"Chữ SRT được phục hồi.",ReferenceCueIndices:[8],RecognitionOriginalText:"Chữ ASR cũ.",ReferenceTextRecovery:"near-match-one-word"};
@@ -52,7 +132,7 @@ nearPlan.manualReviewBlocks[0].pendingReferenceCueIndices=[];
 nearPlan.manualReviewBlocks[0].retainedReferenceCueIndices=[7,8];
 const nearMarkers=build(Object.assign({},denseReport,{autoEditManualReviewBlocks:nearPlan.manualReviewBlocks}),nearPlan);
 assert.equal(nearMarkers.length,1,"Near-match recovery removes only text mismatch review.");
-assert(!nearMarkers.some(m=>m.reason.includes("Chữ tự nhận diện chưa khớp SRT")));
+assert(!nearMarkers.some(m=>m.reason.includes("chữ khác SRT")));
 assert(nearMarkers[0].reason.includes("ước lượng"),"Estimated timing review survives text recovery.");
 const timedPlan=JSON.parse(JSON.stringify(densePlan));
 timedPlan.captions.forEach(c=>{c.CaptionTimingQuality="dtw";c.IndependentSpeechEdges=true;});
@@ -64,10 +144,10 @@ assert.equal(build({cues:[{Index:7,Confidence:.2}]},{captions:denseCaptions.slic
 assert.throws(()=>build(denseReport,Object.assign({},densePlan,{captions:denseCaptions.slice(0,390)})),/phần chữ nhận diện/);
 const gapPlan={frameRate:30,sourceGapReviewRanges:[{leftCue:11,rightCue:12,sourceStartFrame:60,sourceEndFrame:90}],visualSegments:[{SourceStartFrame:0,SourceEndFrame:120,NewStartFrame:0,NewEndFrame:90}]};
 assert.deepEqual(build({},gapPlan).map(m=>[m.start,m.end]),[[1.5,2.25]],"Unsplit source gap markers follow final V1 speed, independently of voice/caption mapping.");
-assert(build({},gapPlan)[0].reason.includes("chưa có điểm cắt voice an toàn"));
+assert.equal(build({},gapPlan)[0].reason, "chưa tách khoảng lặng SRT 11–12 – cắt tay");
 assert.throws(()=>build({},Object.assign({},gapPlan,{visualSegments:[]})),/khoảng không lời/);
 assert.equal(mapped.length, 9);
-assert.deepEqual(mapped.filter(m => m.reason.includes("estimated")).map(m => [m.start, m.end]), [[2,3],[5,6]], "Map each retained voice interval; exclude removed silence.");
+assert.deepEqual(mapped.filter(m => m.reason === "timing ước lượng – kiểm tra").map(m => [m.start, m.end]), [[2,3],[5,6]], "Map each retained voice interval; exclude removed silence.");
 assert(mapped.filter(m => m.cueIndex === 7).every(m => m.start < 3), "Use final caption coordinates after DTW/merge.");
 assert.deepEqual(build({ numericCaptionReviewCues: [99] }, Object.assign({},plan,{captionMappingReviewCues:[]})), [], "Numeric refinement failures are diagnostic only.");
 assert.throws(() => build({ captionTimingEstimatedRanges: [{start:null,end:15}] }, plan), /marker/);
@@ -94,10 +174,11 @@ assert.deepEqual(build(longCueReport,null),[],"Do not mark numeric timing in eit
 assert.deepEqual(build({numericCaptionReviewCues:[2],reviewCaptionRanges:[{Index:1,SourceCueIndex:2,Start:1,End:2,Text:"Không có số."}]},null),[]);
 const outro=build({reviewCueRanges:[{Index:3,RecognitionSupplement:true}],reviewCaptionRanges:[{Index:665,SourceCueIndex:3,Start:1117.5,End:1119.5,Text:"Xin cảm ơn các Nhà Khám Phá."},{Index:666,SourceCueIndex:3,Start:1119.5,End:1121,Text:"Đã tham gia hội viên của kênh."}],referenceSupplementRanges:[{start:1116.6,end:1137.5,referenceCueIndices:[288,289,290,292,293,294,295,296]}]},null);
 assert.equal(outro.length,2);assert.equal(outro[0].start,1117.5);assert.equal(outro[0].end,1119.5);assert.equal(outro[0].captionIndex,665);
-assert(outro[0].reason.includes("665")&&outro[0].reason.includes("Xin cảm ơn"));assert(!outro[0].reason.includes("288"));
-assert.equal(outro[1].start,1119.5);assert.equal(outro[1].captionIndex,666);assert(outro[1].reason.includes("hội viên"));
+assert.equal(outro[0].reason, "chữ máy nghe (ngoài SRT) – kiểm tra");assert.deepEqual(outro[0].captionIndices,[665]);
+assert.equal(outro[1].start,1119.5);assert.equal(outro[1].captionIndex,666);assert.deepEqual(outro[1].captionIndices,[666]);
 const longAsr=build({reviewCueRanges:[{Index:1,RecognitionSupplement:true}],reviewCaptionRanges:Array.from({length:49},(_,i)=>({Index:i+1,SourceCueIndex:1,Start:i,End:i+1,Text:i===48?"Bộ náo ở câu cuối.":"Lời nhận diện "+i})),referenceSupplementRanges:[{start:0,end:49}]},null);
-assert.equal(longAsr.length,49);assert.equal(longAsr[48].start,48);assert(longAsr[48].reason.includes("Bộ náo ở câu cuối."),"Every ASR caption has its own full text and exact marker bounds, including beyond 220 characters.");
+assert.equal(longAsr.length,49);assert.equal(longAsr[48].start,48);assert.deepEqual(longAsr[48].captionIndices,[49],"Every ASR caption still has its own label and exact marker bounds, including the last caption.");
+assert.equal(longAsr[48].reason,"chữ máy nghe (ngoài SRT) – kiểm tra");
 assert(main.includes("Không giữ được câu nào từ SRT đã chọn"));
 assert(!main.includes('" · dùng nội dung SRT."'),"Selecting an SRT does not mean its text was retained.");
 const numberContent=build({referenceNumberReviewCues:[{cueIndex:5,expected:"9 phẩy 46 nghìn tỷ",recognized:"9 46 000 tỷ"}],reviewCaptionRanges:[{Index:9,SourceCueIndex:5,Start:14,End:15,Text:"Khoảng cách đó vào khoảng"},{Index:10,SourceCueIndex:5,Start:15,End:18,Text:"9 phẩy 46 nghìn tỷ kilomet."}]},null);
@@ -128,7 +209,7 @@ assert(f.values.includes(manual)&&f.values.includes(other)&&f.values.includes(ou
 assert.equal(manual.comments,"my note");
 let warning=f.values.find(m=>m!==outside&&m.comments.includes(tag("captions")));
 assert(Math.abs(warning.start.seconds-(1+1/30))<1e-8);assert(warning.comments.includes("number")&&warning.comments.includes("DTW"));assert.equal(warning.color,1);
-assert(warning.comments.startsWith("Caption 12 (SRT 9): number"));assert(!warning.comments.includes("Cue 2:"));
+assert(warning.comments.startsWith("Cue 12: number"));assert(!warning.comments.includes("Cue 2:"));
 stats=apply(f.seq,[{start:1,end:3,reason:"number"}], [{start:1,end:4}],"captions");assert.equal(stats.reviewMarkerCount,1);assert.equal(f.values.length,4,"Reruns upsert and do not duplicate.");
 stats=apply(f.seq,[],[{start:1,end:4}],"captions");assert.equal(stats.reviewMarkerFailureCount,0);assert.deepEqual(f.values,[manual,other,outside]);
 f=fixture();stats=apply(f.seq,[{start:1,end:2,reason:"first"},{start:1+1/30,end:2,reason:"second"}], [{start:0,end:3}],"edit");assert.equal(stats.reviewMarkerCount,2);assert.equal(f.values.length,2);

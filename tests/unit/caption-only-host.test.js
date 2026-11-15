@@ -103,9 +103,9 @@ console.log("CAPTION_EXPORT_TIMING_OK:native-clock,host-clock,finalize-clock,thr
 const reviewValues=[];
 seq.markers={getFirstMarker:()=>reviewValues[0]||null,getNextMarker:m=>reviewValues[reviewValues.indexOf(m)+1]||null,deleteMarker:m=>reviewValues.splice(reviewValues.indexOf(m),1),createMarker:seconds=>{const m={start:{seconds},setColorByIndex:c=>{m.color=c;},getColorByIndex:()=>m.color};reviewValues.push(m);return m;}};
 seq.createCaptionTrack=()=>true;
-const reviewResult={ok:true,workflow:"caption-only",schemaVersion:1,sequenceId:"seq1",snapshot:api._captionOnlySnapshot(seq),captionSrtPath:"captions.srt",captionCueCount:5,reviewMarkers:[{start:10,end:11,reason:"number review"}],reviewMarkerRanges:[{start:10,end:12}]};
+const reviewResult={ok:true,workflow:"caption-only",schemaVersion:1,sequenceId:"seq1",snapshot:api._captionOnlySnapshot(seq),captionSrtPath:"captions.srt",captionCueCount:5,reviewMarkers:[{start:10,end:11,reason:"timing chưa xác minh – kiểm mép",captionIndices:[4]}],reviewMarkerRanges:[{start:10,end:12}]};
 files["result.json"].text=JSON.stringify(reviewResult);
-result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerCount,1);assert.equal(reviewValues[0].start.seconds,10);assert(reviewValues[0].comments.includes("number review"));assert.equal(api._captionOnlySnapshot(seq),reviewResult.snapshot);
+result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerCount,1);assert.equal(reviewValues[0].start.seconds,10);assert.equal(reviewValues[0].comments,"Cue 4: timing chưa xác minh – kiểm mép\n[PremiereVoiceSync:review-marker:v1:captions]");assert.equal(api._captionOnlySnapshot(seq),reviewResult.snapshot);
 const panel=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8"),projection=panel.slice(panel.indexOf("  function projectHostInput("),panel.indexOf("  function writeHostInput("));
 const compactResult=vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:reviewResult});
 const fullImport=result;reviewValues.length=0;files["result.json"].text=JSON.stringify(compactResult);
