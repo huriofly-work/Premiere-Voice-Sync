@@ -119,7 +119,7 @@ async function workflow(mode, enabled, language = 'vi') {
     applicationDataRoot=function(){return 'C:\\\\Data';};extensionRoot=function(){return 'C:\\\\Extension';};
     createWorkflowMetrics=function(){return {begin:function(){},end:function(){},finish:function(){}};};
     status=function(){};log=function(){};runStage=function(){};reportRunFailure=function(e){fixture.errors.push(e.message);};
-    removeTreeSafe=function(){};saveRecoveryJournal=function(){};findWavePreset=function(){return 'preset';};captionTrackCount=async function(){return JSON.stringify({count:0});};
+    removeTreeSafe=function(){};retainLastRun=removeTreeSafe;saveRecoveryJournal=function(){};findWavePreset=function(){return 'preset';};captionTrackCount=async function(){return JSON.stringify({count:0});};
     function capture(jobPath){fixture.captured.job=JSON.parse(fs.readFileSync(jobPath,'utf8'));throw new Error('EXPECTED_NATIVE_BOUNDARY');}
     runPowerShell=async function(script,args){capture(args[1]);};exportCaptionAudio=async function(jobPath){capture(jobPath);};
     state.mode='${mode}';state.targetSrt='${files[0].path.replace(/\\/g, "\\\\")}';state.captionSrt=state.targetSrt;state.captionPlan=fixture.plan;

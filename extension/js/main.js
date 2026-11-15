@@ -6,6 +6,7 @@
   var path = nodeRequire("path");
   var childProcess = nodeRequire("child_process");
   var security = window.PvsSecurity;
+  var toolVersion = "2.20.90";
   // Keep proof/text diagnostics in the full engine output. ExtendScript
   // needs geometry, identities and native checks, not the recognition graph.
   function projectHostInput(value, workflow) {
@@ -856,23 +857,80 @@
   function removeTreeSafe(targetPath, allowedRoot) {
     security.removeOwnedTree(fs, path, targetPath, allowedRoot);
   }
+  function jobWorkflow(name) {
+    return /^Job_Subtitle_/.test(name) ? "captions" : /^Job_/.test(name) ? "edit" : "";
+  }
+  function isActiveJob(folder, currentFolder) {
+    var full = path.resolve(folder).toLowerCase();
+    return !!((currentFolder && full === path.resolve(currentFolder).toLowerCase()) ||
+      (runContext && runContext.outputFolder && full === path.resolve(runContext.outputFolder).toLowerCase()));
+  }
+  function listJobFolders(jobsRoot) {
+    if (!fs.existsSync(jobsRoot)) return [];
+    security.assertNoLinks(fs, path, jobsRoot, false);
+    return fs.readdirSync(jobsRoot).filter(function (name) { return !!jobWorkflow(name); }).map(function (name) {
+      var folder = path.join(jobsRoot, name), stat = fs.lstatSync(folder);
+      if (stat.isSymbolicLink() || !stat.isDirectory()) return null;
+      var marker = path.join(folder, "last-run.json"), kept = fs.existsSync(marker), finishedAt = stat.mtime.getTime();
+      if (kept) {
+        try {
+          security.assertNoLinks(fs, path, marker, false);
+          var record = JSON.parse(fs.readFileSync(marker, "utf8"));
+          if (record.workflow === jobWorkflow(name) && isFinite(Date.parse(record.finishedAt))) finishedAt = Date.parse(record.finishedAt);
+        } catch (ignoreInvalidLastRun) { /* A damaged marker still protects the most recent diagnostic folder by mtime. */ }
+      }
+      return { folder: folder, workflow: jobWorkflow(name), stat: stat, kept: kept, finishedAt: finishedAt,
+        audioRecoveryPath: path.join(folder, "job.json.audio-recovery.json") };
+    }).filter(function (item) { return !!item; });
+  }
+  function cleanupPreviousJobs(jobsRoot, workflow, currentFolder) {
+    try {
+      listJobFolders(jobsRoot).forEach(function (item) {
+        if (item.workflow !== workflow || !item.kept || isActiveJob(item.folder, currentFolder) || fs.existsSync(item.audioRecoveryPath)) return;
+        try { removeTreeSafe(item.folder, jobsRoot); }
+        catch (error) { log("Không xóa được dữ liệu lượt trước: " + error.message, "warn"); }
+      });
+    } catch (error) { log("Không dọn được dữ liệu lượt trước: " + error.message, "warn"); }
+  }
+  function retainLastRun(outputFolder, jobsRoot, workflow, outcome) {
+    // Only a direct, owned Job_* child may be written or trimmed. Check the entire
+    // tree before the first write/delete so a nested junction cannot be traversed.
+    if (path.dirname(path.resolve(outputFolder)).toLowerCase() !== path.resolve(jobsRoot).toLowerCase() || jobWorkflow(path.basename(outputFolder)) !== workflow) throw new Error("SECURITY_DELETE_OUTSIDE_ROOT");
+    security.assertNoLinks(fs, path, outputFolder, true);
+    fs.writeFileSync(path.join(outputFolder, "last-run.json"), JSON.stringify({ workflow: workflow, outcome: outcome,
+      finishedAt: new Date().toISOString(), toolVersion: toolVersion }, null, 2), { encoding: "utf8", flag: "wx" });
+    log("Đã giữ dữ liệu lượt chạy để hỗ trợ tìm lỗi: " + outputFolder, "muted");
+    // Pending export recovery keeps ALL its files, including audio, until restored.
+    if (fs.existsSync(path.join(outputFolder, "job.json.audio-recovery.json"))) return;
+    function trimAudio(folder) {
+      security.assertNoLinks(fs, path, folder, false);
+      fs.readdirSync(folder).forEach(function (name) {
+        var item = path.join(folder, name);
+        if (fs.lstatSync(item).isDirectory()) trimAudio(item);
+        // The panel/engine write exported/converted WAV and PCM intermediates.
+        // Keep every other artifact, including JSON/SRT/plans/logs.
+        else if (/\.(wav|pcm)$/i.test(name)) removeTreeSafe(item, outputFolder);
+      });
+    }
+    trimAudio(outputFolder);
+  }
   function cleanupStaleJobs() {
     var jobsRoot = path.join(applicationDataRoot(), "Jobs");
     if (!fs.existsSync(jobsRoot)) return 0;
-    security.assertNoLinks(fs, path, jobsRoot, false);
+    var jobs = listJobFolders(jobsRoot), newest = {};
+    jobs.forEach(function (item) {
+      var previous = newest[item.workflow];
+      if (item.kept && (!previous || item.finishedAt > previous.finishedAt || (item.finishedAt === previous.finishedAt && item.folder > previous.folder))) newest[item.workflow] = item;
+    });
     var cutoff = Date.now() - (24 * 60 * 60 * 1000);
     var removed = 0;
-    fs.readdirSync(jobsRoot).forEach(function (name) {
-      var item = path.join(jobsRoot, name);
-      var stat = fs.lstatSync(item);
-      if (!/^Job_/.test(name) || stat.isSymbolicLink() || !stat.isDirectory()) return;
-      var audioRecoveryPath = path.join(item, "job.json.audio-recovery.json");
-      if (fs.existsSync(audioRecoveryPath)) {
-        if (!recoveryContext) { recoveryContext = { workflow: "captions", restored: true, impact: "unknown", audioRecoveryPath: audioRecoveryPath }; saveRecoveryJournal(); }
+    jobs.forEach(function (item) {
+      if (fs.existsSync(item.audioRecoveryPath)) {
+        if (!recoveryContext) { recoveryContext = { workflow: "captions", restored: true, impact: "unknown", audioRecoveryPath: item.audioRecoveryPath }; saveRecoveryJournal(); }
         return;
       }
-      if (stat.mtime.getTime() >= cutoff) return;
-      removeTreeSafe(item, jobsRoot);
+      if (isActiveJob(item.folder) || newest[item.workflow] === item || item.stat.mtime.getTime() >= cutoff) return;
+      removeTreeSafe(item.folder, jobsRoot);
       removed++;
     });
     if (fs.existsSync(jobsRoot) && fs.readdirSync(jobsRoot).length === 0) fs.rmdirSync(jobsRoot);
@@ -946,7 +1004,7 @@
       var token = String(startedAt) + "_" + nodeRequire("crypto").randomBytes(12).toString("hex");
       file = path.join(root, "Workflow_" + timestamp() + "_" + token + ".jsonl");
       security.assertNoLinks(fs, path, file, false);
-      fs.writeFileSync(file, JSON.stringify({ type: "start", schemaVersion: 1, toolVersion: "2.20.90", workflow: workflow, createdAt: new Date(startedAt).toISOString() }) + "\n", { encoding: "utf8", flag: "wx" });
+      fs.writeFileSync(file, JSON.stringify({ type: "start", schemaVersion: 1, toolVersion: toolVersion, workflow: workflow, createdAt: new Date(startedAt).toISOString() }) + "\n", { encoding: "utf8", flag: "wx" });
       log("Nhật ký hiệu năng tự lưu (không có lời nói/đường dẫn media): " + file, "muted");
     } catch (ignoreMetricsCreate) { unavailable(); }
     return {
@@ -1714,6 +1772,7 @@
       security.assertNoLinks(fs, path, outputFolder, false);
       fs.mkdirSync(outputFolder, { recursive: true });
       runContext.outputFolder = outputFolder;
+      cleanupPreviousJobs(jobsRoot, "edit", outputFolder);
       var jobPath = path.join(outputFolder, "job.json");
       var targetReferencePath = joinedReference ? srtJoin.write(joinedReference, outputFolder) : state.targetSrt;
       if (joinedReference) log("Đã nối " + joinedReference.files.length + " SRT thành " + joinedReference.cueCount + " cue theo thứ tự đã chọn.", "ok");
@@ -1902,18 +1961,16 @@
       if (enhanced && error.message.indexOf("TRIAL_VOICE_MEDIA_IN_NONZERO") >= 0) failureMessage = "DTW chưa hỗ trợ voice đã trim phần đầu media. Hãy dùng template có đầu voice nguyên vẹn; speed voice vẫn được giữ. Timeline chưa được tool chỉnh.\n\n" + failureMessage;
       if (!error.pvsCancelled) reportRunFailure(inputError(failureMessage, error.pvsInputField), "Dựng theo voice — Không hoàn tất");
     } finally {
+      if (runContext && runContext.fatal) outcome = "failed";
       if (outputFolder) {
         runStage("cleanup");
         if (metrics) metrics.begin("cleanup");
         try {
-          removeTreeSafe(outputFolder, jobsRoot);
-          log("Đã xóa toàn bộ file tạm của lần chạy.", "ok");
-          if (fs.existsSync(jobsRoot) && fs.readdirSync(jobsRoot).length === 0) fs.rmdirSync(jobsRoot);
+          retainLastRun(outputFolder, jobsRoot, "edit", outcome);
           if (metrics) metrics.end();
         } catch (cleanupError) {
           if (metrics) metrics.end(null, "failed");
-          log("Không dọn hết file tạm: " + cleanupError.message, "error");
-          runWarning("Không dọn hết file tạm. Xem nhật ký; không cần dựng lại chỉ để dọn file.");
+          log("Không thu gọn hết dữ liệu lượt chạy: " + cleanupError.message, "warn");
           appendCleanupNotice(cleanupError);
         }
       }
@@ -2169,6 +2226,7 @@
       security.assertNoLinks(fs, path, outputFolder, false);
       fs.mkdirSync(outputFolder, { recursive: true });
       runContext.outputFolder = outputFolder;
+      cleanupPreviousJobs(jobsRoot, "captions", outputFolder);
       var sources = inputPlan.ranges.map(function (item, index) { return { start: item.start, end: item.end, path: path.join(outputFolder, "timeline-" + String(index) + ".wav") }; });
       var jobPath = path.join(outputFolder, "job.json");
       var captionReferencePath = joinedReference ? srtJoin.write(joinedReference, outputFolder) : state.captionSrt;
@@ -2266,19 +2324,21 @@
       var failure = error.message + (captionCreated ? " Caption Track có thể đã được thêm; hãy kiểm tra trước khi chạy lại." : "");
       if (!error.pvsCancelled) reportRunFailure(inputError(failure, error.pvsInputField), "Tạo phụ đề — Không hoàn tất");
     } finally {
+      if (runContext && runContext.fatal) outcome = "failed";
       if (outputFolder) {
         runStage("cleanup");
         if (metrics) metrics.begin("cleanup");
         try {
-          if (runContext && runContext.audioRecoveryPath && fs.existsSync(runContext.audioRecoveryPath)) throw new Error("Giữ lại nhật ký khôi phục audio và thư mục job để kiểm tra trạng thái timeline.");
-          removeTreeSafe(outputFolder, jobsRoot);
-          if (fs.existsSync(jobsRoot) && fs.readdirSync(jobsRoot).length === 0) fs.rmdirSync(jobsRoot);
-          log("Đã dọn file tạm của tác vụ subtitle.", "ok");
+          retainLastRun(outputFolder, jobsRoot, "captions", outcome);
+          // Keep the earlier hint on a failed run: the timeline export state
+          // still needs checking while the audio recovery journal exists.
+          if (runContext && runContext.audioRecoveryPath && fs.existsSync(runContext.audioRecoveryPath)) {
+            appendCleanupNotice(new Error("Giữ lại nhật ký khôi phục audio và thư mục job để kiểm tra trạng thái timeline."));
+          }
           if (metrics) metrics.end();
         } catch (cleanupError) {
           if (metrics) metrics.end(null, "failed");
-          log("Không dọn hết file tạm: " + cleanupError.message, "error");
-          runWarning("Không dọn hết file tạm. Xem nhật ký; caption đã tạo không cần tạo lại vì lỗi dọn file.");
+          log("Không thu gọn hết dữ liệu lượt chạy: " + cleanupError.message, "warn");
           appendCleanupNotice(cleanupError);
         }
       }

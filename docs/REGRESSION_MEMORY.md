@@ -1,5 +1,52 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #32 — Giữ dữ liệu lượt chạy gần nhất cho từng workflow (15/11/2026)
+
+- **Nguyên nhân.** `finally` của Auto edit và caption-only xóa job cả khi
+  thành công/lỗi/hủy, làm mất JSON/SRT/plan cần tìm nguyên nhân; stale cleanup
+  cũng chưa phân biệt job chẩn đoán cần giữ với job sót quá 24 giờ.
+- **Sửa.** Mỗi workflow giữ job cuối cùng với `last-run.json`: workflow
+  `edit`/`captions`, outcome `success`/`failed`/`cancelled`, `finishedAt` ISO và
+  `toolVersion`. Khi đã tạo job mới, chỉ xóa các job có dấu `last-run.json`
+  cùng workflow. Stale cleanup vẫn dọn job khác quá 24 giờ, luôn giữ job có dấu
+  mới nhất của mỗi workflow (theo finishedAt, fallback mtime nếu dấu hỏng).
+  Lỗi dọn/trim chỉ ghi cảnh báo, không đổi kết quả workflow. Không thêm UI.
+- **Thu gọn.** Chỉ WAV/PCM trong job và thư mục con qua `removeTreeSafe` →
+  `security.removeOwnedTree`; giữ text/JSON/SRT/plan/log. Caption tạo
+  `timeline-*.wav`, `recognition-*.wav`, các cửa sổ `reference-*`,
+  `dtw-caption-*`, `numeric-caption-*`, `*-edge.wav`, `*-timing-*.wav`.
+  Auto edit nhận diện bằng WAV dưới TEMP/PremiereVoiceSync/job-* và tự dọn
+  ở engine `finally`; phần này không đổi, không mở rộng xóa ngoài Jobs.
+- **Invariant/recovery.** Vẫn từ chối junction/symlink bằng `assertNoLinks`
+  và safe deletion; không chạm workflow kia, job đang chạy hoặc media gốc.
+  Job còn `job.json.audio-recovery.json` không bị xóa hay trim bất kỳ file nào.
+  Host dùng journal để khôi phục mute/enable/In/Out, kiểm snapshot rồi mới
+  xóa journal; scan vẫn phát hiện từng journal và giữ khóa `pvs.recovery.v1`.
+  `last-run.json` không tham gia recovery. Auto edit dùng baseline snapshot;
+  hướng dẫn Undo/đóng không lưu không đọc dữ liệu job. Không đổi Save/Undo,
+  native recovery hoặc điều kiện mở khóa. Lượt dừng trước khi tạo job giữ
+  dữ liệu lần trước; journal pending có thể khiến có hơn một job được giữ.
+- **Test trước sửa.** `last-run-data.test.js`: **0/13 đạt**, gồm ENOENT do
+  Jobs/job đã bị xóa, `previous kept job must be removed`, stale `6 == 3`,
+  thiếu `last-run.json`; log gốc ở `_local/last-run-data/red-tests.log`.
+- **Test sau sửa.** **13/13 đạt** trên filesystem tạm riêng: success/failed/
+  cancelled ở hai workflow; thay đúng workflow; journal; stale 24 giờ/newest;
+  active/current; trim lỗi; junction khi trim/prune/stale và sentinel ngoài job.
+  Mock Auto edit, workflow notice/cancel, SRT join, caption recovery và metrics
+  đều đạt. Các mock luồng cũ stub tại ranh giới retention thay vì giả xóa job;
+  test mới kiểm filesystem và safe helpers thật. Entry được ghi **trước khi
+  chạy standard suite**.
+- **Kết quả cuối.** Standard suite đạt **71 nhóm/131 PS parse** ngay lần đầu;
+  test mới **13/13**, security Node **15**/PowerShell **14** checks. Sáu nhóm
+  Windows integration bỏ qua: InstallerLifecycle, InstallRollback, PanelRegistry,
+  NotificationShortcut, NativeNotifications, IncidentNotifications. Syntax
+  `main.js`/`security.js`, executor parity và `git diff --check` đều đạt.
+  Codex viết sửa và tự rà; Claude đọc diff và chạy lại standard suite. Khi
+  review, Claude khôi phục dòng nhắc "Giữ lại nhật ký khôi phục audio…" trong
+  thông báo lỗi của Chỉ tạo subtitle khi journal còn (bản đầu bỏ mất dòng này).
+- **Nghiệm thu.** **Native Premiere pending**. Không chạy Premiere, cài,
+  build release, commit hay push; không sửa dữ liệu AppData/runtime/dist.
+
 ## Issue #30 — Khôi phục marker tốc độ ngoài ngưỡng cho cue-picture (15/11/2026)
 
 - **Yêu cầu/nguyên nhân.** User chủ động đảo chính sách marker tốc độ của

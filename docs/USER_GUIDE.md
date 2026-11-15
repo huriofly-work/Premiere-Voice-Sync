@@ -1,5 +1,16 @@
 # Hướng dẫn Premiere Voice Sync 2.20.90
 
+## Khi báo lỗi
+
+Dữ liệu lượt chạy gần nhất nằm ở `%LOCALAPPDATA%\PremiereVoiceSync\Jobs`:
+thư mục `Job_…` mới nhất cho Dựng theo voice (không tính `Job_Subtitle_…`),
+và `Job_Subtitle_…` mới nhất cho Chỉ tạo subtitle. Mỗi thư mục có
+`last-run.json` ghi kết quả, thời điểm và phiên bản tool; dữ liệu được giữ cả
+khi lỗi hoặc hủy, rồi thay thế ở lượt chạy tiếp theo của cùng chức năng.
+Job còn nhật ký khôi phục audio được bảo vệ riêng. WAV/PCM tạm thường được
+dọn để tiết kiệm dung lượng. Dữ liệu có thể chứa nội dung kịch bản và đường
+dẫn đã có trong job; hãy đọc lại và chỉ chia sẻ với người bạn tin tưởng.
+
 **Quyết định 15/11/2026 (issue #26):** trong khối sửa tay của Dựng theo voice,
 cell từ 4 từ có thể giữ chữ SRT khi chỉ khác đúng một từ gần nhau về chữ/dấu, bằng số
 từ, không khác số và chỉ có một ứng viên cue/chuỗi cue liên tiếp chưa dùng

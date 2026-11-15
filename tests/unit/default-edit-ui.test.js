@@ -26,7 +26,7 @@ async function scenario(options={}){
     runPowerShell=async function(file,args){fixture.calls.push(["script",file,args]);if(${!!options.invalidInput} && args.includes("-ValidateOnly"))throw Error("TRIAL_VOICE_MEDIA_IN_NONZERO");};
     executeStagedPlan=async function(p,pause,fast,workflow,metrics,noDelay){fixture.calls.push(["staged",p,pause,fast,workflow,noDelay]);return {ok:true,executorVersion:25,clearedClipMarkerCount:1,mergeClipMarkerCount:1};};
     evalHost=async function(){throw Error("DIRECT_SINGLE_CALL_EXECUTOR_FORBIDDEN");};
-    removeTreeSafe=function(){fixture.calls.push(["cleanup"]);};status=log=renderBackend=function(){};
+    removeTreeSafe=function(){fixture.calls.push(["cleanup"]);};retainLastRun=removeTreeSafe;status=log=renderBackend=function(){};
     state.targetSrt="C:\\\\fixture.srt";window.testApi={runSync,runPerformanceTrial,runFastPerformanceTrial,choose:chooseWorkflowNotice,pending:function(){return !!state.noticeChoice;},busy:function(){return state.workflowBusy;}};
   `;
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',inject),context);
