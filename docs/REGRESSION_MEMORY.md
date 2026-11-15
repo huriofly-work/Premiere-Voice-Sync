@@ -1,5 +1,16 @@
 # Bộ nhớ hồi quy của project
 
+## Nghiệm thu native 2.20.91 (15/11/2026)
+
+User cài 2.20.91 (gói SHA-256 `2C9F66FB…71CEDE`) và chạy lại Dựng theo voice
+trên project thật đã báo 21 lỗi, Premiere 26.2.2: **chưa phát hiện lỗi**. Thư mục
+job giữ lại (#33) cho thấy 83 caption, 6 marker review đều trên clip voice (0 về
+thước timeline, 0 lỗi), 20 marker tốc độ V1, 0 lỗi marker clip; khớp số replay.
+Đây là bằng chứng native cho #23, #25, #27, #29, #31, #33, #37 trên **một** project;
+các entry bên dưới ghi "Native Premiere pending" được hiểu là đã có lượt chạy này.
+Chưa đo: nest V1, speed khác 110%, reverse, time remap, caption-only native.
+User nâng 2.20.91 lên stable/Latest cùng ngày.
+
 ## Issue #36 — Marker review đi theo clip voice, đúng giờ nguồn khi đổi speed (15/11/2026)
 
 - **PR #37, sửa review (15/11/2026).** Test failing-first xác nhận: V1/A2 mất

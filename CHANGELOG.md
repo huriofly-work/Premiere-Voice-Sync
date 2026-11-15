@@ -14,7 +14,7 @@ Bản public đầu tiên sau khi khởi tạo lại repo (prerelease). Gồm c�
 - Giữ thư mục job của lượt chạy gần nhất mỗi chức năng để báo lỗi, bỏ file âm thanh tạm; khôi phục sau lỗi không đổi (#33).
 - Marker kiểm tra gắn vào clip voice A2, phủ đúng đoạn cảnh báo và đi theo clip khi kéo/cắt; chỗ không gắn được vẫn đặt trên thước timeline. Marker tốc độ V1 và marker voice A2 đặt đúng khi tốc độ khác 100% (trước đây có thể ra ngoài clip). Dựa trên phép thử native trên Premiere 26.2.2 (#35, #37).
 - Codex chỉ dùng khi user yêu cầu (#21). Mã nguồn FFmpeg không đính kèm Release; dùng link trong `THIRD_PARTY_NOTICES.md` (quyết định của user ngày 15/11).
-- Chưa kiểm toàn bộ quy trình trên Premiere thật.
+- Nghiệm thu: user cài và chạy lại project thật trên Premiere 26.2.2 ngày 15/11, chưa thấy lỗi (6 marker kiểm tra trên clip voice, 20 marker tốc độ, 0 lỗi marker); 2.20.91 được nâng lên stable/Latest theo quyết định của user.
 
 ### Dọn các hướng đã đóng, 2026-11-13
 

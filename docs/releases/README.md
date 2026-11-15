@@ -1,7 +1,7 @@
 # Phát hành và ghi chú phiên bản
 
 Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_RESTART_2026-11-14.md));
-bản public đầu tiên là prerelease 2.20.91, còn chờ nghiệm thu Premiere. Trong lịch
+bản public đầu tiên là 2.20.91 (stable, user chạy thật ngày 15/11/2026). Trong lịch
 sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
 2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 

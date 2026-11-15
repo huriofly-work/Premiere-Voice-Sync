@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "version": "2.20.91",
   "tag": "v2.20.91",
-  "channel": "prerelease",
-  "nativeAcceptance": "pending-user-test",
+  "channel": "stable",
+  "nativeAcceptance": "accepted",
   "package": {
     "sha256": "2C9F66FBFAB9864BA6757A53C254387C13B396CD7006279495BA0F80FA71CEDE",
     "bytes": 1535368451,
@@ -56,16 +56,38 @@
     37
   ],
   "installation": {
-    "status": "pending-manual-close-of-Premiere",
+    "status": "installed-and-verified",
+    "installedAt": "2026-11-15",
+    "installedFiles": 66,
+    "userDataFilesUnchanged": 6252,
+    "registryWritesSkipped": true,
     "projectActionsPerformed": false,
     "forcedApplicationClose": false
   },
   "knownLimitations": [
-    "The full workflow is not verified in Premiere: caption text and timing, voice-clip review markers, speed markers and the kept job folder are pending the user's rerun.",
+    "Acceptance rests on one real project; other templates, frame rates and speeds are not yet checked.",
     "Voice-clip markers live on the voice media and show in every sequence that uses the same file.",
     "Clip-marker visibility on a nested V1 clip, speeds other than 110%, reverse speed and time remapping are not measured natively; unmappable cases fall back to sequence markers.",
     "Two of the reported cues still show ASR text by design: a proper noun split into two words, and one cell spanning two cues with two differing words.",
     "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
     "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
-  ]
+  ],
+  "acceptance": {
+    "date": "2026-11-15",
+    "by": "user",
+    "premiere": "26.2.2",
+    "basis": "User installed 2.20.91 and reran the reported real project with Auto edit; reported no issues found. One project only.",
+    "runEvidence": {
+      "captionCueCount": 83,
+      "voiceCueCount": 49,
+      "pictureCueCount": 64,
+      "reviewMarkerClipCount": 6,
+      "reviewMarkerSequenceFallbackCount": 0,
+      "reviewMarkerFailureCount": 0,
+      "speedWarningSentenceCount": 20,
+      "clipMarkerFailureCount": 0,
+      "lastRunFolderKept": true
+    },
+    "promotion": "Published as a prerelease, promoted to stable/Latest on the user's request the same day."
+  }
 }
