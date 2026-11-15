@@ -2,7 +2,7 @@
 
 ## Roles and approvals
 
-- Claude Code develops; Codex is only an optional second reviewer. Report which
+- Use Codex (review or coding) only when the user asks for it. Report which
   review passes ran; two passes from one provider are not independent review.
 - Ask the user first, every time: commit, push, open or merge a PR, build or
   publish a release, install, each native Premiere run, UX or safety changes.
