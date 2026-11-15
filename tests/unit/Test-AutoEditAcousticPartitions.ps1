@@ -9,6 +9,21 @@ $root=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . "$root\extension\engine\lib\DtwEditTrial.ps1"
 function Check([bool]$Value,[string]$Message){if(-not $Value){throw "ACOUSTIC_PARTITION_TEST_FAILED:$Message"}}
 function Copy-Json($Value){$copy=ConvertFrom-Json (ConvertTo-Json -InputObject $Value -Depth 30);foreach($item in $copy){$item}}
+# Issue #26: assigning reference indices must not create caption-derived cut
+# evidence, even if a later independent timing pass refines the display cell.
+& {
+    $references=@([pscustomobject]@{Index=1;Text='Chú ếch canh chừng đàn con.';Start=0;End=3})
+    $cell=[pscustomobject]@{Text='Chú ếch canh trừng đàn con.';Start=0.1;End=2.9;ReferenceCueIndices=@()}
+    $block=[pscustomobject]@{Index=1;Chapter=0;Text=$cell.Text;Start=0;End=3;ManualEditBlock=$true;ManualReferenceCueIndices=@(1);ManualCaptionCues=@($cell)}
+    $voice=@([pscustomobject]@{start=0;end=3;inPoint=0})
+    Restore-PvsManualReferenceCell $cell $references @() -BlockStart 0 -BlockEnd 3|Out-Null
+    $tokens=@(ConvertTo-NormalizedWords $cell.Text)
+    $measured=@(for($i=0;$i -lt $tokens.Count;$i++){[pscustomobject]@{Text=$tokens[$i];Start=0.3+$i*0.3;End=0.5+$i*0.3;Chapter=0;SubtitleTimingQuality='dtw'}})
+    Set-PvsManualAcousticCaptionTimings @($block) $measured $voice|Out-Null
+    Check (Test-PvsManualAcousticCell $cell $voice[0]) 'near-match-independent-caption-DTW-still-valid'
+    Check (@(Get-PvsReferenceCueEvidence $references @() @($block) $voice).Count -eq 0) 'near-match-indices-must-not-add-cut-evidence'
+    Check (@(Get-PvsReferenceCueEvidence $references $measured @($block) $voice).Count -eq 1) 'independent-raw-cut-evidence-remains-available'
+}
 $refs=@();$words=@();$cells=@();$quiet=@()
 for($i=0;$i -lt 4;$i++){
     $tokens=@(0..5|ForEach-Object {"word$($i)token$_"})

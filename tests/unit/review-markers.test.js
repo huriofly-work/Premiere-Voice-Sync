@@ -46,6 +46,14 @@ assert.deepEqual(denseMarkers.map(m=>[m.start,m.end]),[[10,50],[49,50]],"Four hu
 assert(!denseMarkers.some(m=>m.reason.includes("Độ tin cậy")||m.reason.includes("Chưa xác minh mốc DTW")),"Synthetic Confidence=0/no-DTW permissions must not become recognition diagnoses.");
 assert(denseMarkers[1].reason.includes("391–400")&&!denseMarkers[1].reason.includes("Chữ SRT đã giữ"),"Review only the raw-ASR cell, without flagging retained SRT text.");
 assert.deepEqual(JSON.parse(JSON.stringify(ui.manualReviewSummary(densePlan))),{timingBlocks:1,pendingReferenceCues:1});
+const nearPlan=JSON.parse(JSON.stringify(densePlan));
+nearPlan.manualReviewBlocks[0].captionCells[1]={Text:"Chữ SRT được phục hồi.",ReferenceCueIndices:[8],RecognitionOriginalText:"Chữ ASR cũ.",ReferenceTextRecovery:"near-match-one-word"};
+nearPlan.manualReviewBlocks[0].pendingReferenceCueIndices=[];
+nearPlan.manualReviewBlocks[0].retainedReferenceCueIndices=[7,8];
+const nearMarkers=build(Object.assign({},denseReport,{autoEditManualReviewBlocks:nearPlan.manualReviewBlocks}),nearPlan);
+assert.equal(nearMarkers.length,1,"Near-match recovery removes only text mismatch review.");
+assert(!nearMarkers.some(m=>m.reason.includes("Chữ tự nhận diện chưa khớp SRT")));
+assert(nearMarkers[0].reason.includes("ước lượng"),"Estimated timing review survives text recovery.");
 const timedPlan=JSON.parse(JSON.stringify(densePlan));
 timedPlan.captions.forEach(c=>{c.CaptionTimingQuality="dtw";c.IndependentSpeechEdges=true;});
 assert.deepEqual(build(denseReport,timedPlan).map(m=>[m.start,m.end]),[[49,50]],"Automatic DTW resolution removes timing review while preserving unresolved wording.");

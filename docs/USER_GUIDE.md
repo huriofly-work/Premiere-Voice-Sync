@@ -1,5 +1,12 @@
 # Hướng dẫn Premiere Voice Sync 2.20.90
 
+**Quyết định 15/11/2026 (issue #26):** trong khối sửa tay của Dựng theo voice,
+cell từ 4 từ có thể giữ chữ SRT khi chỉ khác đúng một từ gần nhau về chữ/dấu, bằng số
+từ, không khác số và chỉ có một ứng viên cue/chuỗi cue liên tiếp chưa dùng
+trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ước lượng
+vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
+vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
+
 **2.20.90:** model nhận diện đổi sang Whisper large-v3-turbo (thay Small), chính xác hơn với tiếng Việt. ZIP khoảng 1,6 GB; chạy CPU chậm hơn khoảng 2 lần nên máy NVIDIA nên bật tải backend GPU. Xem [phạm vi và kiểm chứng](releases/notes/ASR_TURBO_2.20.90.md).
 
 **2.20.77:** giữ đuôi primary DTW đủ căn cứ khi lượt bổ sung bị suy giảm về timing ước lượng; sửa cụt đầu outro Medium và lời sai Turbo trong phép dựng ngoại tuyến. Model mặc định vẫn Small. Xem [phạm vi và kiểm chứng](releases/notes/SUBTITLE_TIMING_2.20.77.md).

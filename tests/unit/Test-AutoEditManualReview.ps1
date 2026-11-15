@@ -4,6 +4,80 @@ $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 . "$root\extension\engine\lib\CaptionOnly.ps1"
 . "$root\extension\engine\lib\Srt.ps1"
 . "$root\extension\engine\lib\AutoEditManualReview.ps1"
+# Issue #26: synthetic wording, both manual text recovery entrypoints.
+& {
+    $cases=@(
+        @{name='vowel';srt=@('Chú ếch nhún mình rất nhẹ.');asr='Chú ếch nhốn mình rất nhẹ.'},
+        @{name='tone';srt=@('Các mô thoái hóa rất nhanh.');asr='Các mô thoai hóa rất nhanh.'},
+        @{name='tone-other';srt=@('Chú ếch thờ ơ đứng đó.');asr='Chú ếch thở ơ đứng đó.'},
+        @{name='tr-ch';srt=@('Chú ếch canh chừng đàn con.');asr='Chú ếch canh trừng đàn con.'},
+        @{name='r-gi';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.'},
+        @{name='tone-vat';srt=@('Đó là món ăn vặt ngon.');asr='Đó là món ăn vật ngon.'},
+        @{name='d-r';srt=@('Chú ếch bò ra ngoài sân.');asr='Chú ếch bò da ngoài sân.'},
+        @{name='two-cues';srt=@('Chú ếch đứng đó.','Nó canh chừng đàn con.');asr='Chú ếch đứng đó. Nó canh trừng đàn con.'},
+        @{name='same-digits';srt=@('Có 12 con ăn giun hôm nay.');asr='Có 12 con ăn run hôm nay.'},
+        @{name='distance-two';srt=@('Chú ếch abcd đứng đó.');asr='Chú ếch abxy đứng đó.'},
+        @{name='dd-nfd';srt=@('Chú ếch đứng đây rất lâu.');asr="Chú ếch du$([char]0x031b)$([char]0x0301)ng đây rất lâu."},
+        @{name='two-differences';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngài.';reject=$true},
+        @{name='number';srt=@('Có 12 con ăn giun hôm nay.');asr='Có 13 con ăn giun hôm nay.';reject=$true},
+        @{name='number-word';srt=@('Có a1 con ở ngoài sân.');asr='Có a2 con ở ngoài sân.';reject=$true},
+        @{name='digit-in-different-word';srt=@('Có a1 con ở ngoài sân.');asr='Có b1 con ở ngoài sân.';reject=$true},
+        @{name='two-cues-two-differences';srt=@('Chú ếch ăn vặt.','Nó thay da mỗi ngày.');asr='Chú ếch ăn vật. Nó thay ra mỗi ngày.';reject=$true},
+        @{name='extra';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn giun mỗi ngày nữa.';reject=$true},
+        @{name='missing';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn mỗi ngày.';reject=$true},
+        @{name='short';srt=@('Ếch ăn giun.');asr='Ếch ăn run.';reject=$true},
+        @{name='distance-three';srt=@('Chú ếch abcdef đứng đó.');asr='Chú ếch abcxzy đứng đó.';reject=$true},
+        @{name='shorter-length';srt=@('Chú ếch a đứng đó.');asr='Chú ếch b đứng đó.';reject=$true},
+        @{name='ambiguous';srt=@('Chú ếch ăn giun mỗi ngày.','Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.';reject=$true},
+        @{name='ambiguous-different';srt=@('Chú ếch ăn giun mỗi ngày.','Chú ếch ăn dun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.';reject=$true},
+        @{name='retained';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.';retained=@(1);reject=$true},
+        @{name='ambiguous-retained';srt=@('Chú ếch ăn giun mỗi ngày.','Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.';retained=@(1);reject=$true},
+        @{name='split-name';srt=@('Vùng Collao ở trên cao.');asr='Vùng Cô Lao ở trên cao.';reject=$true},
+        @{name='outside';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.';outside=$true;reject=$true},
+        @{name='outside-left';srt=@('Chú ếch ăn giun mỗi ngày.');asr='Chú ếch ăn run mỗi ngày.';outsideLeft=$true;reject=$true},
+        @{name='not-owned';srt=@('Một câu hoàn toàn khác.');asr='Chú ếch ăn run mỗi ngày.';reject=$true},
+        @{name='nonconsecutive';srt=@('Chú ếch đứng đó.','Nó canh chừng đàn con.');asr='Chú ếch đứng đó. Nó canh trừng đàn con.';gap=$true;reject=$true}
+    )
+    $failures=@();$checks=0
+    foreach($path in @('manual','observed','observed-dtw')){foreach($case in $cases){
+        $rs=@(for($i=0;$i -lt $case.srt.Count;$i++){[pscustomobject]@{Index=$i+1;Text=$case.srt[$i];Start=$i*3;End=($i+1)*3}})
+        if($case.ContainsKey('gap')){$rs[1].Index=3}
+        $kept=if($case.ContainsKey('retained')){@($case.retained)}else{@()}
+        $cell=[pscustomobject]@{Text=$case.asr;Start=1.0;End=2.0;ReferenceCueIndices=@();CaptionTimingQuality='estimated';CaptionTimingRevision='fixture-estimated';WordTimings=@();RecognitionOriginalText='original recognition retained'}
+        if($path -eq 'manual'){$cell.PSObject.Properties.Remove('RecognitionOriginalText')}
+        if($case.ContainsKey('outside')){$cell.End=4.0}
+        if($case.ContainsKey('outsideLeft')){$cell.Start=-1.0}
+        $raw=@(ConvertTo-NormalizedWords $case.asr)
+        $dtw=@(for($w=0;$w -lt $raw.Count;$w++){[pscustomobject]@{Text=$raw[$w];Start=1.0+$w*0.02;End=1.02+$w*0.02;Chapter=0;SubtitleTimingQuality='dtw';TargetWordIndex=$w;Exact=$true}})
+        if($path -eq 'observed-dtw'){
+            $cell|Add-Member CaptionWordTimings $dtw
+            $cell.CaptionTimingQuality='dtw';$cell.CaptionTimingRevision='raw-dtw-cell-overlay-v1'
+            $cell|Add-Member Chapter 0
+        }
+        $before=$cell|Select-Object Start,End,CaptionTimingQuality,CaptionTimingRevision,WordTimings,CaptionWordTimings|ConvertTo-Json -Depth 8 -Compress
+        if($path -eq 'manual'){
+            $ids=@(Restore-PvsManualReferenceCell $cell $rs $kept -BlockStart 0 -BlockEnd 3)
+        }else{
+            # An identical reference outside block ownership is harmless.
+            $all=@($rs)+@([pscustomobject]@{Index=99;Text='Chú ếch ăn giun mỗi ngày.';Start=100;End=103})
+            $others=@($kept|ForEach-Object {[pscustomobject]@{Index=$_}})
+            $block=[pscustomobject]@{Index=1;ManualEditBlock=$true;ManualReferenceCueIndices=@($rs.Index);ManualCaptionCues=@($cell);Text=$cell.Text;Chapter=0;Start=0.0;End=3.0}
+            $heard=@(if($path -eq 'observed-dtw'){$dtw})
+            $ids=@(Restore-PvsObservedManualReferenceCells (@($block)+$others) $all $heard @([pscustomobject]@{start=0;end=3}))
+        }
+        $checks++
+        if($case.ContainsKey('reject')){
+            if($cell.Text -cne $case.asr -or $cell.ReferenceCueIndices.Count -or @($ids|Where-Object {$null -ne $_}).Count){$failures+="$path/$($case.name):rejected-cell-changed"}
+        }else{
+            if($cell.Text -cne ($case.srt -join ' ') -or ($cell.ReferenceCueIndices -join ',') -ne ($rs.Index -join ',') -or -not $cell.PSObject.Properties['ReferenceTextRecovery'] -or $cell.ReferenceTextRecovery -cne 'near-match-one-word'){$failures+="$path/$($case.name):SRT-or-provenance-missing"}
+            $original=if($path -eq 'manual'){$case.asr}else{'original recognition retained'}
+            if($cell.RecognitionOriginalText -cne $original){$failures+="$path/$($case.name):original-text-overwritten"}
+        }
+        if(($cell|Select-Object Start,End,CaptionTimingQuality,CaptionTimingRevision,WordTimings,CaptionWordTimings|ConvertTo-Json -Depth 8 -Compress) -cne $before){$failures+="$path/$($case.name):timing-changed"}
+    }}
+    if($failures.Count){throw ('NEAR_MATCH_REGRESSION_FAILED: '+($failures -join '; '))}
+    Write-Host "NEAR_MATCH_OK:$checks cases across both restore paths; text-only recovery"
+}
 foreach($text in @('Đảo.','[music]','Tên Xkqz, mã 250.000 đang được đọc.')){
     $json=[pscustomobject]@{segments=@([pscustomobject]@{text=$text;start=0;end=2})}
     $plain=@((Convert-PvsReferenceRecognition $json 0).Words)
