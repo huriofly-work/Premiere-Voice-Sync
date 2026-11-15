@@ -18,16 +18,19 @@ function Join-PvsManualRecognitionSurface {
 }
 
 function Restore-PvsManualReferenceCell {
-    param($Cell,[object[]]$Cues,[int[]]$RetainedCueIndices=@())
+    param($Cell,[object[]]$Cues,[int[]]$RetainedCueIndices=@(),[double]$BlockStart=0,[double]$BlockEnd=[double]::MaxValue)
     if(@($Cell.ReferenceCueIndices).Count){return $null}
     $key=@(ConvertTo-NormalizedWords $Cell.Text) -join ' '
-    if(-not $key -or [string]$Cell.Text -match '\d'){return $null}
+    if(-not $key){return $null}
     # Complete observed display text can retain SRT punctuation/case even
     # when duplicate/overlapping token timestamps cannot prove word timing.
     # This never fills missing words, changes numbers, or authorizes a cut.
-    $matches=@($Cues | Where-Object {[string]$_.Text -notmatch '\d' -and (@(ConvertTo-NormalizedWords $_.Text) -join ' ') -ceq $key})
-    if($matches.Count -ne 1 -or $RetainedCueIndices -contains [int]$matches[0].Index){return $null}
-    $Cell | Add-Member NoteProperty RecognitionOriginalText ([string]$Cell.Text)
+    $matches=@($Cues | Where-Object {[string]$Cell.Text -notmatch '\d' -and [string]$_.Text -notmatch '\d' -and (@(ConvertTo-NormalizedWords $_.Text) -join ' ') -ceq $key})
+    if($matches.Count -ne 1 -or $RetainedCueIndices -contains [int]$matches[0].Index){
+        Restore-PvsNearMatchManualReferenceCell $Cell $Cues $RetainedCueIndices $BlockStart $BlockEnd
+        return
+    }
+    if(-not $Cell.PSObject.Properties['RecognitionOriginalText']){$Cell | Add-Member NoteProperty RecognitionOriginalText ([string]$Cell.Text)}
     $Cell.Text=[string]$matches[0].Text
     $Cell.ReferenceCueIndices=@([int]$matches[0].Index)
     return [int]$matches[0].Index
@@ -181,9 +184,13 @@ function New-PvsAutoEditManualReview {
             }else{$display.Add($cell)}
         }
         if(-not $display.Count -or @($display | Where-Object {[Math]::Round($_.End*$FrameRate) -le [Math]::Round($_.Start*$FrameRate)}).Count){return $null}
-        foreach($cell in $display){
-            $restored=Restore-PvsManualReferenceCell -Cell $cell -Cues @($Cues[$first..$last]) -RetainedCueIndices $retained.ToArray()
-            if($null -ne $restored){$retained.Add($restored)}
+        for($cellIndex=0;$cellIndex -lt $display.Count;$cellIndex++){
+            $cell=$display[$cellIndex]
+            $previous=if($cellIndex){[Math]::Max($start,$display[$cellIndex-1].End)}else{$start}
+            $next=if($cellIndex+1 -lt $display.Count){[Math]::Min($end,$display[$cellIndex+1].Start)}else{$end}
+            foreach($id in @(Restore-PvsManualReferenceCell -Cell $cell -Cues @($Cues[$first..$last]) -RetainedCueIndices $retained.ToArray() -BlockStart $previous -BlockEnd $next)){
+                if($null -ne $id){$retained.Add([int]$id)}
+            }
         }
         $proxyIndex=[int]$Cues[$first].Index;$text=($display | ForEach-Object {$_.Text}) -join ' '
         $allIndices=@($Cues[$first..$last] | ForEach-Object {[int]$_.Index})

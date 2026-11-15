@@ -80,6 +80,10 @@ function Get-PvsReferenceCueEvidence {
     foreach($cue in $Cues){
         if($cue.PSObject.Properties['ManualEditBlock'] -and $cue.ManualEditBlock){
             foreach($cell in $cue.ManualCaptionCues){
+                # Near-match reference ownership is display-text recovery only.
+                # Keep cut evidence on the independent raw-DTW route above,
+                # even if a later pass measures this caption successfully.
+                if($cell.PSObject.Properties['ReferenceTextRecovery'] -and $cell.ReferenceTextRecovery -ceq 'near-match-one-word'){continue}
                 if($cell.ReferenceCueIndices.Count -ne 1 -or -not (Test-PvsManualAcousticCell $cell $Voices[$cue.Chapter])){continue}
                 $index=[int]$cell.ReferenceCueIndices[0]
                 if($index -lt 1 -or $index -gt $References.Count -or $cell.Text -cne $References[$index-1].Text){continue}
@@ -97,6 +101,25 @@ function Get-PvsReferenceCueEvidence {
 
 function Restore-PvsObservedManualReferenceCells {
     param([object[]]$Cues,[object[]]$References,[object[]]$Words,[object[]]$Voices)
+    # Text-only relaxation is independent of observed DTW recovery below.
+    # Never replace the cell or borrow timings from a nearby reference match.
+    $used=New-Object System.Collections.Generic.List[int]
+    foreach($cue in $Cues){
+        if($cue.PSObject.Properties['ManualEditBlock'] -and $cue.ManualEditBlock){
+            foreach($cell in $cue.ManualCaptionCues){foreach($id in $cell.ReferenceCueIndices){$used.Add([int]$id)}}
+        }else{$used.Add([int]$cue.Index)}
+    }
+    foreach($cue in $Cues){
+        if(-not $cue.PSObject.Properties['ManualEditBlock'] -or -not $cue.ManualEditBlock){continue}
+        $owned=@($References|Where-Object {$cue.ManualReferenceCueIndices -contains [int]$_.Index})
+        for($i=0;$i -lt $cue.ManualCaptionCues.Count;$i++){
+            $cell=$cue.ManualCaptionCues[$i]
+            $previous=if($i){[Math]::Max($cue.Start,$cue.ManualCaptionCues[$i-1].End)}else{[double]$cue.Start}
+            $next=if($i+1 -lt $cue.ManualCaptionCues.Count){[Math]::Min($cue.End,$cue.ManualCaptionCues[$i+1].Start)}else{[double]$cue.End}
+            foreach($id in @(Restore-PvsNearMatchManualReferenceCell $cell $owned $used.ToArray() $previous $next)){$used.Add([int]$id);[int]$id}
+        }
+        $cue.Text=$cue.ManualCaptionCues.Text -join ' '
+    }
     if(-not $Words.Count){return}
     $layout=New-PvsReferenceWordLayout $References
     $mapping=@(Get-SequentialWordMapping $layout.Words $Words)

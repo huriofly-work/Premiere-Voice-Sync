@@ -1,5 +1,71 @@
 ﻿Set-StrictMode -Version Latest
 
+function ConvertTo-PvsDiacriticFreeWord {
+    param([string]$Word)
+    $decomposed=$Word.Normalize([Text.NormalizationForm]::FormD)
+    return ([regex]::Replace($decomposed,'\p{M}','').Replace([char]0x0111,'d').Replace([char]0x0110,'D')).ToLowerInvariant()
+}
+
+function Test-PvsNearMatchWord {
+    param([string]$Left,[string]$Right)
+    if($Left -match '\d' -or $Right -match '\d'){return $false}
+    $a=ConvertTo-PvsDiacriticFreeWord $Left;$b=ConvertTo-PvsDiacriticFreeWord $Right
+    if($a -ceq $b){return $true}
+    $limit=[Math]::Min(2,[Math]::Min($a.Length,$b.Length)-1)
+    if($limit -lt 0 -or [Math]::Abs($a.Length-$b.Length) -gt $limit){return $false}
+    $previous=New-Object 'int[]' ($b.Length+1)
+    for($j=0;$j -le $b.Length;$j++){$previous[$j]=$j}
+    for($i=1;$i -le $a.Length;$i++){
+        $current=New-Object 'int[]' ($b.Length+1);$current[0]=$i
+        for($j=1;$j -le $b.Length;$j++){
+            $cost=if($a[$i-1] -ceq $b[$j-1]){0}else{1}
+            $current[$j]=[Math]::Min([Math]::Min($previous[$j]+1,$current[$j-1]+1),$previous[$j-1]+$cost)
+        }
+        $previous=$current
+    }
+    return $previous[$b.Length] -le $limit
+}
+
+function Restore-PvsNearMatchManualReferenceCell {
+    param($Cell,[object[]]$Cues,[int[]]$RetainedCueIndices=@(),[double]$BlockStart,[double]$BlockEnd)
+    # Caller supplies ONLY this block's owned references and its current voice
+    # bounds (including neighboring cells). Reference timestamps are template
+    # coordinates, so they cannot locate a cell in the new voice.
+    if(@($Cell.ReferenceCueIndices).Count){return}
+    $a=[double]$Cell.Start;$b=[double]$Cell.End
+    foreach($value in @($a,$b,$BlockStart,$BlockEnd)){if([double]::IsNaN($value) -or [double]::IsInfinity($value)){return}}
+    if($b -le $a -or $a -lt $BlockStart-0.000001 -or $b -gt $BlockEnd+0.000001){return}
+    $primary=@(ConvertTo-NormalizedWords $Cell.Text)
+    if($primary.Count -lt 4){return}
+    $digits=@([regex]::Matches($Cell.Text,'\d+')|ForEach-Object Value) -join ' '
+    $matches=New-Object System.Collections.Generic.List[object]
+    for($first=0;$first -lt $Cues.Count;$first++){
+        $source=@();$ids=@();$texts=@()
+        for($last=$first;$last -lt $Cues.Count;$last++){
+            if($last -gt $first -and [int]$Cues[$last].Index -ne [int]$Cues[$last-1].Index+1){break}
+            $source+=@(ConvertTo-NormalizedWords $Cues[$last].Text);$ids+=[int]$Cues[$last].Index;$texts+=[string]$Cues[$last].Text
+            if($source.Count -gt $primary.Count){break}
+            if($source.Count -ne $primary.Count){continue}
+            $different=@(for($i=0;$i -lt $source.Count;$i++){if($source[$i] -cne $primary[$i]){$i}})
+            # An exact alternative belongs to the existing exact path. Do not
+            # choose a different near candidate, even if the exact one is used.
+            if(-not $different.Count){return}
+            if($different.Count -ne 1){continue}
+            $at=$different[0];$text=$texts -join ' '
+            $candidateDigits=@([regex]::Matches($text,'\d+')|ForEach-Object Value) -join ' '
+            if($digits -cne $candidateDigits -or -not (Test-PvsNearMatchWord $primary[$at] $source[$at])){continue}
+            $matches.Add([pscustomobject]@{Text=$text;Indices=$ids})
+        }
+    }
+    # Count ambiguity BEFORE filtering retained references: using one copy
+    # elsewhere does not identify which repeated utterance this cell belongs to.
+    if($matches.Count -ne 1 -or @($matches[0].Indices|Where-Object {$RetainedCueIndices -contains $_}).Count){return}
+    if(-not $Cell.PSObject.Properties['RecognitionOriginalText']){$Cell|Add-Member RecognitionOriginalText ([string]$Cell.Text)}
+    $Cell.Text=$matches[0].Text;$Cell.ReferenceCueIndices=@($matches[0].Indices)
+    $Cell|Add-Member ReferenceTextRecovery 'near-match-one-word' -Force
+    foreach($id in $Cell.ReferenceCueIndices){[int]$id}
+}
+
 # Shared lexical/timing core. Edit and subtitle workflows choose their own
 # reference scope and failure policy; neither planner nor timeline APIs live here.
 $script:PvsWordMapperPath=Join-Path $PSScriptRoot 'WordMapper.ps1'

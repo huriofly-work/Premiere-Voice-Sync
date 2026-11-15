@@ -1,5 +1,28 @@
 # Tiêu chí nghiệm thu ASR và caption
 
+## Khôi phục chữ gần khớp trong khối sửa tay — 2026-11-15
+
+Người dùng chủ động phê duyệt nới điều kiện khôi phục chữ SRT (issue #26):
+một cell ASR chỉ được đổi sang một cue hoặc chuỗi cue SRT liên tiếp thuộc
+`ManualReferenceCueIndices` của chính khối, ứng viên duy nhất trong khối và
+chưa giữ ở nơi khác. Sau `ConvertTo-NormalizedWords`, hai phía phải bằng số
+từ, ít nhất 4 từ, và chỉ khác đúng một vị trí trong toàn chuỗi. Hai từ khác
+không chứa chữ số; chuỗi chữ số của toàn cell và ứng viên phải giống nhau.
+Hai từ phải bằng nhau sau bỏ dấu tiếng Việt (Unicode NFD, bỏ combining mark,
+đ/Đ thành d/D, không phân biệt hoa thường), hoặc khoảng cách Levenshtein trên
+dạng bỏ dấu viết thường không quá 2 và nhỏ hơn độ dài từ ngắn hơn.
+
+Cell phải còn nằm trong bounds khối và giữa các cell lân cận. Chỉ sửa chữ,
+gán `ReferenceCueIndices`, giữ `RecognitionOriginalText` và ghi provenance
+`ReferenceTextRecovery='near-match-one-word'`; không đổi timing/provenance,
+không nâng ước lượng thành DTW, không thêm/bớt quyền cut/omission. Indices
+mới không cấp bằng chứng cắt từ caption; raw DTW độc lập vẫn dùng như cũ. Cell đã
+khôi phục không có marker “Chữ tự nhận diện chưa khớp SRT”; marker timing
+ước lượng vẫn giữ. Thừa/thiếu từ, khác số, khác từ thứ hai, câu dưới 4 từ,
+ứng viên mơ hồ/đã giữ, tên riêng tách từ vẫn giữ ASR và review. Không hạ
+ngưỡng khác. Caption-only không có bước exact-only cho manual cell tương
+đương; giữ cơ chế identity/coverage riêng. Native Premiere pending.
+
 ## Không hủy tác vụ chỉ vì lỗi nhận diện — 2026-10-21
 
 Người dùng yêu cầu lỗi khó mà model hiện tại chưa nhận đúng phải được báo

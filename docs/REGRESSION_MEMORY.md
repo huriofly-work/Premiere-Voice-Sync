@@ -1,5 +1,48 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #26 — Khôi phục SRT gần khớp một từ trong khối sửa tay (15/11/2026)
+
+- **Yêu cầu/nguyên nhân.** Sau #22, manual cell vẫn giữ ASR khi chỉ sai một
+  dấu/từ vì restore surface đòi exact; restore observed đòi đủ từ DTW và
+  >=85% sequential. User phê duyệt nới riêng điều kiện chữ ngày 15/11/2026.
+- **Luật.** Helper chung `Restore-PvsNearMatchManualReferenceCell` trong
+  `ReferenceAlignment.ps1`, dùng từ cả hai restore path: cue/chuỗi cue liên
+  tiếp của chính khối, duy nhất, chưa giữ; bằng số từ >=4, khác đúng một vị
+  trí, từ khác không có số, toàn chuỗi số giống nhau; bỏ dấu NFD/đ rồi bằng
+  nhau hoặc Levenshtein <=2 và nhỏ hơn độ dài từ ngắn hơn. Không lọc ứng viên
+  đã giữ trước khi xét ambiguity. Có ứng viên exact thì để đường exact xử lý.
+- **Invariant.** Bounds khối/cell lân cận giữ nguyên; chỉ đổi Text, indices,
+  provenance `near-match-one-word`; giữ RecognitionOriginalText và mọi timing.
+  Không cấp DTW/cut/omission từ chữ mới. Cell near-match không được đưa vào
+  caption-derived cut evidence; đường raw DTW độc lập giữ nguyên. Marker chữ
+  tự biến mất qua indices; timing ước lượng còn nguyên. Không thay ngưỡng khác; caption-only không có
+  restore exact-only tương đương, không đổi identity/coverage của luồng đó.
+- **Test trước sửa.** `Test-AutoEditManualReview` fail với
+  `NEAR_MATCH_REGRESSION_FAILED`: 22 ca nhận ở hai path thiếu SRT/provenance.
+  Sau sửa mở rộng thành 90 ca (30 x manual/observed rỗng/observed DTW) đạt:
+  bảy dạng thay từ, hai cue một/hai khác biệt, NFD/đ, distance 2,
+  giữ số/metadata; từ chối hai khác biệt, số, thừa/thiếu, ngắn, distance 3,
+  ambiguity/đã giữ, tên tách, bounds và cue không liên tiếp. Nhóm manual,
+  acoustic và JS marker đều đạt; marker chữ mất, marker timing còn.
+- **Regression quyền cắt.** Test acoustic mới fail trước chốt cuối với
+  `near-match-indices-must-not-add-cut-evidence`: indices mới có thể cấp
+  caption-derived cut evidence sau timing refinement. Đã chặn theo provenance;
+  ba assertion khóa caption DTW còn hợp lệ, không thêm evidence, raw DTW độc
+  lập vẫn dùng được. Nhóm manual/acoustic và JS marker đều đạt trước suite.
+- **Replay.** Alignment + sentence plan trên mẫu cũ: 83 caption/6 khối như
+  #22; exact SRT 51/65 → 57/65, review 12 issue/12 vị trí → 6/6, pending
+  metadata 20 → 14. Sáu cue gần khớp được phục hồi. Cue chứa món ăn vẫn ASR:
+  cell gộp hai cue có hai từ khác nhau, đúng luật phải review; tên riêng tách
+  từ cũng giữ ASR. Không ép đạt bảy cue. Bảng chữ đầy đủ chỉ trong `_local/`.
+  Segment hình/voice, 48 quyền cắt và omission không đổi; timing provenance
+  giữ nguyên, một timing region manual vẫn còn. Hash media/SRT nguồn trùng.
+- **Kiểm chứng.** Standard suite đạt 70 nhóm/130 PS parse, sáu nhóm Windows
+  integration bỏ qua; JS syntax hai file, executor parity và JS marker đạt.
+  Suite cuối sau chốt quyền cắt cũng đạt 70 nhóm/130 PS parse; replay giữ
+  kết quả trên. Codex viết sửa và tự rà; Claude đọc diff và chạy lại
+  standard suite (70 nhóm đạt).
+  Chỉ output ignored; không thay media/SRT/cache gốc. **Native Premiere pending**.
+
 ## Issue #24 — Khôi phục nới mép caption 5 frame (15/11/2026)
 
 User chạy thật thấy caption bắt đầu/kết thúc quá sát sóng âm voice và yêu cầu
