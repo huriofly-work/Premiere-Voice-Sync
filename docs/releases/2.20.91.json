@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.91",
+  "tag": "v2.20.91",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "2C9F66FBFAB9864BA6757A53C254387C13B396CD7006279495BA0F80FA71CEDE",
+    "bytes": 1535368451,
+    "filename": "Premiere-Voice-Sync-2.20.91-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 72,
+    "powershellScriptsParsed": 132,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "offlineReplayOfReportedRun": {
+      "note": "User's real Auto edit project of 2026-11-15, rebuilt offline from its voice and reference SRT on a simple 30 fps template; not native.",
+      "exactSrtCuesBefore": 37,
+      "exactSrtCuesAfter": 57,
+      "comparedCues": 65,
+      "reviewLocationsBefore": 17,
+      "reviewLocationsAfter": 6
+    },
+    "nativeProbes": [
+      "Premiere 26.2.2: a marker written to the voice ProjectItem shows on the A2 clip and follows it when the clip is moved or trimmed (#35).",
+      "Premiere 26.2.2: setting marker.end in seconds is accepted and shown as a range on the A2 clip (#37)."
+    ]
+  },
+  "changes": [
+    "Caption text keeps the reference SRT when Whisper returns several words with the same start time; the word order is stable and caption ends use the latest word end (#23).",
+    "Caption edges are padded by up to 5 frames again in both workflows, without overlapping neighbours (#25).",
+    "Inside manual review blocks, the SRT text is restored when ASR differs by exactly one close, non-numeric word (same word count, at least 4 words); such cues get no text marker and never supply cut evidence (#27).",
+    "Review markers are one short line 'Cue N: ... – ...' using the caption numbers shown in Premiere (#29).",
+    "Picture segments outside the speed warning range get a speed marker on cue-picture plans (#31).",
+    "The job folder of the most recent run of each workflow is kept for troubleshooting, without temporary audio (#33).",
+    "Review markers are attached to the A2 voice clip and span the warned range; unmappable cases fall back to the sequence ruler. V1 speed and A2 voice clip markers are placed correctly when speed is not 100% (#35, #37)."
+  ],
+  "pullRequests": [
+    21,
+    23,
+    25,
+    27,
+    29,
+    31,
+    33,
+    35,
+    37
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "The full workflow is not verified in Premiere: caption text and timing, voice-clip review markers, speed markers and the kept job folder are pending the user's rerun.",
+    "Voice-clip markers live on the voice media and show in every sequence that uses the same file.",
+    "Clip-marker visibility on a nested V1 clip, speeds other than 110%, reverse speed and time remapping are not measured natively; unmappable cases fall back to sequence markers.",
+    "Two of the reported cues still show ASR text by design: a proper noun split into two words, and one cell spanning two cues with two differing words.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}

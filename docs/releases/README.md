@@ -1,9 +1,9 @@
 # Phát hành và ghi chú phiên bản
 
-Repo được khởi tạo lại ngày 14/11/2026 nên chưa có release trên GitHub
-([lý do](../maintenance/REPO_RESTART_2026-11-14.md)). Trong lịch sử cũ, stable đã
-nghiệm thu là 2.20.25 và prerelease mới nhất là 2.20.90, còn chờ nghiệm thu
-Premiere. Các JSON dưới đây giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
+Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_RESTART_2026-11-14.md));
+bản public đầu tiên là prerelease 2.20.91, còn chờ nghiệm thu Premiere. Trong lịch
+sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
+2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 
 - [Tổng quan lịch sử đến 2.20.88](OVERVIEW_THROUGH_2.20.88.md), chuyển nguyên nội dung mô tả các bản từ README cũ, chỉ cập nhật link.
 - [Quy trình phân phối GitHub](../GITHUB_DISTRIBUTION.md), [đóng gói](../RELEASE.md).
@@ -12,6 +12,7 @@ Premiere. Các JSON dưới đây giữ nguyên tag, SHA và link của repo cũ
 
 ## Ghi chú theo phiên bản
 
+- [2.20.91 — Sửa lỗi sau lượt chạy thật: chữ SRT, mép caption, marker gắn clip voice](notes/REVIEW_MARKERS_2.20.91.md)
 - [2.20.88 — Giảm tính chữ lặp và các đợt đổi tốc độ không có việc](notes/AUTO_EDIT_ACOUSTIC_2.20.88.md)
 - [2.20.87 — Chia đợt native có giới hạn và dữ liệu gọn](notes/AUTO_EDIT_ACOUSTIC_2.20.87.md)
 - [2.20.86 — Dựng hình theo cue SRT](notes/AUTO_EDIT_ACOUSTIC_2.20.86.md)
