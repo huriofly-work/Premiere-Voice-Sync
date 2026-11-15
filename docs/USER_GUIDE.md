@@ -128,11 +128,13 @@ Có thể chỉnh tốc độ voice trước khi chạy, kể cả mỗi chapter
 
 Planner tính điểm cắt từ mốc âm học mới; điểm cắt có thể khác phiên bản trước. Bước DTW bổ sung chỉ thêm điểm cắt khi timestamp đầy đủ và có khoảng lặng đo được đủ biên an toàn, đồng thời giữ các điểm cắt của kế hoạch vừa tính, hình nguồn, voice, nội dung caption, tổng thời lượng và khoảng không lời. Mốc nới caption 5 frame không dùng làm mốc cắt voice; chưa an toàn thì giữ nhiều câu trong một đoạn.
 
-Gộp hình tính tốc độ chung bằng tổng frame nguồn / tổng frame đầu ra, thử hàng xóm trước và sau rồi chọn một đoạn liền kề giúp tốc độ gần dải ngưỡng hơn. Mỗi cặp gộp một lần rồi khóa, không gộp tiếp hoặc bị nhóm khác hấp thụ. Hòa thì ưu tiên hàng xóm ngắn hơn, rồi bên trước. Đây là lựa chọn cục bộ, không bảo đảm tối ưu toàn cục. Cho phép qua chapter khi source, timeline và voice liền nhau chính xác theo frame; không vượt gap/đoạn không lời hay phạm vi video chính.
+Kế hoạch dựng hình theo cue SRT giữ các ranh giới cue và không gộp hình. Với kế hoạch cũ có gộp hình, tốc độ chung tính bằng tổng frame nguồn / tổng frame đầu ra, thử hàng xóm trước và sau rồi chọn một đoạn liền kề giúp tốc độ gần dải ngưỡng hơn. Mỗi cặp gộp một lần rồi khóa, không gộp tiếp hoặc bị nhóm khác hấp thụ. Hòa thì ưu tiên hàng xóm ngắn hơn, rồi bên trước. Đây là lựa chọn cục bộ, không bảo đảm tối ưu toàn cục. Cho phép qua chapter khi source, timeline và voice liền nhau chính xác theo frame; không vượt gap/đoạn không lời hay phạm vi video chính.
 
-Chỉ V1 và audio gốc A1 dùng tốc độ chung; A2 giữ các clip/speed/điểm cắt an toàn trước gộp. Caption không gộp theo hình. Mọi đoạn hình đã gộp có marker trên V1, kể cả speed đã vào ngưỡng; nếu vẫn ngoài ngưỡng, marker ghi thêm cảnh báo. Các đoạn không gộp nhưng vượt ngưỡng vẫn có marker cảnh báo. Không ép speed vào ngưỡng hoặc thêm khoảng nghỉ.
+Chỉ V1 và audio gốc A1 dùng tốc độ chung; A2 giữ các clip/speed/điểm cắt an toàn trước gộp. Caption không gộp theo hình. Mọi đoạn hình đã gộp có marker trên V1, kể cả speed đã vào ngưỡng; nếu vẫn ngoài ngưỡng, marker ghi thêm cảnh báo. Các đoạn không gộp nhưng vượt ngưỡng vẫn có marker cảnh báo, kể cả kế hoạch theo cue SRT có speed thực đúng kế hoạch. Đây là clip marker trên nguồn ProjectItem của hình V1, không nằm trên thước timeline. Không ép speed vào ngưỡng hoặc thêm khoảng nghỉ.
 
 Màu marker giúp phân biệt: **đỏ** = speed quá nhanh; **cam** = speed quá chậm; **vàng** = căn voice cần nghe lại; **xanh dương** = hình đã gộp và speed trong ngưỡng (thông tin, không phải lỗi). Nếu nhóm gộp còn vượt ngưỡng, dùng đỏ/cam và ghi chú vẫn nêu việc gộp. Tool kiểm lại màu khi API cho phép; lỗi đặt màu được báo riêng, không coi timeline dựng đúng là lỗi chỉ vì màu. Tên và ghi chú luôn là cách phân biệt bổ sung.
+
+Ghi chú tốc độ ngắn, dùng số caption cuối đang thấy: `Cue 12–13: tốc độ hình 145% (ngưỡng 70–130%) – kiểm tra`. Không có caption phủ đoạn hình thì bỏ nhãn Cue. Với kế hoạch theo cue SRT, speed native không đọc được hoặc lệch kế hoạch vẫn có marker ngay cả trong ngưỡng; marker trong ngưỡng giữ màu xanh dương và nêu lỗi đọc/sai speed, ví dụ `Cue 12: speed thực 120% ≠ kế hoạch 118% – kiểm tra`. Dòng dấu sở hữu ở cuối ghi chú được giữ.
 
 ### Nhận diện và dọn marker của tool
 
@@ -182,13 +184,13 @@ Các element khác trong template không cần xóa. Nếu hình sau dựng dài
 
 | Thông số | Mặc định | Tác dụng |
 | --- | --- | --- |
-| Ngưỡng chậm | 70% | Thử gộp hình một lần nếu chậm hơn ngưỡng; marker nếu vẫn vượt. Không giới hạn tốc độ dựng. |
-| Ngưỡng nhanh | 130% | Thử gộp hình một lần nếu nhanh hơn ngưỡng; marker nếu vẫn vượt. Không giới hạn tốc độ dựng. |
+| Ngưỡng chậm | 70% | Marker cam nếu chậm hơn ngưỡng; kế hoạch cũ thử gộp hình một lần trước khi cảnh báo. Không giới hạn tốc độ dựng. |
+| Ngưỡng nhanh | 130% | Marker đỏ nếu nhanh hơn ngưỡng; kế hoạch cũ thử gộp hình một lần trước khi cảnh báo. Không giới hạn tốc độ dựng. |
 | Khoảng không lời | 0,5 giây | Ngưỡng tùy chỉnh. Khoảng trống SRT đạt ngưỡng được xét trước gộp câu; giữ riêng khi có điểm cắt voice an toàn. Chưa đủ bằng chứng thì giữ voice và đặt marker khoảng cần rà tay. Khoảng dưới ngưỡng được gộp vào lời liền kề. Thiết lập người dùng đã lưu được giữ nguyên. |
 | Khoảng tách nhóm voice | 2 giây | Khoảng cách giữa clip A2 lớn hơn ngưỡng kết thúc nhóm voice chính; nhóm sau như CTA được giữ riêng. |
 | Ký tự tối đa mỗi caption | 42 | Chia caption theo dấu câu, nghỉ hơi và ranh giới từ/cụm từ. Có thể giảm nếu font lớn. Không phải phép đo độ rộng chữ trên màn hình. |
 
-Ví dụ: speed cần 145% trong khi ngưỡng là 130% thì tool thử một cặp hình liền kề giúp cải thiện tốc độ. Nếu không có cặp tốt hơn hoặc speed sau gộp vẫn ngoài ngưỡng, giữ tốc độ cần thiết và đặt marker, không ép xuống 130%. Nút **Khôi phục mặc định** chỉ đặt lại các tùy chỉnh, không khôi phục timeline.
+Ví dụ: speed cần 145% trong khi ngưỡng là 130% thì kế hoạch theo cue SRT giữ 145% và đặt marker đỏ. Kế hoạch cũ thử một cặp hình liền kề giúp cải thiện tốc độ; nếu không có cặp tốt hơn hoặc speed sau gộp vẫn ngoài ngưỡng, giữ tốc độ cần thiết và đặt marker, không ép xuống 130%. Nút **Khôi phục mặc định** chỉ đặt lại các tùy chỉnh, không khôi phục timeline.
 
 Từ 2.20.80, workflow log lưu các thông số thực sự có trong kế hoạch: ngưỡng không lời, hai ngưỡng tốc độ, khoảng tách nhóm voice và giới hạn ký tự caption. Vì vậy vẫn kiểm tra được thiết lập sau khi job tạm đã dọn. Khoảng không lời chưa tách có marker theo vị trí hình sau dựng, khác với marker cần rà chữ/timing của caption.
 

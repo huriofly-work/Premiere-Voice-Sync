@@ -247,9 +247,10 @@
   function logReviewMarkers(result, markers, plan) {
     log("Marker timeline cần kiểm tra: " + Number(result.reviewMarkerCount || 0) + "; lỗi tạo marker: " + Number(result.reviewMarkerFailureCount || 0) + ".", Number(result.reviewMarkerFailureCount || 0) ? "warn" : "muted");
     (markers || []).forEach(function (marker) { reviewPosition(marker.start, marker.end, marker.reason, marker.captionIndex); });
-    if (plan && plan.pictureCueRevision !== "srt-cue-picture-v1") (plan.visualSegments || plan.segments || []).forEach(function (segment) {
+    if (plan) (plan.pictureCueRevision === "srt-cue-picture-v1" ? (plan.pictureSegments || []) : (plan.visualSegments || plan.segments || [])).forEach(function (segment) {
       if (segment.SpeedOutsideWarningRange) reviewPosition(segment.NewStart, segment.NewEnd, "Tốc độ hình ngoài ngưỡng đã chọn");
     });
+    if (Number(result.speedWarningSentenceCount || 0)) runWarning(result.speedWarningSentenceCount + " đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker đỏ/cam.", true);
     if (Number(result.reviewMarkerFailureCount || 0)) runWarning("Chưa tạo đủ marker; xem các vị trí trong Chi tiết.", true, "MARKER_MISSING");
     if (Number(result.reviewMarkerColorFailureCount || 0) || Number(result.clipMarkerColorFailureCount || 0)) runWarning("Một số marker chưa đúng màu; phân biệt bằng tên và ghi chú.", true, "MARKER_COLOR");
     if (Number(result.reviewMarkerCount || 0) || (markers || []).length) runWarning("Có vị trí cần nghe hoặc xem lại.", true, "POSITIONS");
@@ -1891,10 +1892,6 @@
       if (enhanced) successMessage += " Đã dùng quy trình DTW/gộp hình/dựng không delay; " + Number(result.mergeClipMarkerCount || 0) + " đoạn hình gộp có marker. Hãy kiểm kết quả trước khi lưu.";
       if (Number(result.clipMarkerColorFailureCount || 0) > 0) successMessage += " Có " + Number(result.clipMarkerColorFailureCount) + " marker chưa đặt đúng màu; xem Hỗ trợ và nhật ký.";
       if (performanceTrial) successMessage = "CHẨN ĐOÁN · " + successMessage + " Hậu kiểm timeline không xác nhận hết lag; hãy kiểm Preview/Play và khả năng lưu.";
-      if (Number(result.speedWarningSentenceCount || 0)) {
-        if (plan.pictureCueRevision) log(result.speedWarningSentenceCount + " đoạn hình dùng tốc độ ngoài khoảng để khớp cue/voice; giữ trong chẩn đoán. Marker tốc độ dành cho kết quả native chưa đọc được hoặc sai kế hoạch.", "muted");
-        else runWarning(result.speedWarningSentenceCount + " đoạn ngoài ngưỡng tốc độ; kiểm tra marker đỏ/cam.", true);
-      }
       runContext.resultHeadline = (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) ? "Đã dựng — còn một số đoạn cần rà." : "Đã dựng xong.";
       completedMessage = successMessage;
       outcome = "success";

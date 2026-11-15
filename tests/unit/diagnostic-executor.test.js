@@ -91,7 +91,7 @@ for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65,1
   assert(!markers.some(m=>m.start.seconds===1));
   assert(markers.some(m=>m.comments.startsWith("old merge")),"Out-of-scope source marker preserved.");
   for(const visual of trial.plan.visualSegments.filter(v=>v.MemberSegmentIndices.length===2)){
-    const found=markers.filter(m=>m.start.seconds>visual.SourceStart&&m.start.seconds<visual.SourceEnd&&m.comments.includes("merged adjacent source segments"));
+    const found=markers.filter(m=>m.start.seconds>visual.SourceStart&&m.start.seconds<visual.SourceEnd&&/đã gộp hình/i.test(m.comments));
     assert.strictEqual(found.length,1,"Every merged group owns exactly one marker, even within thresholds.");
     assert(found[0].comments.includes("[PremiereVoiceSync:owned-marker:v1]"));
     assert.strictEqual(found[0].colorIndex,visual.AppliedSpeedPercent<90?3:visual.AppliedSpeedPercent>110?1:6);
@@ -285,7 +285,9 @@ for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65])
   assert.strictEqual(staged.seq.audioTracks[0].clips.length,count*2);
   assert.strictEqual(staged.seq.audioTracks[1].clips.length,count,"Continuous voice is not split at picture-only cue boundaries.");
   assert.strictEqual(staged.seq.audioTracks[1].clips.reduce((n,c)=>n+Number(c.outPoint.ticks)-Number(c.inPoint.ticks),0),staged.plan.plannedMainVideoEndFrame*TPF);
-  assert.strictEqual(staged.nested.getMarkers().items.length,0,"Successful exact per-cue retime needs no speed review marker.");
+  const outside=staged.plan.pictureSegments.filter(s=>s.AppliedSpeedPercent<90-.01||s.AppliedSpeedPercent>110+.01);
+  assert.strictEqual(staged.nested.getMarkers().items.length,outside.length,"Exact per-cue retime outside the warning band still needs markers.");
+  assert.strictEqual(b.speedWarningSentenceCount,outside.length);
   assert.strictEqual(staged.voice.getMarkers().items.length,0);
 }
 for(const mutate of [p=>p.pictureCueRevision="unknown",p=>p.pictureSegments[0].SourceEndFrame++,p=>p.pictureSegments[0].NewEndFrame++,p=>p.pictureSegments[0].AppliedSpeedPercent++,p=>p.pictureSegments[0].NewEnd+=.1,p=>p.pictureCueBoundaries[0].VoiceFrame++,p=>p.pictureCueBoundaries[0].Chapter++,p=>p.pictureCueBoundaries[0].RightCue++,p=>p.pictureCueBoundaries.pop(),p=>p.pictureSegments.pop(),p=>p.editedSourceMap={}]){
@@ -297,16 +299,60 @@ for(const mutate of [p=>p.pictureCueRevision="unknown",p=>p.pictureSegments[0].S
 }
 {
   const api=cueFixture().api,plan={pictureCueRevision:"srt-cue-picture-v1"};
-  assert(!api._shouldMarkSpeed(plan,150,150,150,true,false));
+  assert(api._shouldMarkSpeed(plan,150,150,150,true,false),"Issue #30: exact 150% per-cue retime must get a warning marker.");
+  assert(api._shouldMarkSpeed(plan,60,60,60,true,false));
+  assert(!api._shouldMarkSpeed(plan,100,100,100,false,false));
+  assert(!api._shouldMarkSpeed(plan,100,100,100,false,true),"Merging alone does not change the v1 policy.");
   assert(api._shouldMarkSpeed(plan,100,101,100,false,false));
+  assert(api._shouldMarkSpeed(plan,100,100,101,false,false));
   assert(api._shouldMarkSpeed(plan,100,null,100,false,false));
+  assert(api._shouldMarkSpeed(plan,100,100,null,false,false));
   assert(api._shouldMarkSpeed({},150,150,150,true,false),"Legacy speed warning policy remains intact.");
+  assert(api._shouldMarkSpeed({},100,100,100,false,true));
+  assert(!api._shouldMarkSpeed({},100,null,101,false,false));
 }
 console.log("CUE_PICTURE_EXECUTOR_OK:per-cue-v1-a1;continuous-a2;all-profiles;exact-parity;native-speed-errors-still-marked;invalid-plan-before-mutation");
 // Compact input is the same native plan with offline evidence kept in Node.
 const panelSource=fs.readFileSync(path.join(root,"extension/js/main.js"),"utf8");
 const projectSource=panelSource.slice(panelSource.indexOf("  function projectHostInput("),panelSource.indexOf("  function writeHostInput("));
 function projected(f){const compact=vm.runInNewContext(projectSource+'projectHostInput(input,"edit");',{input:f.plan});vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(compact)+";};",f.context);return f;}
+// Issue #30: final caption labels, range policy and counts agree in full/compact
+// input, both in the stable executor and every generated scheduling profile.
+let speedRangeCases=0;
+for(const compact of [false,true])for(const profile of ["stable","baseline","fast","no-delay"])for(const [percent,color] of [[150,1],[60,3],[100,null]]){
+  const f=fixture(1),p=f.plan,s=p.segments[0],frames=12000/percent;
+  Object.assign(s,{SourceDurationFrames:120,EffectiveSourceDurationFrames:120,NewEnd:frames/30,NewEndFrame:frames,NewVoiceEndFrame:frames,OriginalVoiceEndFrame:frames,OutputDuration:frames/30,OutputDurationFrames:frames,VisualDurationFrames:frames,AppliedSpeedPercent:percent});
+  Object.assign(p,{pictureCueRevision:"srt-cue-picture-v1",pictureCueBoundaries:[],pictureSegments:[Object.assign({},s,{ParentSegmentIndex:0})],mainVideoSourceEndFrame:120,plannedMainVideoEnd:frames/30,plannedMainVideoEndFrame:frames,speedWarningMinPercent:70,speedWarningMaxPercent:130,
+    captions:[{Index:11,Start:-1,End:0},{Index:13,Start:frames/60,End:frames/30},{Index:12,Start:0,End:frames/60},{Index:14,Start:frames/30,End:frames/30+1}],summary:{captionCueCount:4,speedWarningCount:color===null?0:1}});
+  p.voiceClips[0].end=frames/30;
+  f.seq.audioTracks[1].clips[0].end=time(frames);f.seq.audioTracks[1].clips[0].outPoint=time(frames);
+  if(compact)projected(f);else vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(p)+";};",f.context);
+  const result=profile==="stable"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
+  assert(result.ok,JSON.stringify(result));
+  const markers=f.nested.getMarkers().items;
+  assert.equal(markers.length,color===null?0:1);assert.equal(result.speedWarningSentenceCount,markers.length);assert.equal(result.plannedSpeedWarningSentenceCount,markers.length);
+  if(color!==null){
+    assert.equal(markers[0].name,"VOICE SYNC - Kiem tra toc do");assert.equal(markers[0].colorIndex,color);
+    assert.equal(markers[0].comments,"Cue 12–13: tốc độ hình "+percent+"% (ngưỡng 70–130%) – kiểm tra\n[PremiereVoiceSync:owned-marker:v1]");
+    assert(markers[0].start.seconds>0&&markers[0].start.seconds<4,"Marker stays inside the same V1 source range.");
+    assert.equal(f.voice.getMarkers().items.length,0);
+  }
+  speedRangeCases++;
+}
+{
+  const api=cueFixture().api,p={captions:[{Index:12,Start:0,End:1}],speedWarningMinPercent:70,speedWarningMaxPercent:130},s={NewStart:0,NewEnd:1,FirstTargetCue:999,LastTargetCue:999};
+  assert.equal(api._speedMarkerComment(p,s,118,120,120,false,false),"Cue 12: speed thực 120% ≠ kế hoạch 118% – kiểm tra");
+  assert.equal(api._speedMarkerComment(p,s,118,118,120,false,false),"Cue 12: speed A1 thực 120% ≠ kế hoạch 118% – kiểm tra");
+  assert.equal(api._speedMarkerComment(p,s,118,null,118,false,false),"Cue 12: không đọc được speed V1 – kiểm tra phát");
+  assert.equal(api._speedMarkerComment(p,s,118,118,null,false,false),"Cue 12: không đọc được speed A1 – kiểm tra phát");
+  assert.equal(api._speedMarkerComment(p,s,118,null,null,false,false),"Cue 12: không đọc được speed V1/A1 – kiểm tra phát");
+  assert.equal(api._speedMarkerComment(p,s,100,100,100,false,true),"Cue 12: đã gộp hình – xem hình");
+  p.captions=[];
+  assert.equal(api._speedMarkerComment(p,s,145,145,145,true,false),"Tốc độ hình 145% (ngưỡng 70–130%) – kiểm tra");
+  p.captions=[{Index:24,Start:0,End:1},{Index:20,Start:0,End:1},{Index:20,Start:0,End:1}];
+  assert.equal(api._speedMarkerComment(p,s,60,60,60,true,true),"Cue 20, 24: đã gộp hình; tốc độ hình 60% (ngưỡng 70–130%) – kiểm tra");
+}
+console.log("SPEED_RANGE_MARKERS_OK:executor-cases="+speedRangeCases+";short-comments=8;final-caption-indices;ownership;red-orange;legacy-policy-preserved");
 // Real compact input must retain the caption geometry used by native reviews.
 for (const compact of [false, true]) for (const profile of ["stable", "baseline", "fast", "no-delay"]) {
   const f = fixture(1);

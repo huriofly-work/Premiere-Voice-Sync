@@ -1,5 +1,50 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #30 — Khôi phục marker tốc độ ngoài ngưỡng cho cue-picture (15/11/2026)
+
+- **Yêu cầu/nguyên nhân.** User chủ động đảo chính sách marker tốc độ của
+  2.20.86: kế hoạch `srt-cue-picture-v1` phải cảnh báo khi hình ngoài ngưỡng
+  đã chọn, kể cả speed native đúng kế hoạch. `_shouldMarkSpeed` trước đây
+  bỏ qua `outside`, chỉ marker khi không đọc được speed hoặc lệch >0,01%.
+  Panel cũng bỏ vùng cảnh báo v1 và ghi log chỉ giữ retime trong chẩn đoán,
+  trái mô tả marker ngoài ngưỡng trong USER_GUIDE.
+- **Sửa.** V1 dùng `outside || native unreadable/mismatch`; legacy giữ
+  `outside || merged`. Clip marker tốc độ dùng một dòng ngắn theo issue #28,
+  ví dụ `Cue 12–13: tốc độ hình 145% (ngưỡng 70–130%) – kiểm tra`.
+  Nhãn lấy `plan.captions.Index` phủ khoảng timeline cuối của đoạn hình,
+  sắp xếp/bỏ trùng/gộp số liên tiếp; không có caption thì bỏ nhãn, viết hoa
+  đầu câu. Không dùng số target cue nội bộ. Speed sai/không đọc được có lý do
+  ngắn riêng. Panel lấy vùng từ `pictureSegments` cho v1 và báo một dòng số
+  đoạn ngoài ngưỡng, kèm hướng dẫn xem marker đỏ/cam.
+- **Invariant.** Không đổi đoạn retime, speed, cut, A2, chặn speed merge cho
+  cue-picture, vị trí marker, tên marker, màu đỏ(1)/cam(3)/xanh dương(6),
+  ownership/reconciliation hay review marker. Giữ dung sai 0,01% hiện có;
+  `speedWarningCount` tại host/`speedWarningSentenceCount` đếm đoạn ngoài
+  ngưỡng, không đếm thêm marker mismatch/unreadable trong ngưỡng hay gộp xanh.
+  Số planned trong summary engine vẫn là chẩn đoán của bước lập kế hoạch;
+  số observed của host là số cảnh báo thực tế. Host giữ ES3; executor chỉ
+  sinh lại bằng `Build-DiagnosticExecutor.js`, không sửa tay.
+- **Test trước sửa.** diagnostic-executor fail `Exact per-cue retime outside
+  the warning band still needs markers`, **0 !== 1**; notification-ux fail
+  vùng cảnh báo v1, **0 thay vì 2**. Log host cũ chỉ ở `_local/`.
+- **Kiểm chứng trước suite dài.** Bảy file JS review-markers,
+  marker-reconciliation, marker-ownership, diagnostic-executor,
+  caption-only-host, host-executor-input, notification-ux đều đạt.
+  Thêm 24 tổ hợp 150% đỏ/60% cam/100% không marker × full/compact ×
+  stable/ba profile, kiểm count/name/tag/nhãn caption cuối; tám ca ghi chú
+  phủ mismatch V1/A1, unreadable, merged, không caption và số không liên tiếp.
+  Khóa riêng điều kiện mismatch/unreadable và legacy. Entry này được ghi
+  **trước khi chạy standard suite**.
+- **Kết quả cuối.** Standard suite đạt **70 nhóm/130 PS parse** ngay lần đầu.
+  Sáu nhóm Windows integration bỏ qua: InstallerLifecycle, InstallRollback,
+  PanelRegistry, NotificationShortcut, NativeNotifications, IncidentNotifications.
+  Sau suite chạy lại đúng bảy file JS marker nêu trên, **7/7 đạt**; syntax
+  main/security, executor `--check`, Acorn ES3 cho host/executor/caption-input
+  và diff whitespace đều đạt. Codex viết sửa và tự rà; Claude đọc diff và
+  chạy lại standard suite cùng bảy test JS marker. Báo cáo replay/ghi chú từng đoạn giữ riêng trong `_local/`, không
+  đưa dữ liệu người dùng vào file tracked.
+- **Nghiệm thu.** Chỉ kiểm chứng tự động/mock/local; **Native Premiere pending**.
+
 ## Issue #28 — Rút gọn ghi chú marker theo số Cue cuối (15/11/2026)
 
 - **Yêu cầu/nguyên nhân.** User chạy thật thấy ghi chú dài, lặp vùng giây và

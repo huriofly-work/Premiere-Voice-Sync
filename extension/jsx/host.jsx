@@ -95,9 +95,33 @@ $._PVS._cuePicturePlans = function (plan, fallback) {
 
 $._PVS._shouldMarkSpeed = function (plan, planned, video, audio, outside, merged) {
     if (plan.pictureCueRevision !== "srt-cue-picture-v1") return outside || merged;
-    // Planned per-cue retime is diagnostic; unreadable or unexpected native
-    // speed still needs a marker, including errors inside the warning band.
-    return video === null || audio === null || Math.abs(video - planned) > 0.01 || Math.abs(audio - planned) > 0.01;
+    // Warn outside the selected band even when native speed matches the plan.
+    // Unreadable or unexpected native speed still warns inside the band.
+    return outside || video === null || audio === null || Math.abs(video - planned) > 0.01 || Math.abs(audio - planned) > 0.01;
+};
+
+$._PVS._speedMarkerComment = function (plan, segment, planned, video, audio, outside, merged) {
+    var captions = plan.captions || [], indices = [], labels = [], start = Number(segment.NewStart), end = Number(segment.NewEnd);
+    for (var c = 0; c < captions.length; c++) {
+        var caption = captions[c];
+        if (caption && Number(caption.Start) < end && Number(caption.End) > start && isFinite(Number(caption.Index)) && Number(caption.Index) > 0) indices.push(Number(caption.Index));
+    }
+    indices.sort(function (a, b) { return a - b; });
+    for (var i = 0; i < indices.length; i++) {
+        var first = indices[i], last = first;
+        while (i + 1 < indices.length && indices[i + 1] <= last + 1) last = indices[++i];
+        labels.push(String(first) + (last > first ? "–" + last : ""));
+    }
+    function percent(value) { return String(Number(Number(value).toFixed(3))); }
+    var reason, reviewSpeed = video === null ? planned : video;
+    if (outside) reason = (merged ? "đã gộp hình; " : "") + "tốc độ hình " + percent(reviewSpeed) + "% (ngưỡng " + percent(plan.speedWarningMinPercent) + "–" + percent(plan.speedWarningMaxPercent) + "%) – kiểm tra";
+    else if (video === null || audio === null) reason = "không đọc được speed " + (video === null ? (audio === null ? "V1/A1" : "V1") : "A1") + " – kiểm tra phát";
+    else if (Math.abs(video - planned) > 0.01 || Math.abs(audio - planned) > 0.01) {
+        var actual = Math.abs(video - planned) > 0.01 ? "thực " + percent(video) : "A1 thực " + percent(audio);
+        if (Math.abs(video - planned) > 0.01 && Math.abs(audio - planned) > 0.01 && Math.abs(video - audio) > 0.01) actual = "thực V1 " + percent(video) + "%, A1 " + percent(audio);
+        reason = "speed " + actual + "% ≠ kế hoạch " + percent(planned) + "% – kiểm tra";
+    } else reason = "đã gộp hình – xem hình";
+    return labels.length ? "Cue " + labels.join(", ") + ": " + reason : reason.charAt(0).toUpperCase() + reason.substring(1);
 };
 
 $._PVS._speedMergeVisualPlans = function (plan) {
@@ -1654,7 +1678,7 @@ $._PVS.executePlan = function (planPath) {
                     Merged: !!mergedVisualGroup,
                     ColorIndex: outsideSpeedRange ? (reviewSpeed < Number(plan.speedWarningMinPercent) ? 3 : 1) : 6,
                     Name: mergedVisualGroup ? (outsideSpeedRange ? "VOICE SYNC - Gop hinh / Kiem tra toc do" : "VOICE SYNC - Da gop hinh") : "VOICE SYNC - Kiem tra toc do",
-                    Comments: "Sentence cues " + normalizePlan.FirstTargetCue + "-" + normalizePlan.LastTargetCue + ": actual speed=" + reviewSpeed.toFixed(3) + "%, warning range=" + plan.speedWarningMinPercent + "-" + plan.speedWarningMaxPercent + "%" + (mergedVisualGroup ? "; merged adjacent source segments " + (normalizePlan.MemberSegmentIndices[0] + 1) + " + " + (normalizePlan.MemberSegmentIndices[1] + 1) + "; one merge only" : "")
+                    Comments: $._PVS._speedMarkerComment(plan, normalizePlan, plannedSpeedPercent, observedVideoSpeed, observedAudioSpeed, outsideSpeedRange, mergedVisualGroup)
                 });
                 var observedSpeeds = [observedVideoSpeed, observedAudioSpeed];
                 for (var observedIndex = 0; observedIndex < observedSpeeds.length; observedIndex++) {
