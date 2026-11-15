@@ -18,7 +18,7 @@ trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ư�
 vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
 vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
 
-**2.20.91:** chữ caption giữ đúng SRT khi Whisper trả nhiều từ cùng mốc giờ; lấy lại chữ SRT khi máy nghe lệch đúng một từ gần giống; caption nới lại tối đa 5 frame mỗi mép; marker một dòng ngắn, gắn vào clip voice A2 và đi theo clip; marker cho đoạn hình vượt ngưỡng tốc độ; giữ dữ liệu lượt chạy gần nhất để báo lỗi. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.91.md).
+**2.20.91:** chữ caption giữ đúng SRT khi Whisper trả nhiều từ cùng mốc giờ; lấy lại chữ SRT khi máy nghe lệch đúng một từ gần giống; caption nới lại tối đa 5 frame mỗi mép; marker một dòng ngắn, gắn vào clip voice A2 và đi theo clip; marker cho đoạn hình vượt ngưỡng tốc độ; giữ dữ liệu lượt chạy gần nhất để báo lỗi. User đã chạy thật trên Premiere 26.2.2 (15/11/2026), chưa thấy lỗi. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.91.md).
 
 **2.20.90:** model nhận diện đổi sang Whisper large-v3-turbo (thay Small), chính xác hơn với tiếng Việt. ZIP khoảng 1,6 GB; chạy CPU chậm hơn khoảng 2 lần nên máy NVIDIA nên bật tải backend GPU. Xem [phạm vi và kiểm chứng](releases/notes/ASR_TURBO_2.20.90.md).
 

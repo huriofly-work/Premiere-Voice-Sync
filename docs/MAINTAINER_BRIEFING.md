@@ -72,9 +72,10 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
 
 ## Where the work stands
 
-- Released line: 2.20.91 is the first public prerelease after the repository
-  restart of 2026-11-14 (fixes from a real run on 2026-11-15; native acceptance
-  pending). In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
+- Released line: 2.20.91 is the first public release after the repository
+  restart of 2026-11-14 (fixes from a real run on 2026-11-15). Published as a
+  prerelease, promoted to stable/Latest by the user the same day after a real run
+  on Premiere 26.2.2 found no issues. In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
   prerelease, installed on the user's machine 2026-11-13; the accepted stable was
   2.20.25.
 - Direction (2026-11-13): build the big update in small releases on the 2.20.x

@@ -1,8 +1,8 @@
 # 2.20.91 — Sửa lỗi sau lượt chạy thật ngày 15/11/2026
 
-Bản public đầu tiên của repo mới (prerelease). Gom các bản sửa sau khi user chạy
+Bản public đầu tiên của repo mới. Công bố dạng prerelease, user nâng lên stable cùng ngày. Gom các bản sửa sau khi user chạy
 Dựng theo voice 2.20.90 trên một project thật và báo 21 lỗi về chữ caption, timing
-và marker. **Chưa nghiệm thu trên Premiere**; user cần chạy lại project đó.
+và marker. User đã cài và chạy lại project đó trên Premiere 26.2.2 ngày 15/11/2026: chưa thấy lỗi.
 
 ## Thay đổi người dùng thấy
 
@@ -33,7 +33,10 @@ và marker. **Chưa nghiệm thu trên Premiere**; user cần chạy lại proje
 - Phép thử native trên Premiere 26.2.2 (#35, #37): marker ghi lên file voice hiện
   trên clip A2, đi theo khi kéo/trim, đặt được điểm kết thúc. Cách quy đổi giờ:
   in/out của clip đổi tốc độ được Premiere báo theo đơn vị đã chia tốc độ.
-- **Chưa kiểm trên Premiere thật toàn bộ quy trình**; chưa đo marker trên clip nest
+- **Chạy thật trên Premiere 26.2.2 (15/11):** user chưa thấy lỗi. Dữ liệu lượt chạy cho
+  thấy 6 marker kiểm tra đều trên clip voice, 0 marker rơi về thước timeline, 20 marker
+  tốc độ trên V1, 0 lỗi marker. Mới kiểm một project.
+- Chưa đo marker trên clip nest
   V1, tốc độ khác 110%, reverse hoặc time remap.
 - Mã nguồn FFmpeg 8.1.2 không đính kèm Release; xem link trong
   [THIRD_PARTY_NOTICES](../../../THIRD_PARTY_NOTICES.md).
