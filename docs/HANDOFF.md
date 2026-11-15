@@ -43,24 +43,27 @@ cùng mốc (gốc của các cue sai chữ/đảo từ), #25 nới lại mép c
 lại chữ SRT khi máy nghe lệch đúng một từ gần giống (luật user duyệt, ghi ở
 [ASR_ACCEPTANCE_POLICY](ASR_ACCEPTANCE_POLICY.md)), #29 marker một dòng ngắn
 "Cue N: … – …", #31 marker tốc độ ngoài ngưỡng cho plan dựng hình theo cue, #33
-giữ thư mục job của lượt chạy gần nhất mỗi workflow. Replay offline project Ếch:
-câu SRT giữ nguyên văn 37/65 → 57/65, marker review 17 → 6.
+giữ thư mục job của lượt chạy gần nhất mỗi workflow, #35 phép thử native marker
+clip voice, #37 marker review gắn vào clip voice A2 và sửa vị trí marker clip khi
+speed khác 100%. Replay offline project Ếch: câu SRT giữ nguyên văn 37/65 → 57/65,
+marker review 17 → 6.
 
-- Phép thử native #34: marker ghi lên ProjectItem voice hiện trên clip A2 và đi
-  theo clip khi kéo/trim, nếu quy đổi giờ theo speed đúng (in/out của TrackItem báo
-  theo đơn vị đã chia speed). Marker có start/end nên phủ được cả đoạn cảnh báo.
-  Việc kế: chuyển marker review sang clip voice (E1) và sửa cách đặt marker clip có
-  sẵn (V1 tốc độ, A2 voice) vốn lệch khi speed khác 100%.
+- Phép thử native #34/#37 trên Premiere 26.2.2: marker ghi lên ProjectItem voice
+  hiện trên clip A2, đi theo clip khi kéo/trim và đặt được `marker.end` bằng số
+  giây; in/out của TrackItem báo theo đơn vị đã chia speed. Chưa đo nest V1, speed
+  khác 110%, reverse, time remap.
 - Cách làm đợt này: Claude chia việc, giao Codex viết code qua
   `codex-companion.mjs task --prompt-file`, rồi Claude đọc diff, chạy lại suite và
-  hỏi user trước mỗi commit/PR/merge.
-- Còn lại: bước E1 (marker review trên clip voice, sửa vị trí marker clip), rồi phát hành 2.20.91 (`release-check`, đổi
-  `toolVersion` trong `main.js` và các chuỗi version khác), user chạy lại project
-  Ếch trên Premiere để nghiệm thu.
+  hỏi user trước mỗi commit/PR/merge. PR #37 có thêm một lượt review của Claude.
+- Bài học quy trình: các PR #23–#37 quên cập nhật CHANGELOG trong cùng PR; đã bù ở
+  PR chuẩn bị 2.20.91. Từ nay kiểm CHANGELOG trước mỗi commit đổi hành vi.
+- Còn lại: phát hành prerelease 2.20.91 (build ZIP, metadata
+  `docs/releases/2.20.91.json`, GitHub Release, cài khi user đồng ý), rồi user chạy
+  lại project Ếch trên Premiere để nghiệm thu.
 
 ## Việc còn lại (14/11/2026)
 
-- Trước bản 2.20.91 (bản public đầu): toàn văn GPL v3 của FFmpeg đã nằm trong repo ở `licenses/GPL-3.0.txt` (tải một lần từ gnu.org ngày 14/11/2026, SHA-256 `3972dc97…6986`, test khóa hash) và có trong allowlist của gói; chưa build ZIP để xem file thật nằm trong gói. File LICENSE gốc của whisper.cpp v1.9.1 cũng đã đi kèm ở `licenses/whisper.cpp-LICENSE.txt` (SHA-256 `94f29bbe…010d`, test khóa hash). Còn chờ user quyết: có đính kèm mã nguồn FFmpeg 8.1.2 (và các thư viện gộp trong bản `essentials_build`) vào GitHub Release hay chỉ trỏ link ffmpeg.org/gyan.dev. Chạy kiểm phát hành trước khi gắn tag.
+- Trước bản 2.20.91 (bản public đầu): toàn văn GPL v3 của FFmpeg đã nằm trong repo ở `licenses/GPL-3.0.txt` (tải một lần từ gnu.org ngày 14/11/2026, SHA-256 `3972dc97…6986`, test khóa hash) và có trong allowlist của gói; chưa build ZIP để xem file thật nằm trong gói. File LICENSE gốc của whisper.cpp v1.9.1 cũng đã đi kèm ở `licenses/whisper.cpp-LICENSE.txt` (SHA-256 `94f29bbe…010d`, test khóa hash). User quyết ngày 15/11/2026: **không** đính kèm mã nguồn FFmpeg vào GitHub Release, chỉ trỏ link ffmpeg.org/gyan.dev như trong `THIRD_PARTY_NOTICES.md`.
 - Test để lại các thư mục `.tmp-*-tests` ở root (đã gitignore); chỉ xoá theo danh sách user xác nhận.
 
 ## Bài học còn áp dụng

@@ -23,9 +23,9 @@ và tài liệu của luồng bị ảnh hưởng trước khi sửa mã.
 
 ## Trạng thái cần phân biệt
 
-Repo khởi tạo lại ngày 14/11/2026 và chưa có release
-([lý do](maintenance/REPO_RESTART_2026-11-14.md)). Trước đó stable đã nghiệm thu là
-2.20.25; [2.20.90](releases/notes/ASR_TURBO_2.20.90.md) là prerelease mới nhất,
-còn chờ nghiệm thu trên Premiere. Nghiên cứu cue-first, chọn model ASR và Qwen đã đóng
+Repo khởi tạo lại ngày 14/11/2026 ([lý do](maintenance/REPO_RESTART_2026-11-14.md));
+bản public đầu tiên là prerelease [2.20.91](releases/notes/REVIEW_MARKERS_2.20.91.md),
+còn chờ nghiệm thu trên Premiere. Trước đó stable đã nghiệm thu là 2.20.25 và
+prerelease gần nhất là [2.20.90](releases/notes/ASR_TURBO_2.20.90.md). Nghiên cứu cue-first, chọn model ASR và Qwen đã đóng
 ngày 13/11/2026; mã, test và báo cáo của chúng đã gỡ khỏi repo (chỉ còn trong
 bản sao lưu lịch sử repo cũ, ngoài GitHub). Không coi test/CI hoặc việc sắp xếp này là nghiệm thu native.

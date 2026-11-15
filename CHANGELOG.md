@@ -2,7 +2,21 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
-## Chưa phát hành — dọn các hướng đã đóng, 2026-11-13
+## 2.20.91 — 2026-11-15
+
+Bản public đầu tiên sau khi khởi tạo lại repo (prerelease). Gồm các bản sửa sau lượt chạy thật ngày 15/11/2026 và phần dọn dẹp ngày 13–14/11 bên dưới. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.91.md).
+
+- Chữ caption giữ đúng SRT khi Whisper trả nhiều từ cùng mốc giờ: bước sắp xếp giữ thứ tự gốc, mốc kết thúc lấy theo từ kết thúc muộn nhất (#23). Replay ngoại tuyến: câu SRT giữ nguyên văn 37/65 → 51/65.
+- Nới lại tối đa 5 frame mỗi mép caption ở cả hai chức năng, không chồng caption kề bên; đảo quyết định của 2.20.89 theo yêu cầu user (#25).
+- Lấy lại chữ SRT trong khối sửa tay khi máy nghe lệch đúng một từ gần giống (cùng số từ, ít nhất 4 từ, không phải số, khác dấu hoặc 1–2 chữ cái); cue lấy lại theo luật này không có marker và không cấp quyền cắt (#27). Replay: 51/65 → 57/65.
+- Marker một dòng ngắn `Cue N: … – …`, dùng số caption thấy trong Premiere; bỏ số đoạn phân tích nội bộ và khoảng giây; báo lỗi native bằng tiếng Việt (#29).
+- Marker cho đoạn hình vượt ngưỡng tốc độ khi dựng hình theo cue SRT, kèm dòng log (#31).
+- Giữ thư mục job của lượt chạy gần nhất mỗi chức năng để báo lỗi, bỏ file âm thanh tạm; khôi phục sau lỗi không đổi (#33).
+- Marker kiểm tra gắn vào clip voice A2, phủ đúng đoạn cảnh báo và đi theo clip khi kéo/cắt; chỗ không gắn được vẫn đặt trên thước timeline. Marker tốc độ V1 và marker voice A2 đặt đúng khi tốc độ khác 100% (trước đây có thể ra ngoài clip). Dựa trên phép thử native trên Premiere 26.2.2 (#35, #37).
+- Codex chỉ dùng khi user yêu cầu (#21). Mã nguồn FFmpeg không đính kèm Release; dùng link trong `THIRD_PARTY_NOTICES.md` (quyết định của user ngày 15/11).
+- Chưa kiểm toàn bộ quy trình trên Premiere thật.
+
+### Dọn các hướng đã đóng, 2026-11-13
 
 - Gỡ nghiên cứu cue-first (`experiments/`, khoảng 100 test, tài liệu và receipt), 13 tool Python chọn model ASR cùng báo cáo/benchmark ASR/CTC, sau khi chốt Whisper large-v3-turbo. Chi tiết trong [bộ nhớ hồi quy](docs/REGRESSION_MEMORY.md).
 - Panel bỏ các hook dự phòng cho cue-first và năm file `extension/ui/`; gói cài bỏ payload `big-update/`. Hai nút Dựng theo voice và Chỉ tạo subtitle không dùng các hook này nên hành vi không đổi; thay đổi tới bản cài ở lần phát hành sau. Chưa kiểm trên Premiere thật.
