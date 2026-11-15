@@ -35,6 +35,29 @@ Xem [kiến trúc](ARCHITECTURE.md), [cấu trúc repo](PROJECT_LAYOUT.md) và [
 - Đã đóng: nghiên cứu cue-first (S0–S10), chọn model ASR, Qwen, sequence kết quả riêng (Q5). Mã, test và báo cáo đã gỡ; lý do và phần còn giá trị ghi ở [bộ nhớ hồi quy](REGRESSION_MEMORY.md). Không đề xuất lại các hướng này.
 - Auto edit tiếp tục sửa trên sequence template đang mở như 2.20.x.
 
+## Đợt sửa sau lượt chạy "Ếch" (15/11/2026)
+
+User chạy Auto edit 2.20.90 trên project thật và báo 21 lỗi. Đã merge vào `main`
+(chưa phát hành, native pending): #23 thứ tự từ ổn định khi Whisper trả nhiều từ
+cùng mốc (gốc của các cue sai chữ/đảo từ), #25 nới lại mép caption 5 frame, #27 lấy
+lại chữ SRT khi máy nghe lệch đúng một từ gần giống (luật user duyệt, ghi ở
+[ASR_ACCEPTANCE_POLICY](ASR_ACCEPTANCE_POLICY.md)), #29 marker một dòng ngắn
+"Cue N: … – …", #31 marker tốc độ ngoài ngưỡng cho plan dựng hình theo cue, #33
+giữ thư mục job của lượt chạy gần nhất mỗi workflow. Replay offline project Ếch:
+câu SRT giữ nguyên văn 37/65 → 57/65, marker review 17 → 6.
+
+- Phép thử native #34: marker ghi lên ProjectItem voice hiện trên clip A2 và đi
+  theo clip khi kéo/trim, nếu quy đổi giờ theo speed đúng (in/out của TrackItem báo
+  theo đơn vị đã chia speed). Marker có start/end nên phủ được cả đoạn cảnh báo.
+  Việc kế: chuyển marker review sang clip voice (E1) và sửa cách đặt marker clip có
+  sẵn (V1 tốc độ, A2 voice) vốn lệch khi speed khác 100%.
+- Cách làm đợt này: Claude chia việc, giao Codex viết code qua
+  `codex-companion.mjs task --prompt-file`, rồi Claude đọc diff, chạy lại suite và
+  hỏi user trước mỗi commit/PR/merge.
+- Còn lại: bước E1 (marker review trên clip voice, sửa vị trí marker clip), rồi phát hành 2.20.91 (`release-check`, đổi
+  `toolVersion` trong `main.js` và các chuỗi version khác), user chạy lại project
+  Ếch trên Premiere để nghiệm thu.
+
 ## Việc còn lại (14/11/2026)
 
 - Trước bản 2.20.91 (bản public đầu): toàn văn GPL v3 của FFmpeg đã nằm trong repo ở `licenses/GPL-3.0.txt` (tải một lần từ gnu.org ngày 14/11/2026, SHA-256 `3972dc97…6986`, test khóa hash) và có trong allowlist của gói; chưa build ZIP để xem file thật nằm trong gói. File LICENSE gốc của whisper.cpp v1.9.1 cũng đã đi kèm ở `licenses/whisper.cpp-LICENSE.txt` (SHA-256 `94f29bbe…010d`, test khóa hash). Còn chờ user quyết: có đính kèm mã nguồn FFmpeg 8.1.2 (và các thư viện gộp trong bản `essentials_build`) vào GitHub Release hay chỉ trỏ link ffmpeg.org/gyan.dev. Chạy kiểm phát hành trước khi gắn tag.

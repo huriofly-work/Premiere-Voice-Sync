@@ -1,5 +1,29 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #34 — Phép thử native: marker trên clip voice (15/11/2026)
+
+User muốn marker review gắn vào clip voice A2 để đi theo cue khi dịch chuyển.
+Phép thử khả thi chạy trên Premiere 26.2.2 (CEP 12) với sequence bản sao.
+
+- **Kết quả.** `ProjectItem.getMarkers().createMarker()` tạo và đọc lại đúng giờ
+  nguồn; marker hiện trên clip A2 và đi theo clip khi user kéo/trim (khớp đến
+  frame ở hai lượt đo); `deleteMarker` xóa đúng marker có tag. TrackItem không có
+  API marker. Chi tiết:
+  [VOICE_CLIP_MARKER_PROBE_2026-11-15](reviews/VOICE_CLIP_MARKER_PROBE_2026-11-15.md).
+- **Nguyên nhân lượt đầu tưởng thất bại.** `TrackItem.inPoint/outPoint` của clip
+  đổi speed được báo theo đơn vị đã chia cho speed, còn giờ marker ProjectItem là
+  giờ thật trong file. Dự đoán theo giờ in/out làm marker rơi vào khoảng trống
+  giữa hai clip nên không hiện.
+- **Invariant.** Giờ nguồn thật của điểm timeline `t` = `(t − start + inPoint) ×
+  speed`; vị trí timeline của marker `m` = `start + m/speed − inPoint`. Chưa đo
+  speed khác 110%, reverse, time remapping hay nest. Marker dùng chung cho mọi
+  sequence dùng cùng file.
+- **Hệ quả cần sửa.** `planOwnedClipMarker` (marker tốc độ V1 của #31, marker
+  "Kiem tra can voice" A2) đặt marker theo tỉ lệ `inPoint/outPoint` rồi dùng như
+  giờ nguồn thật: với speed khác 100% marker lệch, có thể ra ngoài clip.
+- **Công cụ.** `tools/probes/` (probe ES3, runner CDP, README) và test
+  `probe-voice-clip-markers.test.js`; không nằm trong gói phát hành.
+
 ## Issue #32 — Giữ dữ liệu lượt chạy gần nhất cho từng workflow (15/11/2026)
 
 - **Nguyên nhân.** `finally` của Auto edit và caption-only xóa job cả khi
