@@ -54,6 +54,17 @@ assert.equal(blue.api.current().tone,"ok");assert.equal(blue.api.current().revie
 const speed=fixture();speed.api.begin("edit");speed.api.markers({speedWarningSentenceCount:1},[],{visualSegments:[{NewStart:2,NewEnd:4,SpeedOutsideWarningRange:true}]});
 speed.api.warning("Check speed",true,"SPEED");speed.api.finish("Edit","Details");assert.equal(speed.api.current().reviewItems.length,1);
 
+const cueSpeed=fixture();cueSpeed.api.begin("edit");
+cueSpeed.api.markers({speedWarningSentenceCount:2},[],{pictureCueRevision:"srt-cue-picture-v1",segments:[{NewStart:0,NewEnd:9,SpeedOutsideWarningRange:true}],visualSegments:[{NewStart:0,NewEnd:9,SpeedOutsideWarningRange:true}],pictureSegments:[
+  {NewStart:0,NewEnd:2,SpeedOutsideWarningRange:true},{NewStart:2,NewEnd:5,SpeedOutsideWarningRange:false},{NewStart:5,NewEnd:9,SpeedOutsideWarningRange:true}
+]});
+cueSpeed.api.finish("Edit","Details");
+assert.equal(cueSpeed.api.current().reviewItems.length,2,"Issue #30: v1 outside-range picture segments must appear in the review summary.");
+assert.equal(cueSpeed.api.current().reviewItems[0].start,0);assert.equal(cueSpeed.api.current().reviewItems[0].end,2);
+assert.equal(cueSpeed.api.current().reviewItems[1].start,5);assert.equal(cueSpeed.api.current().reviewItems[1].end,9);
+assert(cueSpeed.controls.workflowNoticeTechnical.textContent.includes("2 đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker đỏ/cam."));
+assert(!source.includes("giữ trong chẩn đoán. Marker tốc độ dành cho"),"The completion log must no longer promise suppressed v1 markers.");
+
 const failed=fixture();failed.api.begin("captions");failed.api.context().impact="unknown";failed.api.fail(Error("RAW_PRIVATE_PATH C:\\private\\audio.wav"),"Chưa tạo được phụ đề");
 assert.equal(failed.controls.workflowNotice.attrs.role,"alert");assert.equal(failed.controls.workflowNotice.attrs["aria-modal"],"false");
 assert(!failed.controls.workflowNoticeMessage.textContent.includes("RAW_PRIVATE_PATH"));assert(!failed.controls.status.textContent.includes("RAW_PRIVATE_PATH"));
