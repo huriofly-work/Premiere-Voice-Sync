@@ -23,7 +23,7 @@ Panel CEP cho Adobe Premiere Pro 26 trên Windows. Có hai chức năng: **Dựn
 3. Để SRT trống để tự nhận diện nội dung, hoặc chọn SRT đúng lời nói (có thể là SRT toàn video). Tool tự tìm phần SRT khớp audio được chọn, giữ chữ và căn lại timestamp.
 4. Bấm **Tạo subtitle**. Tool thêm Caption Track mới đúng vị trí và giữ nguyên video/audio. Nghe lại rồi tự lưu project.
 
-Audio xuất qua Premiere theo nguồn/phạm vi đã chốt. Trong chế độ track chỉ định, gợi ý A2 có clip enabled giao phạm vi, hoặc track đầu tiên phù hợp; lựa chọn thủ công được giữ khi nguồn trống và lỗi được báo rõ. Nhiều nguồn được phối theo timeline; clip mode loại clip không chọn trên cùng track. Vùng rời nhau giữ đúng vị trí. Chế độ này không cần V1/A1 linked, SRT tiếng Việt hoặc template sạch. Subtitle giữ nguyên ngôn ngữ lời nói; không dịch. File tạm được dọn sau tác vụ, trừ job còn nhật ký cần khôi phục.
+Audio xuất qua Premiere theo nguồn/phạm vi đã chốt. Trong chế độ track chỉ định, gợi ý A2 có clip enabled giao phạm vi, hoặc track đầu tiên phù hợp; lựa chọn thủ công được giữ khi nguồn trống và lỗi được báo rõ. Nhiều nguồn được phối theo timeline; clip mode loại clip không chọn trên cùng track. Vùng rời nhau giữ đúng vị trí. Chế độ này không cần V1/A1 linked, SRT tiếng Việt hoặc template sạch. Subtitle giữ nguyên ngôn ngữ lời nói; không dịch. Giữ dữ liệu lượt chạy cuối của mỗi chức năng để tìm lỗi; WAV/PCM tạm được dọn, trừ job còn nhật ký cần khôi phục.
 
 ## Đầu vào
 
@@ -147,7 +147,7 @@ Dữ liệu lâu dài được gom vào `%LOCALAPPDATA%\PremiereVoiceSync`:
 
 **Xóa cache nhận diện** trong Nhật ký kỹ thuật chỉ xóa `Cache\Whisper`, không xóa model/backend. **Xuất log đã che thông tin** lưu log panel tại thư mục người dùng chọn, che đường dẫn, tên sequence/media được biết, email và mẫu token GitHub; vẫn phải đọc lại trước khi chia sẻ. Không tự upload log.
 
-Các thư mục job, WAV chuyển đổi, JSON alignment, edit plan và report trung gian chỉ tồn tại trong lúc chạy. Chúng được xóa bằng khối dọn dẹp bắt buộc khi tác vụ thành công hoặc phát sinh lỗi; các thư mục tạm sót do Premiere/Windows bị tắt đột ngột cũng được dọn tự động ở lần chạy sau.
+Trong `%LOCALAPPDATA%\PremiereVoiceSync\Jobs`, chương trình giữ job cuối của mỗi chức năng (`Job_…` cho Auto edit, `Job_Subtitle_…` cho subtitle), kể cả thành công/lỗi/hủy, cùng `last-run.json`, JSON alignment, SRT, edit plan và report. WAV/PCM trung gian được dọn. Khi bắt đầu lượt mới của cùng chức năng, dữ liệu lượt trước được thay thế; job khác quá 24 giờ vẫn được dọn tự động. Job còn nhật ký khôi phục audio được giữ nguyên. Dữ liệu job có thể chứa chữ kịch bản; chỉ chia sẻ với người tin tưởng (xem [Khi báo lỗi](docs/USER_GUIDE.md#khi-báo-lỗi)).
 
 Khởi động lại Premiere Pro và mở `Window > Extensions (Legacy) > Premiere Voice Sync`.
 

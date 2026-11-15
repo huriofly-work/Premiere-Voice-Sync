@@ -52,6 +52,7 @@ function fixture(options={}){
     readSettings=()=>settingDefaults;findWavePreset=()=>"preset.epr";
     createWorkflowMetrics=()=>({begin:s=>fixture.calls.push(["stage",s]),end:(r,o)=>fixture.calls.push(["stage-end",o]),finish:o=>fixture.calls.push(["finish",o]),linkTimeline(){},reviewPlan:r=>fixture.calls.push(["review-plan",r.reviewMarkers.length])});
     removeTreeSafe=()=>{if(hostPending||enginePending)throw Error("CLEANUP_WHILE_PENDING");fixture.calls.push(["cleanup"]);};
+    retainLastRun=removeTreeSafe;
     status=log=renderBackend=logCaptionTiming=()=>{};
     state.targetSrt="input.srt";
     window.api={edit:runSync,captions:runCaptions,stop:requestWorkflowStop,pause:requestWorkflowPause,fatal:reportUnexpectedError,choose:chooseWorkflowNotice,pending:()=>!!state.noticeChoice,busy:()=>state.workflowBusy,context:()=>runContext,recovery:()=>recoveryContext};
