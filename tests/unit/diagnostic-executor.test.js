@@ -6,6 +6,19 @@ const diagnostic = fs.readFileSync(path.join(root,"extension/jsx/diagnostic-exec
 const { output } = require("../../tools/Build-DiagnosticExecutor.js");
 assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
 const TPF = 8467200000;
+// Run explicitly before the legacy assertions to capture the pre-fix failure.
+{
+  const f=fixture(1),clip=f.seq.videoTracks[0].clips[0];
+  // Extract the real production planner, without running timeline mutations.
+  const begin=host.indexOf("    function readSpeedPercent(item)"),end=host.indexOf("    try {\n        noteNative(\"before\", \"read-plan\")",begin);
+  vm.runInContext(host.slice(begin,end),f.context);
+  clip.start=time(300);clip.end=time(360);clip.inPoint=time(600);clip.outPoint=time(660);clip.speed=1.45;
+  f.context.item=clip;
+  vm.runInContext('var groups={};prepareClipMarkerGroup({Item:item,Ranges:[{start:29,end:31.9}]},groups,30);planOwnedClipMarker(item,{Name:"VOICE SYNC - Kiem tra toc do",Comments:"145%",ColorIndex:1},30,groups);var committed=$._PVS._markerTools.commit(groups[projectItemKey(item)]);',f.context);
+  assert.equal(f.context.committed.count,1,"145% marker must land inside real source range");
+  const m=f.nested.getMarkers().items[0];assert(Math.abs(m.start.seconds-29)<1e-7);assert(Math.abs(Number(m.end)-31.9)<1e-7);
+  console.log("SPEED_REAL_SOURCE_RANGE_OK:145%");if(process.argv.includes("--voice-marker-regression"))process.exit(0);
+}
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
 function tracks(items) { Object.defineProperty(items,"numTracks",{get(){return this.length;}}); return items; }
 function time(frame) { return { ticks:String(frame*TPF),seconds:frame/30 }; }
@@ -43,7 +56,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   }
   clip("Nest",seq.videoTracks[0],0,count*120,0,count*120,nested);
   clip("Nest",seq.audioTracks[0],0,count*120,0,count*120,nested);
-  const originalVoice=clip("Voice",seq.audioTracks[1],0,voiceFrame,0,voiceFrame*voiceSpeed,voice);originalVoice.speed=voiceSpeed;
+  const originalVoice=clip("Voice",seq.audioTracks[1],0,voiceFrame,0,voiceFrame,voice);originalVoice.speed=voiceSpeed;
   // Preserved tail moves first and must remain identical across both paths.
   clip("End screen",seq.videoTracks[0],count*120,count*120+60,0,60,{nodeId:"end"});
   clip("Adjustment",Object.assign(seq.videoTracks[1]={clips:collection([])}),count*120,count*120+60,0,60,{nodeId:"adjustment"});
@@ -51,12 +64,12 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     const item=track.clips.find(c=>Number(c.start.ticks)/TPF<frame&&Number(c.end.ticks)/TPF>frame);
     if(!item)return;
     const oldEnd=Number(item.end.ticks)/TPF,oldOut=Number(item.outPoint.ticks)/TPF;
-    const sourceCut=Number(item.inPoint.ticks)/TPF+(frame-Number(item.start.ticks)/TPF)*item.speed;
+    const sourceCut=Number(item.inPoint.ticks)/TPF+(frame-Number(item.start.ticks)/TPF);
     const other=clip(item.name,track,frame,oldEnd,sourceCut,oldOut,item.projectItem);other.speed=item.speed;
     item.end=time(frame);item.outPoint=time(sourceCut);track.clips.sort((a,b)=>Number(a.start.ticks)-Number(b.start.ticks));
   }
   function tcFrames(tc){const v=tc.split(":").map(Number);return ((v[0]*3600+v[1]*60+v[2])*30)+v[3];}
-  function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
+  function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);const oldSpeed=c.speed;c.inPoint=time(Number(c.inPoint.ticks)/TPF*oldSpeed/factor);c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
   const rootItem={children:collection([]),nodeId:"root",createBin(){actions.push(["createBin"]);const bin={nodeId:"bin",children:collection([]),deleteBin(){actions.push(["deleteBin"]);rootItem.children.splice(rootItem.children.indexOf(bin),1);return true;}};rootItem.children.push(bin);return bin;}};
   seq.createCaptionTrack=function(){actions.push(["captionTrack"]);return true;};
   const project={activeSequence:seq,rootItem,openSequence(){actions.push(["openSequence"]);},importFiles(paths,a,bin){actions.push(["importCaption"]);bin.children.push({nodeId:"srt",getMediaPath(){return paths[0];}});return true;},save(){throw Error("MUST_NOT_SAVE");}};
@@ -91,7 +104,7 @@ for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65,1
   assert(!markers.some(m=>m.start.seconds===1));
   assert(markers.some(m=>m.comments.startsWith("old merge")),"Out-of-scope source marker preserved.");
   for(const visual of trial.plan.visualSegments.filter(v=>v.MemberSegmentIndices.length===2)){
-    const found=markers.filter(m=>m.start.seconds>visual.SourceStart&&m.start.seconds<visual.SourceEnd&&/đã gộp hình/i.test(m.comments));
+    const found=markers.filter(m=>m.start.seconds>=visual.SourceStart-1e-6&&m.start.seconds<visual.SourceEnd-1e-6&&/đã gộp hình/i.test(m.comments));
     assert.strictEqual(found.length,1,"Every merged group owns exactly one marker, even within thresholds.");
     assert(found[0].comments.includes("[PremiereVoiceSync:owned-marker:v1]"));
     assert.strictEqual(found[0].colorIndex,visual.AppliedSpeedPercent<90?3:visual.AppliedSpeedPercent>110?1:6);
@@ -187,15 +200,15 @@ for(const profile of ["baseline","fast","no-delay"]){
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(value.plan)+";};",value.context);
   }
   const report=JSON.parse(stable.api.executePlan("fixture")),trial=finishTrial(staged,profile);
-  assert(report.ok,JSON.stringify(report));assert.equal(report.reviewMarkerCount,1);assert.equal(report.sequenceMarkerCount,1);
+  assert(report.ok,JSON.stringify(report));assert.equal(report.reviewMarkerCount,1);assert.equal(report.sequenceMarkerCount,0);
   assert.deepStrictEqual(trial.report,report);assert.deepStrictEqual(staged.actions,stable.actions);
-  assert(staged.seq.markers.items[0].comments.startsWith("Timing chưa xác minh – kiểm mép\n"));
+  assert(staged.voice.getMarkers().items[0].comments.startsWith("Timing chưa xác minh – kiểm mép\n"));
 }
-f=fixture(6);f.plan.reviewMarkers=[{start:0,end:1,reason:"review"}];delete f.seq.markers;
+f=fixture(6);f.plan.reviewMarkers=[{start:0,end:1,reason:"review"}];delete f.seq.markers;f.voice.isSequence=()=>true;
 vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
 const markerFailure=finishTrial(f,"no-delay").report;assert(!markerFailure.ok);assert(markerFailure.captionCreated);assert.equal(markerFailure.reviewMarkerFailureCount,1);
 f=fixture(1);f.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
-const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,1);assert(f.seq.markers.items[0].comments.startsWith("Chưa xác minh liên kết V1/A1 – kiểm tra\n"));assert.equal(f.seq.markers.items[0].colorIndex,1);
+const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,1);assert(f.voice.getMarkers().items[0].comments.startsWith("Chưa xác minh liên kết V1/A1 – kiểm tra\n"));assert.equal(f.voice.getMarkers().items[0].colorIndex,1);
 for(const profile of ["baseline","fast","no-delay"]){
   f=fixture(1);f.seq.failSpeed=true;
   const nativeFailure=finishTrial(f,profile).report;
@@ -231,7 +244,7 @@ for(const oneGroup of [false,true])for(const outside of [false,true])for(const p
   assert.deepStrictEqual(actual,direct);assert.deepStrictEqual(staged.actions,stable.actions);
   assert.strictEqual(staged.actions.filter(a=>a[0]==="remove").length,outside?8:4,"Only the omitted V1/A1 pairs are removed.");
   const kept=staged.seq.videoTracks[0].clips.filter(c=>c.name==="Nest");
-  assert.deepStrictEqual(kept.map(c=>Number(c.inPoint.ticks)/TPF),outside?[120,360,600]:[0,360,720]);
+  assert.deepStrictEqual(kept.map(c=>Math.round(Number(c.inPoint.ticks)/TPF*c.speed)),outside?[120,360,600]:[0,360,720]);
   assert.strictEqual(staged.seq.audioTracks[1].clips.length,oneGroup?1:3,"Picture omissions must not force new voice cuts.");
   assert.strictEqual(staged.seq.audioTracks[1].clips.reduce((n,c)=>n+Number(c.outPoint.ticks)-Number(c.inPoint.ticks),0),staged.plan.plannedMainVideoEndFrame*TPF);
 }
@@ -334,7 +347,7 @@ for(const compact of [false,true])for(const profile of ["stable","baseline","fas
   if(color!==null){
     assert.equal(markers[0].name,"VOICE SYNC - Kiem tra toc do");assert.equal(markers[0].colorIndex,color);
     assert.equal(markers[0].comments,"Cue 12–13: tốc độ hình "+percent+"% (ngưỡng 70–130%) – kiểm tra\n[PremiereVoiceSync:owned-marker:v1]");
-    assert(markers[0].start.seconds>0&&markers[0].start.seconds<4,"Marker stays inside the same V1 source range.");
+    assert(markers[0].start.seconds>=0&&markers[0].start.seconds<4,"Marker stays inside the same V1 source range.");
     assert.equal(f.voice.getMarkers().items.length,0);
   }
   speedRangeCases++;
@@ -365,7 +378,7 @@ for (const compact of [false, true]) for (const profile of ["stable", "baseline"
   } else vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
   const result = profile === "stable" ? JSON.parse(f.api.executePlan("fixture")) : finishTrial(f,profile).report;
   assert.equal(result.reviewMarkerFailureCount, 0);
-  assert.equal(f.seq.markers.items[0].comments, "Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra\n[PremiereVoiceSync:review-marker:v1:edit]");
+  assert.equal(f.voice.getMarkers().items[0].comments, "Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra\n[PremiereVoiceSync:review-marker:v2:edit:seq]");
 }
 for(const make of [()=>fixture(65,false,true),()=>fixture(6,false,false,1,true),()=>cueFixture(6),()=>editedFixture(true,true)]){
   const full=make(),compact=make(),staged=make();

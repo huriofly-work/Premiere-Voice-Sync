@@ -10,7 +10,7 @@
   // Keep proof/text diagnostics in the full engine output. ExtendScript
   // needs geometry, identities and native checks, not the recognition graph.
   function projectHostInput(value, workflow) {
-    var keys = workflow === "captions" ? ["ok", "workflow", "schemaVersion", "sequenceId", "snapshot", "captionSrtPath", "captionCueCount", "reviewMarkers", "reviewMarkerRanges"] :
+    var keys = workflow === "captions" ? ["ok", "workflow", "schemaVersion", "sequenceId", "snapshot", "captionSrtPath", "captionCueCount", "reviewMarkers", "reviewMarkerRanges", "reviewMarkerVoiceInput"] :
       ["ok", "schemaVersion", "sequenceId", "frameRate", "settings", "speedWarningMinPercent", "speedWarningMaxPercent", "mainVideoClip", "mainVideoSourceEnd", "mainVideoSourceEndFrame", "plannedMainVideoEnd", "plannedMainVideoEndFrame", "voiceTrackIndex", "voiceClips", "linkedAudio", "segments", "visualSegments", "speedMergeTrial", "editBoundaryTrial", "pictureCueRevision", "pictureCueBoundaries", "pictureSegments", "editedSourceMap", "omittedReferenceCueIndices", "markers", "reviewMarkers", "captionSrtPath"];
     var compact = {};
     keys.forEach(function (key) { if (Object.prototype.hasOwnProperty.call(value, key)) compact[key] = value[key]; });
@@ -246,7 +246,7 @@
     runContext.reviewItems.push({ key: key, start: Number(start), end: Number(end), captionIndex: captionIndex || null, reasons: [reason] });
   }
   function logReviewMarkers(result, markers, plan) {
-    log("Marker timeline cần kiểm tra: " + Number(result.reviewMarkerCount || 0) + "; lỗi tạo marker: " + Number(result.reviewMarkerFailureCount || 0) + ".", Number(result.reviewMarkerFailureCount || 0) ? "warn" : "muted");
+    log("Marker cần kiểm tra: " + Number(result.reviewMarkerClipCount || 0) + " trên clip voice; " + Number(result.reviewMarkerSequenceFallbackCount || 0) + " trên thước timeline (dự phòng); lỗi: " + Number(result.reviewMarkerFailureCount || 0) + ".", Number(result.reviewMarkerFailureCount || 0) ? "warn" : "muted");
     (markers || []).forEach(function (marker) { reviewPosition(marker.start, marker.end, marker.reason, marker.captionIndex); });
     if (plan) (plan.pictureCueRevision === "srt-cue-picture-v1" ? (plan.pictureSegments || []) : (plan.visualSegments || plan.segments || [])).forEach(function (segment) {
       if (segment.SpeedOutsideWarningRange) reviewPosition(segment.NewStart, segment.NewEnd, "Tốc độ hình ngoài ngưỡng đã chọn");
@@ -1941,7 +1941,7 @@
       if (Number(result.clipMarkerColorFailureCount || 0) > 0) log("Premiere chưa đặt đúng màu cho " + Number(result.clipMarkerColorFailureCount) + " marker. Vị trí/ghi chú vẫn được kiểm tra; xem tên và ghi chú để phân biệt.", "warn");
       log("Dựng timeline: " + ((Date.now() - phase) / 1000).toFixed(1) + " giây.", "ok");
       var successMessage = "Hoàn tất trong " + ((Date.now() - started) / 1000).toFixed(1) + " giây · " + (plan.pictureCueSummary ? plan.pictureCueSummary.sourceCueCount : plan.summary.punctuationSentenceCount) + " cue nguồn · " + Number(result.pictureCueCount || result.voiceCueCount) + " đoạn hình · " + result.voiceCueCount + " đoạn voice · " + result.captionCueCount + " caption · khe hở hình 0 frame. Project chưa được lưu.";
-      if (Number(result.reviewMarkerCount || 0)) successMessage += " Có " + result.reviewMarkerCount + " marker cần kiểm tra trên thước timeline.";
+      if (Number(result.reviewMarkerCount || 0)) successMessage += " Marker cần kiểm tra: " + Number(result.reviewMarkerClipCount || 0) + " trên voice, " + Number(result.reviewMarkerSequenceFallbackCount || 0) + " trên thước timeline.";
       var manualSummary = manualReviewSummary(plan);
       if (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) successMessage += " Còn " + manualSummary.timingBlocks + " vùng timing ước lượng; " + manualSummary.pendingReferenceCues + " câu SRT chưa khớp đầy đủ. Các phần có bằng chứng âm thanh đã được căn tự động.";
       if (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) runWarning("Còn " + manualSummary.timingBlocks + " vùng timing ước lượng; " + manualSummary.pendingReferenceCues + " câu SRT chưa khớp đầy đủ. Xem các đoạn được đánh dấu.", true);
@@ -2292,6 +2292,7 @@
       result.reviewMarkers = buildReviewMarkers(result, null);
       metrics.reviewPlan(result);
       result.reviewMarkerRanges = sources.map(function (source) { return { start: source.start, end: source.end }; });
+      result.reviewMarkerVoiceInput = { sourceMode: inputPlan.input.sourceMode, trackIndices: inputPlan.trackIndices, selectedClips: inputPlan.selectedClips };
       fs.writeFileSync(resultPath, JSON.stringify(result, null, 2), "utf8");
       var captionExecutorPath = writeHostInput(result, "captions", outputFolder);
       await waitForWorkflowPause();
@@ -2307,7 +2308,7 @@
       var message = "Đã tạo " + applied.captionCueCount + " caption trong " + ((Date.now() - started) / 1000).toFixed(1) + " giây. Video/audio được giữ nguyên. Hãy nghe lại để kiểm tra từ nhận diện; project chưa được lưu.";
       if (result.usedReferenceSrt && Number(result.referenceSelectedCueCount) === 0) message += " Không giữ được câu nào từ SRT đã chọn; toàn bộ caption dùng chữ tự nhận diện.";
       if ((result.omittedReferenceCueIndices || []).length) message += " Bỏ " + result.omittedReferenceCueIndices.length + " cue SRT không còn trong voice.";
-      if (Number(applied.reviewMarkerCount || 0)) message += " Có " + applied.reviewMarkerCount + " marker cần kiểm tra trên thước timeline.";
+      if (Number(applied.reviewMarkerCount || 0)) message += " Marker cần kiểm tra: " + Number(applied.reviewMarkerClipCount || 0) + " trên voice, " + Number(applied.reviewMarkerSequenceFallbackCount || 0) + " trên thước timeline.";
       if (referenceScope.length) message += " SRT: " + referenceScope.map(function (item) { return "cue " + item.firstCue + "–" + item.lastCue; }).join(", ") + "/" + result.referenceCueCount + "; " + result.referenceOutsideCueCount + " cue ngoài vùng không được thêm.";
       if (referenceSupplements.length) message += " Đã tự nhận diện bổ sung " + referenceSupplements.length + " vùng thiếu hoặc khác SRT, gồm cả lời nói ngoài SRT; cần nghe lại phần bổ sung.";
       if ((result.referenceSupplementEmptyRanges || []).length) message += " Có " + result.referenceSupplementEmptyRanges.length + " vùng không nhận diện được lời nói; xem log để kiểm tra.";

@@ -18,10 +18,12 @@ if ([regex]::Matches($hostSource, 'item\.end\s*=\s*forcedEnd').Count -ne 1) { th
 Assert-Contains $hostSource 'firstError !== 0 && allowTerminalEndFallback' 'terminal-end-fallback-guard'
 Assert-Contains $hostSource 'savedSourceTicks / (desiredFrames * ticksPerFrame)' 'exact-source-factor'
 if ($hostSource -match 'sourceBoundaryFailureCount|maxSourceOutErrorFrames|originalVideoSourceRanges') { throw 'HOST_INVARIANT_FAILED:invalid-post-retime-source-audit' }
-Assert-Contains $hostSource 'var candidateFractions = [0.5, 0.4, 0.6, 0.3, 0.7, 0.25, 0.75, 0.2, 0.8];' 'marker-interior-candidates'
-Assert-Contains $hostSource 'actualSourceFrame > sourceStartFrame + sourceInteriorToleranceFrames' 'marker-source-range-check'
-Assert-Contains $hostSource 'projectedTimelineFrame > actualTimelineStartFrame && projectedTimelineFrame < actualTimelineEndFrame' 'marker-projection-check'
-Assert-Contains $hostSource 'originalMainSourceInFrame + (markerSourceTimelineStartFrame - originalMainTimelineStartFrame) * originalMainSpeedFactor' 'marker-original-source-map'
+# Issue #36 replaces midpoint/fraction placement with the native-probed mapping.
+# Host VM tests exercise 100/110/145%, duration read-back and compensation.
+Assert-Contains $hostSource 'return (t - start + input) * speed;' 'marker-real-source-map'
+Assert-Contains $hostSource 'return start + m / speed - input;' 'marker-timeline-projection'
+Assert-Contains $hostSource 'seconds: candidate, end: sourceEnd' 'marker-segment-duration'
+Assert-Contains $hostSource 'target.verify(actual.seconds, actual.end)' 'marker-range-readback'
 Assert-Contains $hostSource 'app.project.importFiles([plan.captionSrtPath], true, captionBin, false)' 'caption-temp-bin-import'
 Assert-Contains $hostSource 'var deleteResult = captionBin.deleteBin();' 'caption-temp-bin-delete'
 if ($hostSource.IndexOf('captionBin.deleteBin() === 0', [StringComparison]::Ordinal) -ge 0) { throw 'HOST_INVARIANT_FAILED:caption-delete-return-value' }

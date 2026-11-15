@@ -149,7 +149,9 @@ Ghi chú tốc độ ngắn, dùng số caption cuối đang thấy: `Cue 12–1
 
 ### Nhận diện và dọn marker của tool
 
-Marker cần kiểm tra trên thước timeline có tên `VOICE SYNC - Can kiem tra`. Mỗi dòng ghi `Cue N: vấn đề – việc cần làm`; số Cue là số caption cuối trong Premiere, có thể là một khoảng. Không có caption tại vùng đó thì ghi thẳng vấn đề, viết hoa đầu câu. Ghi chú không lặp khoảng giây hay số khối phân tích.
+Marker cần kiểm tra có tên `VOICE SYNC - Can kiem tra`, nằm trên clip voice A2 của Auto edit, hoặc clip/track voice đã chọn làm nguồn Tạo phụ đề. Marker đi theo voice khi kéo/trim clip, phủ đoạn cảnh báo tới mép cuối clip chứa đầu vấn đề; không phủ qua khoảng trống sang clip khác. Mỗi dòng ghi `Cue N: vấn đề – việc cần làm`; số Cue là số caption cuối trong Premiere, có thể là một khoảng. Không có caption tại vùng đó thì ghi thẳng vấn đề, viết hoa đầu câu. Ghi chú không lặp khoảng giây hay số khối phân tích.
+
+Marker nguồn cũng hiện trong các sequence khác dùng cùng file voice và vùng nguồn đó. Khi không gắn được lên voice (khoảng trống, reverse/time remap/nest, không đọc được speed hoặc API ghi/kiểm chứng lỗi), marker ở lại trên thước sequence. Log báo riêng số marker trên voice và số dự phòng trên thước. Marker tốc độ V1 có cả đầu/cuối để phủ đoạn hình đã retime.
 
 - `Cue 4: chữ khác SRT, timing ước lượng – nghe lại`
 - `Cue 20–24: timing ước lượng – kiểm mép`
@@ -158,9 +160,9 @@ Marker cần kiểm tra trên thước timeline có tên `VOICE SYNC - Can kiem 
 
 Các vấn đề cùng vị trí giữ một dòng cho mỗi ghi chú, bỏ dòng trùng và gộp cùng Cue khi còn ngắn. Dòng dấu sở hữu ở cuối được giữ để tool nhận diện marker. “Timing chưa xác minh” yêu cầu kiểm mép hiển thị; “chữ khác SRT” yêu cầu đối chiếu voice. Marker không tự kết luận lời nói sai.
 
-Auto edit và Tạo phụ đề quản lý riêng các marker này, chỉ cập nhật/dọn marker đúng dấu sở hữu trong phạm vi đang làm. Marker cũ cùng tên/dấu sở hữu vẫn được thay bằng định dạng ngắn khi chạy lại. Giữ marker người dùng, marker của chức năng khác và ngoài vùng. Nếu không gắn được marker, tool báo lỗi; caption có thể đã được thêm, cần kiểm tra trước khi chạy lại. Lỗi riêng màu vẫn giữ vị trí/ghi chú và được báo riêng.
+Auto edit và Tạo phụ đề quản lý riêng các marker này bằng tên và tag v2 gồm workflow/sequence ID. Trên các nguồn voice đang dùng, chạy lại dọn marker v2 cũ của đúng workflow/sequence, kể cả vị trí nguồn cũ đã ngoài clip; giữ marker của sequence khác. Marker v1 trên sequence chỉ dọn trong vùng đang làm; v1 trên nguồn chỉ nhận trong vùng nguồn đã ánh xạ vì không có ID sequence. Giữ marker người dùng và chức năng khác. Nếu cả gắn voice lẫn dự phòng sequence đều lỗi, tool báo lỗi; caption có thể đã được thêm, cần kiểm tra trước khi chạy lại. Lỗi riêng màu vẫn giữ vị trí/ghi chú và được báo riêng.
 
-Tool đọc marker cũ trước khi cắt/retime và giữ chúng trong lúc dựng. Sau khi xác định vị trí cuối, tool đối chiếu theo từng nguồn V1/A1/A2: giữ marker còn đúng, cập nhật hoặc tạo marker cần thiết, kiểm tra rồi mới dọn marker thừa. Marker kiểm tra trên thước timeline dùng cùng nguyên tắc. Không dọn marker toàn timeline, CTA ngoài nhóm hoặc marker nằm ngoài vùng nguồn xử lý.
+Tool đọc marker tốc độ/căn voice cũ trước khi cắt/retime và giữ chúng trong lúc dựng. Sau khi xác định vị trí cuối, tool đối chiếu theo từng nguồn V1/A1/A2: giữ marker còn đúng, cập nhật hoặc tạo marker cần thiết, kiểm tra rồi mới dọn marker thừa. Marker review trên voice và marker dự phòng trên thước dùng cùng nguyên tắc ghi/đọc kiểm chứng trước khi dọn; marker review có scope sequence riêng như trên. Không dọn marker toàn timeline hoặc CTA ngoài nhóm.
 
 Nếu cập nhật marker bị lỗi, tool thử phục hồi dữ liệu marker của riêng nhóm đó và báo rõ nếu chưa phục hồi đầy đủ. Đây không phải khôi phục timeline; cần kiểm tra kết quả trước khi chạy lại. Tạm dừng/hủy chỉ thực hiện ngoài bước cập nhật một nhóm nguồn: nhóm đã hoàn tất được giữ, nhóm chưa cập nhật còn marker cũ. Nếu sửa marker nguồn trong lúc tạm dừng, tool phát hiện khác biệt trước khi ghi nhóm đó. Không tự Undo hoặc lưu project.
 

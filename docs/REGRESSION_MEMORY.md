@@ -1,5 +1,67 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #36 — Marker review đi theo clip voice, đúng giờ nguồn khi đổi speed (15/11/2026)
+
+- **Yêu cầu/nguyên nhân.** Review trước đây ở thước sequence nên không đi theo
+  voice. Marker clip V1 tốc độ/A2 căn voice lấy phân số của in/out như giờ nguồn
+  thật, sai khi speed khác 100%. Dùng kết quả native #34 trên Premiere 26.2.2:
+  chỉ ProjectItem có API marker; in/out TrackItem đã chia speed; marker dùng giờ
+  nguồn thật. Probe chỉ xác minh đến frame ở 110%, không suy ra nghiệm thu speed khác.
+- **Invariant.** `src(t) = (t - start + inPoint) * speed`, chiếu ngược
+  `start + marker/speed - inPoint`; getSpeed <=10 là ratio, >10 là phần trăm.
+  Ghi cả start/end, đọc lại duration và hai mép chiếu timeline trong issue/clip.
+  V1 phủ đoạn retime thật; A2 căn voice dùng cùng công thức. Va marker thủ công
+  thì dịch đầu marker đến frame trống trong đoạn, giữ mép cuối và marker thủ công.
+- **Review và fallback.** Auto edit dùng speechPieces A2 cuối; caption-only
+  truyền binding track/clip đã đóng băng của nguồn nhận diện, không đọc selection
+  hiện tại. Issue qua nhiều clip được chặn tại cuối clip chứa đầu issue, không phủ
+  qua gap. Gap, reverse, speed lỗi, time remap (kể cả tĩnh), nest, thiếu
+  ProjectItem API, nguồn chồng nhau hoặc ghi/đọc kiểm chứng lỗi dùng marker sequence
+  như trước. Count riêng `reviewMarkerClipCount` và
+  `reviewMarkerSequenceFallbackCount`; tổng giữ `reviewMarkerCount`. Không có
+  binding (kết quả cũ, native failure/recovery) vẫn dùng sequence. Nếu fallback
+  cũng lỗi thì báo lỗi marker như cũ; không bỏ issue im lặng.
+- **Ownership/cleanup.** Giữ tên, màu và ghi chú ngắn #28. Tag mới
+  `[PremiereVoiceSync:review-marker:v2:<workflow>:<sequenceId>]` (ID encodeURIComponent)
+  dùng cho clip lẫn fallback. Trên các ProjectItem voice đang xử lý, dọn v2 cùng
+  workflow/sequence kể cả vị trí nguồn cũ đã ngoài clip; không dọn workflow/sequence
+  khác. Sequence chỉ dọn trong ranges của lượt chạy. Nhận v1 cùng workflow trong
+  ranges sequence hiện tại; nếu có v1 trên nguồn thì chỉ trong vùng nguồn thực đã
+  ánh xạ. V1 không có ID sequence nên không thể tách provenance khi trùng vùng nguồn;
+  v2 giải quyết từ lượt này. Marker vẫn hiện ở mọi sequence dùng cùng file voice.
+  Giữ manual/unknown/non-Comment. Giữ snapshot/verify/compensate/commit theo nguồn,
+  thêm snapshot/khôi phục duration; lỗi phục hồi vẫn báo riêng. Không đổi journal,
+  failure recovery, Save/Undo, edit/caption timing hay quyền cắt/DTW.
+- **Test trước sửa.** `VOICE_CLIP_REVIEW_CASES:passed=0;failed=13`, gồm speed
+  1/1.1/110, mapping mẫu probe 15.079 → 16.3667, gap/reverse/unreadable/remap/nest,
+  API/position/end read-back, clamp và scoped rerun; lỗi count `undefined == 1`.
+  Ca V1 145% fail `No free source position for clip marker on 'Nest'.` Log gốc:
+  `_local/voice-clip-markers/red-review.log`, `red-speed.log` (ignored).
+- **Trước suite dài.** Chín file JS marker/host/notification/probe đạt 9/9;
+  17 ca review mới, một ca V1 145% chạy mặc định, bốn tổ hợp caption-only
+  tracks/clips × full/compact; thêm duration compensation, unsupported rerun,
+  same-media nhiều clip và mixed sources. Mock executor sửa in/out speed-divided
+  theo probe, vẫn khóa parity stable/baseline/fast/no-delay và 24 ca speed #30.
+  Executor sinh từ host bằng generator, không sửa tay. Entry ghi **trước khi chạy
+  standard suite**. Lần suite đầu dừng tại `Test-HostInvariants` vì bốn assertion
+  tĩnh vẫn khóa midpoint/phân số nguồn cũ; đã đổi sang công thức probe, duration
+  và read-back hai mép. Suite chạy lại đạt **72 nhóm/132 PS parse**. Tự rà phát
+  hiện cần chặn cả remap tĩnh trên voice: test mới fail `fallback static-remap:
+  0 == 1` trước chốt, sau sửa 17/17 ca review đạt. Adapter V1 giữ hỗ trợ nguồn
+  nest/static component vốn có; review voice và A2 căn voice không dùng ngoại lệ
+  này. Suite cuối sau chốt remap đạt **72 nhóm/132 PS parse**; chín file JS
+  marker đạt 9/9. Sáu nhóm Windows integration bỏ qua: InstallerLifecycle,
+  InstallRollback, PanelRegistry, NotificationShortcut, NativeNotifications,
+  IncidentNotifications. Syntax main/security, executor parity, Acorn ES3 cho
+  host/executor/caption-input và `git diff --check` đều đạt. Log cuối ở
+  `_local/voice-clip-markers/standard-suite-final.log` và `marker-tests-final.log`.
+- **Nghiệm thu.** Codex viết code và tự rà các path chung/fallback; Claude đọc
+  diff và chạy lại standard suite (72 nhóm) cùng 9 test JS marker. Native riêng
+  phần độ dài marker (15/11, probe): gán `marker.end` bằng số giây được Premiere
+  26.2.2 nhận, đọc lại đúng, user thấy dải marker đúng vị trí trên clip A2 (lệch
+  hiển thị 1 frame do làm tròn). Toàn workflow mới (review/speed/voice marker)
+  vẫn **Native Premiere pending**.
+
 ## Issue #34 — Phép thử native: marker trên clip voice (15/11/2026)
 
 User muốn marker review gắn vào clip voice A2 để đi theo cue khi dịch chuyển.

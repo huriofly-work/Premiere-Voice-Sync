@@ -39,6 +39,15 @@ Clip index 6 (start 12,567; inPoint 12,367; outPoint 21,200). `createMarker(16,3
 User cũng xác nhận: marker thêm tay trong Source Monitor của file voice hiện đồng
 thời trên clip timeline của sequence.
 
+## Lượt 3 — marker có độ dài (kiểm cho issue #36)
+
+Clip dài nhất trên A2 (start 100,067; inPoint 99,867; speed 1,1). Marker tạo ở giờ
+nguồn `(100,567 − 100,067 + 99,867) × 1,1 = 110,403`, rồi gán `marker.end = 113,703`
+(số giây, không cần đối tượng `Time`). Đọc lại: start 110,403, end 113,703. Dự đoán
+trên timeline 100,567 → 103,567 s; user thấy một dải marker 00:01:40:16 → 00:01:43:16.
+Lệch 1 frame vì 100,5666… × 30 = 3016,99 và Premiere hiển thị phần nguyên của frame.
+Đã xóa, 0 marker còn lại.
+
 ## Công thức
 
 Với Premiere 26.2.2, `TrackItem.inPoint`/`outPoint` của clip đã đổi speed được báo

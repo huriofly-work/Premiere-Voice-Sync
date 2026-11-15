@@ -35,6 +35,74 @@ function group(f){return api.group(f.collection,[{start:0,end:10}],m=>m.comments
 const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:comments+"\n"+tag,color:4});
 function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");}
 
+// Issue #36: ProjectItem times are real source seconds, TrackItem in/out are
+// speed-divided. Run all cases before failing so the pre-fix evidence is useful.
+{
+  const failures=[]; let checks=0;
+  const test=(name,fn)=>{try{fn();checks++;}catch(e){failures.push(name+": "+e.message);}};
+  function voice(speed=1){
+    const source=fixture(),timeline=fixture();timeline.seq.sequenceID="seq36";
+    const clip={start:{seconds:12.5667},end:{seconds:21.4},inPoint:{seconds:12.3667},outPoint:{seconds:21.2},
+      getSpeed:()=>speed,projectItem:{nodeId:"voice36",getMarkers:()=>source.collection}};
+    return {source,timeline,clip};
+  }
+  const issue={start:15.079,end:16.079,reason:"timing ước lượng – kiểm mép"};
+  const invoke=(v,issues=[issue])=>apply(v.timeline.seq,issues,[{start:0,end:30}],"captions",null,[v.clip]);
+  for(const speed of [1,1.1,110])test("voice range speed "+speed,()=>{
+    const v=voice(speed),r=invoke(v),factor=speed>10?speed/100:speed;
+    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerSequenceFallbackCount,0);
+    const m=v.source.values[0];assert(Math.abs(m.start.seconds-(issue.start-12.5667+12.3667)*factor)<1e-7);
+    assert(Math.abs(Number(m.end.seconds===undefined?m.end:m.end.seconds)-(issue.end-12.5667+12.3667)*factor)<1e-7);
+    if(factor===1.1)assert(Math.abs(m.start.seconds-16.3667)<0.001);
+    assert.equal(v.timeline.values.length,0);
+    const before=state(v.source);v.source.events.length=0;invoke(v);assert.deepEqual(state(v.source),before);assert.deepEqual(v.source.events,[]);
+  });
+  for(const mode of ["gap","reverse","unreadable","remap","static-remap","nest","no-api","readback","end-readback"])test("fallback "+mode,()=>{
+    const v=voice(1.1);
+    if(mode==="gap")v.clip.start.seconds=20;
+    if(mode==="reverse")v.clip.isSpeedReversed=()=>true;
+    if(mode==="unreadable")v.clip.getSpeed=()=>{throw Error("speed unavailable");};
+    if(mode==="remap")v.clip.components=[{matchName:"ADBE Time Remapping"}];
+    if(mode==="static-remap"){const properties=[{isTimeVarying:()=>false}];properties.numItems=1;v.clip.components=[{matchName:"ADBE Time Remapping",properties}];}
+    if(mode==="nest")v.clip.projectItem.isSequence=()=>true;
+    if(mode==="no-api")delete v.clip.projectItem.getMarkers;
+    if(mode==="readback")v.source.faults.positionOffset=10;
+    if(mode==="end-readback"){
+      const create=v.source.collection.createMarker;v.source.collection.createMarker=s=>{const m=create(s);Object.defineProperty(m,"end",{get:()=>({seconds:s+50}),set:()=>{}});return m;};
+    }
+    const r=invoke(v);assert.equal(r.reviewMarkerSequenceFallbackCount,1);assert.equal(r.reviewMarkerCount,1);assert.equal(r.reviewMarkerFailureCount,0);assert.equal(v.timeline.values.length,1);
+  });
+  test("clamp at covering clip end, never span gap",()=>{
+    const v=voice();v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
+    const r=invoke(v);assert.equal(r.reviewMarkerClipCount,1);assert(Math.abs(Number(v.source.values[0].end)-15.3)<1e-7);
+  });
+  test("scoped rerun and empty cleanup",()=>{
+    const v=voice(),name="VOICE SYNC - Can kiem tra",tag="[PremiereVoiceSync:review-marker:v2:captions:seq36]";
+    v.timeline.marker({seconds:2,name,comments:"legacy\n"+"[PremiereVoiceSync:review-marker:v1:captions]"});
+    for(const comments of [tag,"[PremiereVoiceSync:review-marker:v1:captions]","[PremiereVoiceSync:review-marker:v2:edit:seq36]","[PremiereVoiceSync:review-marker:v2:captions:other]","manual"])
+      v.source.marker({seconds:14,name,comments});
+    assert.equal(invoke(v).reviewMarkerClipCount,1);assert.equal(v.timeline.values.length,0);assert.equal(v.source.values.length,4);
+    invoke(v,[]);assert.equal(v.source.values.length,3);assert(v.source.values.some(m=>m.comments==="manual"));
+  });
+  test("same media across clips clamps at first clip",()=>{
+    const v=voice(1.1);v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
+    const next=Object.assign({},v.clip,{start:{seconds:15.8},end:{seconds:20},inPoint:{seconds:17},outPoint:{seconds:21.2}});
+    const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],"captions",null,[v.clip,next]);
+    assert.equal(r.reviewMarkerClipCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(Number(v.source.values[0].end)-16.83)<1e-7);
+  });
+  test("unsupported rerun cleans scoped v2 only",()=>{
+    const v=voice();invoke(v);v.clip.isSpeedReversed=()=>true;
+    const r=invoke(v);assert.equal(r.reviewMarkerSequenceFallbackCount,1);assert.equal(v.source.values.length,0);
+  });
+  test("mixed supported and unsupported sources use ruler",()=>{
+    const v=voice(),other=Object.assign({},v.clip,{getSpeed:()=>NaN});
+    const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],"captions",null,[v.clip,other]);
+    assert.equal(r.reviewMarkerSequenceFallbackCount,1);assert.equal(v.source.values.length,0);
+  });
+  console.log("VOICE_CLIP_REVIEW_CASES:passed="+checks+";failed="+failures.length);
+  if(failures.length)throw Error("VOICE_CLIP_REVIEW_REGRESSION_FAILED\n"+failures.join("\n"));
+}
+
 // Native checks use covering final caption indices, with no invented block label.
 for (const [captions, expected] of [[[{Index:20,Start:1,End:1.5},{Index:21,Start:1.5,End:2}], "Cue 20–21: hở hình 3 frame – kiểm tra"],
   [[{Index:20,Start:3,End:4}], "Hở hình 3 frame – kiểm tra"]]) {
@@ -69,6 +137,8 @@ for(const field of ["name","comments"]){
   f=fixture([owned(1)]);g=group(f);api.add(g,{...desired(1),name:"VOICE SYNC - updated"});const before=state(f);f.faults[field]="SET_AFTER_MUTATION";
   r=api.commit(g);assert(r.failures.length);assert.deepEqual(state(f),before);
 }
+f=fixture([owned(1)]);g=group(f);api.add(g,{...desired(1),end:1.8});api.add(g,desired(2));f.faults.createAt=2;
+const beforeDuration=state(f);r=api.commit(g);assert(r.failures.length);assert.deepEqual(state(f),beforeDuration,"Duration updates are compensated with notes/color.");
 f=fixture([owned(1)]);g=group(f);api.add(g,desired(2));const beforeCreate=state(f);f.faults.createAfter=true;
 r=api.commit(g);assert(r.failures.length);assert.deepEqual(state(f),beforeCreate,"Creation that throws after mutation is compensated.");
 
@@ -112,14 +182,14 @@ vm.runInContext(source.slice(helperStart,helperEnd),context);
 const clipTag="[PremiereVoiceSync:owned-marker:v1]";
 function clipFixture(){
   const f=fixture([{seconds:9,name:"VOICE SYNC - Kiem tra toc do",comments:"old\n"+clipTag}]);
-  const item={name:"source",projectItem:{nodeId:"shared",getMarkers:()=>f.collection},inPoint:{seconds:2},outPoint:{seconds:10},start:{seconds:0},end:{seconds:4}};
-  const owner={Item:item,Ranges:[{start:2,end:10}]},groups={};context.prepareClipMarkerGroup(owner,groups,30);
+  const item={name:"source",projectItem:{nodeId:"shared",getMarkers:()=>f.collection},getSpeed:()=>2,inPoint:{seconds:2},outPoint:{seconds:6},start:{seconds:0},end:{seconds:4}};
+  const owner={Item:item,Ranges:[{start:4,end:12}]},groups={};context.prepareClipMarkerGroup(owner,groups,30);
   return {...f,item,owner,groups};
 }
 const clipSpec={Owner:"A2",Name:"VOICE SYNC - Kiem tra can voice",Comments:"review"};
 f=clipFixture();const oldClipState=state(f);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
 assert.deepEqual(state(f),oldClipState);assert.equal(f.events.length,0);
-r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,1);assert.equal(f.values[0].start.seconds,6);assert.equal(f.values[0].getColorByIndex(),4);
+r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,1);assert.equal(f.values[0].start.seconds,4);assert.equal(f.values[0].getColorByIndex(),4);
 // Reprepare simulates another run on the same input. Marker remains at 6s.
 f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
 r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[]);

@@ -1,7 +1,7 @@
 "use strict";
 const assert=require("assert"),fs=require("fs"),path=require("path"),vm=require("vm");
 const host=fs.readFileSync(path.join(__dirname,"../../extension/jsx/host.jsx"),"utf8");
-const start=host.indexOf("    function projectItemKey(trackItem)");
+const start=host.indexOf("    function readSpeedPercent(item)");
 const end=host.indexOf("    function planOwnedClipMarker",start);
 assert(start>0&&end>start);
 const c=vm.createContext({$:{_PVS:{}},timelineMutated:false,clearedClipMarkerCount:0});
@@ -14,7 +14,7 @@ for(const m of [speed,voice,{name:"VOICE SYNC - Da gop hinh",comments:"merged\n"
 for(const m of [{name:speed.name,comments:"My note"},{name:"VOICE SYNC - personal",comments:speed.comments},{name:"My marker",comments:tag},{name:"VOICE SYNC - Kiem tra can voice",comments:"review this"},{name:"VOICE SYNC - old unknown",comments:""}])assert(!c.isOwnedClipMarker(m));
 function item(id,sourceStart,sourceEnd,values){
   const markers={getFirstMarker:()=>values[0]||null,getNextMarker:m=>values[values.indexOf(m)+1]||null,deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker:()=>{throw Error("NO_NEW_MARKER_EXPECTED");}};
-  return {name:id,projectItem:{nodeId:id,getMarkers:()=>markers},start:{seconds:0},end:{seconds:sourceEnd-sourceStart},inPoint:{seconds:sourceStart},outPoint:{seconds:sourceEnd}};
+  return {getSpeed:()=>1,name:id,projectItem:{nodeId:id,getMarkers:()=>markers},start:{seconds:0},end:{seconds:sourceEnd-sourceStart},inPoint:{seconds:sourceStart},outPoint:{seconds:sourceEnd}};
 }
 function marker(spec,seconds){return Object.assign({},spec,{start:{seconds}});}
 const manual=marker({name:speed.name,comments:"My note"},4),unknown=marker({name:"VOICE SYNC - unknown",comments:""},5);
