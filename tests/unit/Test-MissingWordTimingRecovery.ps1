@@ -53,17 +53,21 @@ foreach($mode in @('mismatch','empty','outside','partial','invalid-time','backwa
 }
 Write-Host 'MISSING_WORD_TIMING_RECOVERY_OK:tail;caption;chapter-offset;preserved-anchor;10-negative-cases'
 
-$oneFrameOverlap=@(
-    [pscustomobject]@{Start=1;End=(31/30.0);PartIndex=1;PartCount=2},
-    [pscustomobject]@{Start=1;End=2;PartIndex=2;PartCount=2}
-)
-Add-PvsCaptionEdgePadding -Captions $oneFrameOverlap -FrameRate 30 -TimelineEndFrame 60
-if($oneFrameOverlap[0].End -ne $oneFrameOverlap[1].Start -or $oneFrameOverlap[0].End -le $oneFrameOverlap[0].Start){throw 'ROUNDING_CAPTION_OVERLAP_NOT_RESOLVED'}
-$largeOverlap=@(
-    [pscustomobject]@{Start=1;End=1.2;PartIndex=1;PartCount=2},
-    [pscustomobject]@{Start=1;End=2;PartIndex=2;PartCount=2}
-)
-$rejected=$false
-try {Add-PvsCaptionEdgePadding -Captions $largeOverlap -FrameRate 30 -TimelineEndFrame 60} catch {if($_.Exception.Message -like 'CAPTION_OVERLAP_TIMING_UNSAFE:*'){$rejected=$true}else{throw}}
-if(-not $rejected){throw 'LARGE_CAPTION_OVERLAP_WAS_HIDDEN'}
-Write-Host 'CAPTION_ROUNDING_OVERLAP_OK:one-frame-only;larger-overlap-rejected'
+foreach($padding in @(5,0)) {
+    $oneFrameOverlap=@(
+        [pscustomobject]@{Start=1;End=(31/30.0);PartIndex=1;PartCount=2},
+        [pscustomobject]@{Start=1;End=2;PartIndex=2;PartCount=2}
+    )
+    if($padding -eq 5){Add-PvsCaptionEdgePadding -Captions $oneFrameOverlap -FrameRate 30 -TimelineEndFrame 60}
+    else{Add-PvsCaptionEdgePadding -Captions $oneFrameOverlap -FrameRate 30 -TimelineEndFrame 60 -PaddingFrames 0}
+    if($oneFrameOverlap[0].End -ne $oneFrameOverlap[1].Start -or $oneFrameOverlap[0].End -le $oneFrameOverlap[0].Start){throw 'ROUNDING_CAPTION_OVERLAP_NOT_RESOLVED'}
+    if([Math]::Round($oneFrameOverlap[0].Start*30) -ne (30-$padding) -or $oneFrameOverlap[1].End -ne 2){throw 'ROUNDING_CAPTION_OUTER_PADDING_OR_BOUNDS_FAILED'}
+    $largeOverlap=@(
+        [pscustomobject]@{Start=1;End=1.2;PartIndex=1;PartCount=2},
+        [pscustomobject]@{Start=1;End=2;PartIndex=2;PartCount=2}
+    )
+    $rejected=$false
+    try {Add-PvsCaptionEdgePadding -Captions $largeOverlap -FrameRate 30 -TimelineEndFrame 60 -PaddingFrames $padding} catch {if($_.Exception.Message -like 'CAPTION_OVERLAP_TIMING_UNSAFE:*'){$rejected=$true}else{throw}}
+    if(-not $rejected){throw 'LARGE_CAPTION_OVERLAP_WAS_HIDDEN'}
+}
+Write-Host 'CAPTION_ROUNDING_OVERLAP_OK:default-five;explicit-zero;one-frame-only;larger-overlap-rejected'

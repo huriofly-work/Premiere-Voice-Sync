@@ -38,8 +38,8 @@ if (($captions.Text -join ' ') -ne 'Xin chào, bình thường. Xin chào, bình
 if ($captions.Count -ne 4) { throw 'SUBTITLE_PUNCTUATION_SPLIT_FAILED' }
 if(($captions.SourceCueIndex -join ',') -ne '1,1,2,2'){throw 'SUBTITLE_ANALYSIS_TO_OUTPUT_CAPTION_MAP_LOST'}
 if ($captions[0].Start -lt 10 -or $captions[1].End -gt 12 -or $captions[2].Start -lt 20 -or $captions[3].End -gt 22) { throw 'SUBTITLE_SELECTED_RANGE_LEAK' }
-# S6 decision: captions keep their aligned edges (frames 303 and 333), no 5-frame padding.
-if ([Math]::Abs($captions[0].Start*30-303) -gt 0.001 -or [Math]::Abs($captions[1].End*30-333) -gt 0.001) { throw 'SUBTITLE_EDGE_PADDING_APPLIED' }
+# User decision 2026-11-15: pad up to five frames, inside each selected range.
+if ([Math]::Abs($captions[0].Start*30-300) -gt 0.001 -or [Math]::Abs($captions[1].End*30-338) -gt 0.001) { throw 'SUBTITLE_FIVE_FRAME_PADDING_MISSING' }
 $sampleCaptions=@(New-PvsStandaloneCaptions -Cues @($cues[0]) -Sources @([pscustomobject]@{start=10.01;end=11.0999}) -Silences @() -MaxCharacters 20 -FrameRate 30)
 foreach($caption in $sampleCaptions){if($caption.Start -lt 10.01 -or $caption.End -gt 11.0999 -or [Math]::Abs($caption.Start*30-[Math]::Round($caption.Start*30)) -gt 0.0001 -or [Math]::Abs($caption.End*30-[Math]::Round($caption.End*30)) -gt 0.0001){throw 'SAMPLE_BASED_EDGE_FRAME_LEAK'}}
 $reference=@([pscustomobject]@{Text='Xin chào, bình thường.';Start=100;End=200})

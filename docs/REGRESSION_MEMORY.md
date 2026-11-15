@@ -1,5 +1,35 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #24 — Khôi phục nới mép caption 5 frame (15/11/2026)
+
+User chạy thật thấy caption bắt đầu/kết thúc quá sát sóng âm voice và yêu cầu
+quay lại hành vi 2.20.88. Quyết định này đảo quyết định S6 ngày 25/10 đã port
+vào 2.20.89 (mục "2.20.89: caption bỏ padding 5 frame ở mép" bên dưới).
+
+- **Nguyên nhân.** `Add-PvsCaptionEdgePadding` (`Srt.ps1`) mặc định 0 frame
+  từ 2.20.89; hai caller (`build-sentence-plan.ps1`, `New-PvsStandaloneCaptions`)
+  dùng mặc định nên mép caption trùng đúng mốc từ đã căn.
+- **Sửa và invariant.** Mặc định đổi thành 5 frame, nên cả Dựng theo voice
+  lẫn Chỉ tạo subtitle nới tối đa 5 frame mỗi mép khi còn chỗ; hai caption
+  sát nhau chia đều khoảng trống, chạm nhau thì không nới mép trong. Miền
+  0–30 giữ nguyên; gọi tường minh 0 frame vẫn gỡ chồng lấn 1 frame và từ
+  chối chồng lấn lớn hơn. Padding chạy sau mapping caption; không đổi mép
+  hình/voice, không vượt giới hạn voice/sequence/vùng chọn.
+- **Test.** Bốn test đang khóa "không padding" đổi sang khóa 5 frame và đều
+  fail trên code cũ trước khi sửa: `Test-CaptionOnly` (mép 300/338),
+  `Test-CaptionVoiceAlignment` (mặc định 5, tường minh 0, gap 4 frame chia
+  2/2, caption chạm nhau, miền 0–30, planner sau mapping voice),
+  `Test-CaptionDtwTiming` (mép quanh khoảng nghỉ 23/43),
+  `Test-MissingWordTimingRecovery` (gỡ chồng lấn 1 frame và từ chối chồng
+  lấn lớn hơn ở cả 5 và 0).
+- **Replay đo được.** Planner chạy lại trên alignment đã lưu của mẫu thực
+  (issue #22): 83 caption, 61 mép đầu và 83 mép cuối được nới (tối đa 5 frame),
+  0 chồng lấn, chữ/metadata caption, đoạn hình/voice, marker và luật khoảng
+  không lời không đổi.
+- **Kiểm chứng.** Standard suite 70 nhóm đạt, 130 script parse; sáu nhóm
+  Windows integration bỏ qua. JS syntax và executor parity đạt. Codex viết
+  sửa; Claude đọc diff và chạy lại suite. **Native Premiere pending**.
+
 ## Issue #22 — Từ trùng Start bị đảo thứ tự, caption kết thúc sớm (15/11/2026)
 
 - **Nguyên nhân.** Whisper `-ml 1 -sow` sinh nhiều packet đầu cửa sổ cùng

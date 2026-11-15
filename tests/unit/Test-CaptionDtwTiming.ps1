@@ -47,7 +47,7 @@ if($parts[1].TokenBoundaryApplied -or $parts[1].StartFrame -ne 36){throw 'DTW_UN
 $pauseTimings=@(for($i=0;$i -lt 6;$i++){$start=if($i -lt 3){$i*0.2}else{1.6+($i-3)*0.2};[pscustomobject]@{Text=@('alpha','bravo','charlie','delta','echo','foxtrot')[$i];TargetWordIndex=$i;Start=$start;End=$start+0.2;Chapter=0;Exact=$true;ContinuousTokenStart=[Math]::Max(0,$start-0.2)}})
 $pauseCue=[pscustomobject]@{Index=2;Text='alpha bravo charlie, delta echo foxtrot.';Start=0.0;End=2.2;Chapter=0;Confidence=1.0;WordTimings=$pauseTimings;CaptionTimingRevision='dtw-word-boundary-v1'}
 $captions=@(New-PvsStandaloneCaptions @($pauseCue) @([pscustomobject]@{start=0.0;end=2.2}) @([pscustomobject]@{Start=0.6;End=1.6;Duration=1.0}) 42 30)
-if([Math]::Round($captions[0].End*30) -ne 18 -or [Math]::Round($captions[1].Start*30) -ne 48){throw 'DTW_PAUSE_EDGES_NOT_KEPT'}
+if([Math]::Round($captions[0].End*30) -ne 23 -or [Math]::Round($captions[1].Start*30) -ne 43){throw 'DTW_PAUSE_FIVE_FRAME_PADDING_MISSING'}
 $punct=$pauseCue.PSObject.Copy();$punct.WordTimings=@(for($i=0;$i -lt 6;$i++){[pscustomobject]@{Text=$pauseTimings[$i].Text;TargetWordIndex=$i;Start=$i*0.2;End=($i+1)*0.2;Chapter=0;Exact=$true;ContinuousTokenStart=[Math]::Max(0,($i-1)*0.2)}})
 $parts=@(Split-PvsVoiceAlignedCaptionCue $punct 42 30)
 if($parts[1].TokenBoundaryApplied -or $parts[1].StartBoundaryKind -ne 'punctuation'){throw 'DTW_CHANGED_PUNCTUATION_BOUNDARY'}
