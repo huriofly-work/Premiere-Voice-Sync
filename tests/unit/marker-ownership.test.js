@@ -37,3 +37,23 @@ assert.throws(()=>c.markerCleanupOwners(seq,main,0,"nested",1,[{name:"missing",e
 assert.strictEqual(values.length,5,"Owner mapping preflight cannot delete markers.");
 assert.equal(c.projectItemKey({name:"same",projectItem:{name:"same"}}),"","Display names cannot identify marker owners.");
 console.log("MARKER_OWNERSHIP_OK:new-tag;exact-legacy-signatures;manual-and-unknown-preserved;half-open-source-scope;shared-owner-union;read-only-preparation;durable-identity");
+
+// #5 cleanup uses placement's mapping, never an invented 100% speed.
+{
+  const failures=[];let passed=0;
+  for(const mode of ["unreadable","reverse","remap","scaled"]){try{
+    const voice=item("cleanup-voice",2,6,[]);
+    if(mode==="unreadable")voice.getSpeed=()=>{throw Error("unreadable");};
+    if(mode==="reverse")voice.isSpeedReversed=()=>true;
+    if(mode==="remap")voice.components=[{matchName:"ADBE Time Remapping"}];
+    if(mode==="scaled")voice.getSpeed=()=>110;
+    const voiceClips=[voice];voiceClips.numItems=1;
+    const owners=c.markerCleanupOwners({audioTracks:[{clips:original},{clips:voiceClips}]},main,0,"nested",1,[{name:voice.name,start:0,end:4}]);
+    const entry=owners.find(o=>o.Item===voice),groups={};
+    assert(entry);assert.deepEqual(JSON.parse(JSON.stringify(entry.Ranges)),mode==="scaled"?[{start:2.2,end:6.6000000000000005}]:[],"#5 "+mode+" cleanup range");
+    c.prepareClipMarkerGroup(entry,groups,30);assert.equal(c.$._PVS._markerTools.commit(entry.Group).failures.length,0);
+    passed++;
+  }catch(e){failures.push(mode+": "+e.message);}}
+  console.log("PR37_CLEANUP_CASES:passed="+passed+";failed="+failures.length);
+  if(failures.length)throw Error(failures.join("\n"));
+}

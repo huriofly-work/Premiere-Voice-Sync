@@ -2,6 +2,56 @@
 
 ## Issue #36 — Marker review đi theo clip voice, đúng giờ nguồn khi đổi speed (15/11/2026)
 
+- **PR #37, sửa review (15/11/2026).** Test failing-first xác nhận: V1/A2 mất
+  cảnh báo khi mapping không đọc được; read-back nguồn lỗi không có fallback;
+  caption-only mix/nhiều track có thể gắn vào nhạc/SFX; caption padding chọn gap
+  hoặc đuôi clip trước; collection ruler thiếu API chặn cả clip/empty run;
+  cleanup đoán speed 100%; nhánh v1 review trên ProjectItem không có provenance
+  lịch sử; normalization speed bị lặp. Log đỏ: `_local/pr37-review/red-*.log`.
+  Adapter **2 passed/10 failed**, cleanup **1/3**, caption binding **0/4**,
+  executor fallback/caveat **0/13**; notification fail `fallback count must be logged`.
+  Mục 4 chính xác với collection có tồn tại nhưng thiếu API; `seq.markers` không
+  tồn tại vốn đã được guard, song chỉ báo một lỗi chung khi nhiều fallback thiếu.
+- **Invariant sau review.** Chỉ clip được chọn rõ (`clips`) hoặc đúng một track
+  (`tracks`) của caption-only mới là nguồn voice đủ rõ để ghi ProjectItem dùng
+  chung; mix/nhiều track dùng ruler và đếm fallback. Chọn overlap timeline lớn
+  nhất, hòa hoặc nhiều clip đồng thời phủ vùng issue thì fallback, clamp cả hai
+  mép trong clip thắng, không bắc qua gap. Commit clip trước khi chuẩn bị ruler;
+  thiếu API ruler không cản clip/empty run, báo riêng từng issue cần fallback.
+  Chỉ v2 review được dọn trên ProjectItem; v1 review chỉ dọn trên ruler.
+  `_speedFactor` dùng chung cho đọc speed và mapping (<=10 ratio, >10 percent,
+  invalid/unreadable là null). Cleanup dùng chính mapping placement, không góp
+  range cho item chưa ánh xạ được; giữ snapshot không nhận ownership nếu không
+  có range. Adapter nest V1/A1 giữ nguyên, A2 không có ngoại lệ nest/remap.
+- **Fallback V1/A2.** Mapping/placement lỗi hoặc transaction ghi/read-back nguồn
+  lỗi đã compensate: đặt marker ruler trong đúng timeline segment, giữ tên/màu,
+  duration, tag riêng `[PremiereVoiceSync:owned-marker:sequence:v1:<sequenceId>]`.
+  Rerun reconcile/dọn tag trong vùng dựng; giữ manual/unknown/sequence khác.
+  Đếm `ownedMarkerSequenceFallbackCount`, cộng vào tổng/sequence (không vào clip),
+  lưu `ownedMarkerSequenceFallbacks` để log count, vị trí và lý do. Restoration
+  chưa đủ hoặc conflict vẫn báo lỗi ngay cả khi ruler fallback thành công.
+- **V1 nest: Native Premiere pending.** Probe #34 chỉ WAV 110%, chưa chứng minh
+  khả năng hiển thị marker trên nest. Không đổi adapter nest; đọc lại sai chuyển
+  sang ruler như fallback trên. Mock/ES3/parity không phải nghiệm thu native.
+- **Kiểm chứng review trước suite dài.** Tám file JS yêu cầu đạt **8/8**:
+  review-markers, marker-reconciliation, marker-ownership, diagnostic-executor,
+  caption-only-host, host-executor-input, notification-ux, probe-voice-clip-markers.
+  Aggregate mới **37/37** (adapter 12, cleanup 4, binding 4, executor/caveat 17),
+  thêm lifecycle fallback collision/duration/rerun/empty cleanup, log count/reason;
+  giữ **17/17** voice review và **24/24** speed-range cases cũ. Executor sinh bằng
+  generator, parity và syntax main/security đạt. Entry cập nhật **trước standard
+  suite**. Codex sửa và tự rà path/transaction, không có lượt
+  review độc lập. Không chạy Premiere/install/release, không commit/push/đổi branch
+  và không đụng AppData. Log targeted: `_local/pr37-review/green-*.log`.
+- **Kết quả suite sửa review.** Standard suite đạt **72 nhóm/132 PS parse** ngay
+  lần chạy này, TEMP/TMP dưới `_local/pr37-review/temp`; log
+  `_local/pr37-review/standard-suite.log`. Sáu Windows integration **skipped**:
+  InstallerLifecycle, InstallRollback, PanelRegistry, NotificationShortcut,
+  NativeNotifications, IncidentNotifications. Syntax main/security, generator
+  `--check`, Acorn ES3 host/executor/caption-input và `git diff --check` đạt.
+  Đây là automated/mock acceptance; native workflow và visibility nest V1 vẫn
+  pending. Không có code change sau suite, chỉ chốt tài liệu kết quả.
+
 - **Yêu cầu/nguyên nhân.** Review trước đây ở thước sequence nên không đi theo
   voice. Marker clip V1 tốc độ/A2 căn voice lấy phân số của in/out như giờ nguồn
   thật, sai khi speed khác 100%. Dùng kết quả native #34 trên Premiere 26.2.2:
@@ -14,7 +64,7 @@
   thì dịch đầu marker đến frame trống trong đoạn, giữ mép cuối và marker thủ công.
 - **Review và fallback.** Auto edit dùng speechPieces A2 cuối; caption-only
   truyền binding track/clip đã đóng băng của nguồn nhận diện, không đọc selection
-  hiện tại. Issue qua nhiều clip được chặn tại cuối clip chứa đầu issue, không phủ
+  hiện tại. Issue qua nhiều clip chọn overlap lớn nhất, clamp trong clip, không phủ
   qua gap. Gap, reverse, speed lỗi, time remap (kể cả tĩnh), nest, thiếu
   ProjectItem API, nguồn chồng nhau hoặc ghi/đọc kiểm chứng lỗi dùng marker sequence
   như trước. Count riêng `reviewMarkerClipCount` và
@@ -26,9 +76,8 @@
   dùng cho clip lẫn fallback. Trên các ProjectItem voice đang xử lý, dọn v2 cùng
   workflow/sequence kể cả vị trí nguồn cũ đã ngoài clip; không dọn workflow/sequence
   khác. Sequence chỉ dọn trong ranges của lượt chạy. Nhận v1 cùng workflow trong
-  ranges sequence hiện tại; nếu có v1 trên nguồn thì chỉ trong vùng nguồn thực đã
-  ánh xạ. V1 không có ID sequence nên không thể tách provenance khi trùng vùng nguồn;
-  v2 giải quyết từ lượt này. Marker vẫn hiện ở mọi sequence dùng cùng file voice.
+  ranges sequence hiện tại; v1 review không từng có trên nguồn nên không nhận/xóa
+  trên ProjectItem. V2 tách provenance theo sequence. Marker vẫn hiện ở mọi sequence dùng cùng file voice.
   Giữ manual/unknown/non-Comment. Giữ snapshot/verify/compensate/commit theo nguồn,
   thêm snapshot/khôi phục duration; lỗi phục hồi vẫn báo riêng. Không đổi journal,
   failure recovery, Save/Undo, edit/caption timing hay quyền cắt/DTW.

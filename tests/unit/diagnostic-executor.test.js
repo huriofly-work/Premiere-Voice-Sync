@@ -92,6 +92,45 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
   return {context,actions,seq,plan,nested,voice,nativeRows,api:context.$._PVS,get qeReads(){return qeReads;}};
 }
+// #1/#8: unreadable mapping and failed source read-back keep visible warnings.
+{
+  const failures=[];let passed=0;
+  for(const profile of ["stable","baseline","fast","no-delay"])for(const mode of ["speed-unreadable","voice-unreadable","nest-readback","voice-readback"]){try{
+    const f=fixture(1);
+    Object.assign(f.plan.segments[0],{SourceDurationFrames:120,EffectiveSourceDurationFrames:120,NewEndFrame:100});
+    f.plan.pictureCueRevision="srt-cue-picture-v1";f.plan.pictureSegments=f.plan.segments.map(s=>Object.assign({},s,{ParentSegmentIndex:0}));f.plan.pictureCueBoundaries=[];f.plan.mainVideoSourceEndFrame=120;
+    if(mode==="speed-unreadable")f.seq.videoTracks[0].clips[0].getSpeed=()=>null;
+    if(mode==="voice-unreadable" || mode==="voice-readback"){
+      if(mode==="voice-unreadable")f.seq.audioTracks[1].clips[0].getSpeed=()=>null;
+      f.plan.markers=[{Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"listen",ColorIndex:4}];
+    }
+    if(mode==="nest-readback"){
+      f.nested.isSequence=()=>true;
+      const bank=f.nested.getMarkers(),create=bank.createMarker;
+      bank.createMarker=seconds=>{const m=create(seconds);m.start.seconds+=100;return m;};
+    }
+    if(mode==="voice-readback"){
+      const bank=f.voice.getMarkers(),create=bank.createMarker;
+      bank.createMarker=seconds=>{const m=create(seconds);m.start.seconds+=100;return m;};
+    }
+    vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
+    const result=profile==="stable"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
+    assert.equal(result.clipMarkerFailureCount,0,JSON.stringify(result.clipMarkerFailures || result.error));
+    assert(result.ok,JSON.stringify(result));
+    assert.equal(result.ownedMarkerSequenceFallbackCount,1,"#1 "+mode+" fallback counted");
+    const marker=f.seq.markers.items.find(m=>m.name===(mode.indexOf("voice-")===0?"VOICE SYNC - Kiem tra can voice":"VOICE SYNC - Kiem tra toc do"));
+    assert(marker,"Warning must survive on ruler");assert.equal(marker.start.seconds,0);assert.equal(Number(marker.end),100/30);
+    assert.equal(result.sequenceMarkerCount,result.reviewMarkerSequenceFallbackCount+1);assert.equal(result.clipMarkerCount,result.markerCount-result.sequenceMarkerCount);
+    assert.equal(result.ownedMarkerSequenceFallbacks.length,1);assert(result.ownedMarkerSequenceFallbacks[0].reason);
+    passed++;
+  }catch(e){failures.push(profile+" "+mode+": "+e.message);}}
+  try{
+    for(const file of ["docs/USER_GUIDE.md","docs/REGRESSION_MEMORY.md"]){const text=fs.readFileSync(path.join(root,file),"utf8");assert(/V1 nest[^\n]*Native Premiere pending/i.test(text),"#8 native visibility caveat in "+file);}
+    passed++;
+  }catch(e){failures.push(e.message);}
+  console.log("PR37_EXECUTOR_FALLBACK_CASES:passed="+passed+";failed="+failures.length);
+  if(failures.length)throw Error(failures.join("\n"));
+}
 for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65,130])for(const voiceSpeed of [0.9,1,1.1]){
   const stable=fixture(count,false,false,voiceSpeed,true,true),trial=fixture(count,false,false,voiceSpeed,true,true);
   const stableReport=JSON.parse(stable.api.executePlan("fixture")),result=finishTrial(trial,profile);

@@ -247,6 +247,10 @@
   }
   function logReviewMarkers(result, markers, plan) {
     log("Marker cần kiểm tra: " + Number(result.reviewMarkerClipCount || 0) + " trên clip voice; " + Number(result.reviewMarkerSequenceFallbackCount || 0) + " trên thước timeline (dự phòng); lỗi: " + Number(result.reviewMarkerFailureCount || 0) + ".", Number(result.reviewMarkerFailureCount || 0) ? "warn" : "muted");
+    if (Number(result.ownedMarkerSequenceFallbackCount || 0)) log(Number(result.ownedMarkerSequenceFallbackCount) + " marker tốc độ/căn voice trên thước timeline (dự phòng).", "warn");
+    (result.ownedMarkerSequenceFallbacks || []).forEach(function (marker) {
+      log(marker.name + " [" + Number(marker.start).toFixed(3) + "–" + Number(marker.end).toFixed(3) + "s]: " + marker.reason, "warn");
+    });
     (markers || []).forEach(function (marker) { reviewPosition(marker.start, marker.end, marker.reason, marker.captionIndex); });
     if (plan) (plan.pictureCueRevision === "srt-cue-picture-v1" ? (plan.pictureSegments || []) : (plan.visualSegments || plan.segments || [])).forEach(function (segment) {
       if (segment.SpeedOutsideWarningRange) reviewPosition(segment.NewStart, segment.NewEnd, "Tốc độ hình ngoài ngưỡng đã chọn");

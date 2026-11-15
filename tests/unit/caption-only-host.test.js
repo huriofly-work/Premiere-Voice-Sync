@@ -127,6 +127,20 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
   assert.equal(voiceValues.length,1);assert.equal(voiceValues[0].start.seconds,0);assert.equal(Number(voiceValues[0].end),1);assert.equal(otherValues.length,0);assert.equal(reviewValues.length,0);
   assert.equal(api._captionOnlySnapshot(seq),bound.snapshot);assert.equal(children.length,0);
 }
+// #2: unique coverage does not identify voice in a mix or several tracks.
+{
+  const failures=[];let passed=0;
+  for(const mode of ["mix","tracks"])for(const compact of [false,true]){try{
+    const sourceValues=[];
+    const bank={getFirstMarker:()=>sourceValues[0]||null,getNextMarker:m=>sourceValues[sourceValues.indexOf(m)+1]||null,deleteMarker:m=>sourceValues.splice(sourceValues.indexOf(m),1),createMarker:seconds=>{const m={start:{seconds},setColorByIndex:c=>{m.color=c;},getColorByIndex:()=>m.color};sourceValues.push(m);return m;}};
+    audios[2].clips[0].projectItem={nodeId:"music-source",getMarkers:()=>bank};
+    const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),reviewMarkers:[{start:1,end:2,reason:"only music covers this issue"}],reviewMarkerRanges:[{start:0,end:22}],reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:[1,2],selectedClips:[]}});
+    files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
+    result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerSequenceFallbackCount,1,"#2 "+mode+" compact="+compact);assert.equal(result.reviewMarkerClipCount,0);assert.equal(sourceValues.length,0,"Music ProjectItem must remain untouched");passed++;
+  }catch(e){failures.push(mode+" compact="+compact+": "+e.message);}}
+  console.log("PR37_CAPTION_BINDING_CASES:passed="+passed+";failed="+failures.length);
+  if(failures.length)throw Error(failures.join("\n"));
+}
 files["result.json"].text=JSON.stringify(Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq)}));
 delete seq.markers;result=parse(api.applyCaptionOnly("result.json"));assert(!result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerFailureCount,1);assert.equal(children.length,0);
 console.log("CAPTION_REVIEW_MARKERS_OK:4-source-binding-cases;full-compact;frozen-clips-and-tracks;timeline-fallback;media-preserved;cleanup;marker-failure-preserves-captionCreated");
