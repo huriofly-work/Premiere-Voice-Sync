@@ -183,23 +183,24 @@ assert(!/save\(|clearHistory\(|app\.undo|executeCommand/.test(diagnostic));
 for(const profile of ["baseline","fast","no-delay"]){
   const stable=fixture(6),staged=fixture(6);
   for(const value of [stable,staged]){
-    value.plan.reviewMarkers=[{start:0,end:1,reason:"caption DTW review"}];
+    value.plan.reviewMarkers=[{start:0,end:1,reason:"timing chưa xác minh – kiểm mép"}];
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(value.plan)+";};",value.context);
   }
   const report=JSON.parse(stable.api.executePlan("fixture")),trial=finishTrial(staged,profile);
   assert(report.ok,JSON.stringify(report));assert.equal(report.reviewMarkerCount,1);assert.equal(report.sequenceMarkerCount,1);
   assert.deepStrictEqual(trial.report,report);assert.deepStrictEqual(staged.actions,stable.actions);
-  assert(staged.seq.markers.items[0].comments.includes("caption DTW review"));
+  assert(staged.seq.markers.items[0].comments.startsWith("Timing chưa xác minh – kiểm mép\n"));
 }
 f=fixture(6);f.plan.reviewMarkers=[{start:0,end:1,reason:"review"}];delete f.seq.markers;
 vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
 const markerFailure=finishTrial(f,"no-delay").report;assert(!markerFailure.ok);assert(markerFailure.captionCreated);assert.equal(markerFailure.reviewMarkerFailureCount,1);
 f=fixture(1);f.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
-const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,1);assert(f.seq.markers.items[0].comments.includes("link could not be verified"));assert.equal(f.seq.markers.items[0].colorIndex,1);
+const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,1);assert(f.seq.markers.items[0].comments.startsWith("Chưa xác minh liên kết V1/A1 – kiểm tra\n"));assert.equal(f.seq.markers.items[0].colorIndex,1);
 for(const profile of ["baseline","fast","no-delay"]){
   f=fixture(1);f.seq.failSpeed=true;
   const nativeFailure=finishTrial(f,profile).report;
-  assert(!nativeFailure.ok);assert.equal(nativeFailure.error,"NATIVE_SPEED_FAILED");assert.equal(nativeFailure.reviewMarkerCount,1);assert.equal(f.seq.markers.items[0].start.seconds,0);assert.equal(f.seq.markers.items[0].colorIndex,1);assert(f.seq.markers.items[0].comments.includes("partially built"));
+  assert(!nativeFailure.ok);assert.equal(nativeFailure.error,"NATIVE_SPEED_FAILED");assert.equal(nativeFailure.reviewMarkerCount,1);assert.equal(f.seq.markers.items[0].start.seconds,0);assert.equal(f.seq.markers.items[0].colorIndex,1);assert(f.seq.markers.items[0].comments.includes("Đổi speed lỗi (V1 0) – kiểm tra trước khi thử lại"));
+  assert(!f.seq.markers.items[0].comments.includes("NATIVE_SPEED_FAILED"), "Raw native errors remain in the report, not the short marker.");
 }
 function editedFixture(oneVoiceGroup=false, outside=false) {
   const f=fixture(3),p=f.plan;
@@ -306,6 +307,20 @@ console.log("CUE_PICTURE_EXECUTOR_OK:per-cue-v1-a1;continuous-a2;all-profiles;ex
 const panelSource=fs.readFileSync(path.join(root,"extension/js/main.js"),"utf8");
 const projectSource=panelSource.slice(panelSource.indexOf("  function projectHostInput("),panelSource.indexOf("  function writeHostInput("));
 function projected(f){const compact=vm.runInNewContext(projectSource+'projectHostInput(input,"edit");',{input:f.plan});vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(compact)+";};",f.context);return f;}
+// Real compact input must retain the caption geometry used by native reviews.
+for (const compact of [false, true]) for (const profile of ["stable", "baseline", "fast", "no-delay"]) {
+  const f = fixture(1);
+  f.plan.captions = [{Index:20,Start:0,End:1,Text:"private narration"},{Index:21,Start:1,End:2,Text:"private narration"}];
+  f.seq.videoTracks[0].clips[0].getLinkedItems = () => [];
+  if (compact) {
+    const input = vm.runInNewContext(projectSource+'projectHostInput(input,"edit");',{input:f.plan});
+    assert(!JSON.stringify(input).includes("private narration"));
+    projected(f);
+  } else vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
+  const result = profile === "stable" ? JSON.parse(f.api.executePlan("fixture")) : finishTrial(f,profile).report;
+  assert.equal(result.reviewMarkerFailureCount, 0);
+  assert.equal(f.seq.markers.items[0].comments, "Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra\n[PremiereVoiceSync:review-marker:v1:edit]");
+}
 for(const make of [()=>fixture(65,false,true),()=>fixture(6,false,false,1,true),()=>cueFixture(6),()=>editedFixture(true,true)]){
   const full=make(),compact=make(),staged=make();
   for(const f of [full,compact,staged]){f.plan.acousticEditBoundaryProofs=[{WordTimings:[{Text:"private",Exact:true}]}];}

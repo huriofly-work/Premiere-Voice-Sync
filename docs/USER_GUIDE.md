@@ -53,7 +53,7 @@ Bản 2.20.50 bổ sung ba nguồn audio, chọn nhiều track và phạm vi th�
 
 Bản 2.20.49 ưu tiên SRT trong Project cho Tạo phụ đề khi có một ứng viên rõ ràng; giữ lựa chọn thủ công, kể cả không dùng SRT. Xem [phạm vi và kiểm chứng](releases/notes/SRT_PRIORITY_2.20.49.md).
 
-Bản 2.20.48 sửa marker số trỏ vào đầu đoạn phân tích dài: marker nay trỏ caption đầu ra có chứa số, ghi số cần kiểm tra và trích nguyên caption. `Caption N` là số trong SRT đầu ra; `SRT N` khi có là cue nguồn tham chiếu. Các cảnh báo ở mức cả đoạn ghi `Đoạn phân tích N`, không phải số caption trên timeline. Chưa xác minh timing không có nghĩa là đã phát hiện đọc sai số. Marker cũ đã có trong project không tự đổi sau cập nhật. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.48.md).
+Marker cần kiểm tra dùng số caption cuối nhìn thấy trong Premiere: `Cue 4`, hoặc `Cue 20–24` nếu vùng cần rà phủ nhiều caption. Ghi chú ngắn nêu vấn đề và việc cần làm; xem ví dụ ở mục **Nhận diện và dọn marker của tool** bên dưới. Marker cũ trong project chỉ đổi khi chạy lại chức năng tương ứng. Lịch sử sửa marker số: [2.20.48](releases/notes/REVIEW_MARKERS_2.20.48.md).
 
 Bản 2.20.43 sửa timing Tạo phụ đề: nhận diện lại riêng cửa sổ DTW lỗi, giữ mốc tốt của phần còn lại và tìm đáy sóng âm gần từ đứng trước ranh giới, kể cả trước số. Nhật ký báo rõ vùng phải dùng timing ước lượng cấp câu. Những phần thiếu/khác và lời ngoài SRT tiếp tục được bổ sung; nội suy cue chỉ dùng trong Auto edit. Xem [chi tiết kiểm chứng](releases/notes/SUBTITLE_TIMING_2.20.43.md).
 
@@ -136,7 +136,16 @@ Màu marker giúp phân biệt: **đỏ** = speed quá nhanh; **cam** = speed qu
 
 ### Nhận diện và dọn marker của tool
 
-Marker cần kiểm tra trên thước timeline có tên `VOICE SYNC - Can kiem tra`; ghi chú chứa cue, lý do và vùng thời gian. Auto edit và Tạo phụ đề quản lý riêng các marker này, chỉ cập nhật/dọn marker đúng dấu sở hữu trong phạm vi đang làm. Giữ marker người dùng, marker của chức năng khác và ngoài vùng. Nếu không gắn được marker, tool báo lỗi; caption có thể đã được thêm, cần kiểm tra trước khi chạy lại. Lỗi riêng màu vẫn giữ vị trí/ghi chú và được báo riêng.
+Marker cần kiểm tra trên thước timeline có tên `VOICE SYNC - Can kiem tra`. Mỗi dòng ghi `Cue N: vấn đề – việc cần làm`; số Cue là số caption cuối trong Premiere, có thể là một khoảng. Không có caption tại vùng đó thì ghi thẳng vấn đề, viết hoa đầu câu. Ghi chú không lặp khoảng giây hay số khối phân tích.
+
+- `Cue 4: chữ khác SRT, timing ước lượng – nghe lại`
+- `Cue 20–24: timing ước lượng – kiểm mép`
+- `Cue 9: chữ máy nghe (ngoài SRT) – kiểm tra`
+- `Hở hình 3 frame – kiểm tra`
+
+Các vấn đề cùng vị trí giữ một dòng cho mỗi ghi chú, bỏ dòng trùng và gộp cùng Cue khi còn ngắn. Dòng dấu sở hữu ở cuối được giữ để tool nhận diện marker. “Timing chưa xác minh” yêu cầu kiểm mép hiển thị; “chữ khác SRT” yêu cầu đối chiếu voice. Marker không tự kết luận lời nói sai.
+
+Auto edit và Tạo phụ đề quản lý riêng các marker này, chỉ cập nhật/dọn marker đúng dấu sở hữu trong phạm vi đang làm. Marker cũ cùng tên/dấu sở hữu vẫn được thay bằng định dạng ngắn khi chạy lại. Giữ marker người dùng, marker của chức năng khác và ngoài vùng. Nếu không gắn được marker, tool báo lỗi; caption có thể đã được thêm, cần kiểm tra trước khi chạy lại. Lỗi riêng màu vẫn giữ vị trí/ghi chú và được báo riêng.
 
 Tool đọc marker cũ trước khi cắt/retime và giữ chúng trong lúc dựng. Sau khi xác định vị trí cuối, tool đối chiếu theo từng nguồn V1/A1/A2: giữ marker còn đúng, cập nhật hoặc tạo marker cần thiết, kiểm tra rồi mới dọn marker thừa. Marker kiểm tra trên thước timeline dùng cùng nguyên tắc. Không dọn marker toàn timeline, CTA ngoài nhóm hoặc marker nằm ngoài vùng nguồn xử lý.
 

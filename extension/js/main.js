@@ -14,7 +14,9 @@
     var compact = {};
     keys.forEach(function (key) { if (Object.prototype.hasOwnProperty.call(value, key)) compact[key] = value[key]; });
     if (workflow !== "captions") {
-      if (Array.isArray(value.captions)) compact.captions = value.captions.map(function () { return null; });
+      if (Array.isArray(value.captions)) compact.captions = value.captions.map(function (c) {
+        return c ? { Index: c.Index, Start: c.Start, End: c.End } : null;
+      });
       if (value.summary) {
         compact.summary = {};
         ["captionCueCount", "speedWarningCount"].forEach(function (key) { if (Object.prototype.hasOwnProperty.call(value.summary, key)) compact.summary[key] = value.summary[key]; });
@@ -132,29 +134,29 @@
       if (!found) throw new Error("Không ánh xạ được vùng marker: " + reason);
     }
     [
-      ["captionTimingReviewCues", "Chưa xác minh mốc DTW của caption"],
-      ["acousticEditReviewCues", "Mốc căn voice theo âm thanh còn xung đột"],
-      ["autoEditReferenceRecoveredCueIndices", "Đã phục hồi chữ SRT; giữ nhóm voice để kiểm tra lời và timing"],
-      ["wordTimingRecoveredCues", "Đã phục hồi timestamp bị thiếu; cần nghe lại"]
+      ["captionTimingReviewCues", "timing chưa xác minh – kiểm mép"],
+      ["acousticEditReviewCues", "mốc voice xung đột – nghe lại"],
+      ["autoEditReferenceRecoveredCueIndices", "đã khôi phục chữ SRT – nghe lại"],
+      ["wordTimingRecoveredCues", "thiếu timestamp, đã bù – nghe lại"]
     ].forEach(function (entry) { (report[entry[0]] || []).forEach(function (index) {
       if (entry[0] === "captionTimingReviewCues" && manualBlock(index)) return; // Covered by the block's timing review below.
       cue(index, entry[1]);
     }); });
     cues.forEach(function (c) {
-      if (!manualBlock(c.Index) && c.Confidence !== undefined && Number(c.Confidence) < fixedAlgorithm.confidence) cue(c.Index, "Độ tin cậy căn lời thấp: " + Number(c.Confidence).toFixed(3));
-      if (c.TimingRecovered) cue(c.Index, "Timestamp đã nội suy; cần nghe lại");
+      if (!manualBlock(c.Index) && c.Confidence !== undefined && Number(c.Confidence) < fixedAlgorithm.confidence) cue(c.Index, "căn lời kém tin cậy (" + Number(Number(c.Confidence).toFixed(3)) + ") – nghe lại");
+      if (c.TimingRecovered) cue(c.Index, "timestamp nội suy – nghe lại");
     });
     manualBlocks.forEach(function (block) {
       var blockParts = plan && (plan.captions || []).filter(function (c) { return Number(c.SourceCueIndex) === Number(block.cueIndex); });
       var measuredParts = blockParts && blockParts.filter(function (c) { return c.CaptionTimingQuality === "dtw" && c.IndependentSpeechEdges === true; });
       if (!measuredParts || !measuredParts.length) {
-        cue(block.cueIndex, "Timing caption ước lượng trong vùng SRT " + block.cueIndices.join(", ") + "; cần rà thời gian hiển thị.");
+        cue(block.cueIndex, "timing ước lượng – kiểm mép");
       } else {
         var unresolved = null;
         blockParts.forEach(function (c) {
           if (c.CaptionTimingQuality === "dtw" && c.IndependentSpeechEdges === true) { unresolved = null; return; }
           if (unresolved) { unresolved.end = Number(c.End); return; }
-          add(c.Start, c.End, "Timing caption ước lượng tại phần lời này; các phần đã căn DTW được xử lý tự động.", block.cueIndex);
+          add(c.Start, c.End, "timing ước lượng – kiểm mép", block.cueIndex);
           unresolved = issues[issues.length - 1];
         });
       }
@@ -166,39 +168,42 @@
         });
         if (!parts.length) throw new Error("Không ánh xạ được phần chữ nhận diện cần rà trong khối " + block.cueIndex);
         add(Math.min.apply(null, parts.map(function (c) { return Number(c.Start); })), Math.max.apply(null, parts.map(function (c) { return Number(c.End); })),
-          "Chữ tự nhận diện chưa khớp SRT tại caption " + parts[0].Index + (parts.length > 1 ? "–" + parts[parts.length - 1].Index : "") + ": “" + cell.Text + "”. Cần đối chiếu chữ với voice.", block.cueIndex);
+          "chữ khác SRT – nghe lại", block.cueIndex);
       });
     });
     (report.referenceReviewCues || []).forEach(function (r) {
       // Retaining mostly matched SRT text remains diagnostic information.
       // Independent timing, numeric and supplement warnings still create markers.
       if (String(r.reason).indexOf("Giữ chữ SRT khớp phần lớn") === 0) return;
-      add(r.start, r.end, (String(r.reason).indexOf("Giữ chữ SRT") === 0 ? "" : "Chữ SRT khác nhận diện: ") + r.reason, r.cueIndex);
+      // The engine's other retained-SRT reason describes Roman/digit spelling.
+      // Keep that useful distinction without copying its diagnostic prose.
+      var detail = String(r.reason).indexOf("La Mã/chữ số") >= 0 ? " (La Mã/số)" : (String(r.reason).indexOf("nhãn chữ cái") >= 0 ? " (nhãn chữ cái)" : "");
+      add(r.start, r.end, "chữ SRT khác voice" + detail + " – nghe lại", r.cueIndex);
     });
     // Once the sentence is identified, SRT owns its text, including numbers.
     // Numeric ASR differences remain diagnostics, independent of timing checks.
     (report.editedReferenceRanges || []).forEach(function (r) {
-      if (r.status === "omitted") range({ start: r.start, end: r.end, sourceIndex: r.chapter }, "Đã bỏ cue SRT " + r.cueIndices.join(", ") + "; nghe lại chỗ nối voice");
+      if (r.status === "omitted") range({ start: r.start, end: r.end, sourceIndex: r.chapter }, "đã bỏ SRT " + r.cueIndices.join(", ") + " – nghe chỗ nối");
     });
     [
-      ["captionTimingEstimatedRanges", "Timing ước lượng cấp câu; cần kiểm tra"],
-      ["captionTimingLegacyRanges", "Timing dự phòng chưa xác minh DTW; cần nghe lại"],
-      ["recognitionRejectedRanges", "Không thêm chữ ASR thiếu bằng chứng âm thanh; cần kiểm tra lời nói tại đây"],
-      ["referenceSupplementEmptyRanges", "Chưa xác minh được lời bổ sung; kiểm tra caption tại đây"],
-      ["referenceFallbackRanges", "Vùng SRT chưa khớp; đã dùng nhận diện dự phòng"]
-    ].forEach(function (entry) { (report[entry[0]] || []).forEach(function (r) { range(r, entry[1] + (r.reason ? ": " + r.reason : "")); }); });
+      ["captionTimingEstimatedRanges", "timing ước lượng – kiểm tra"],
+      ["captionTimingLegacyRanges", "timing dự phòng – nghe lại"],
+      ["recognitionRejectedRanges", "lời chưa xác minh – nghe lại"],
+      ["referenceSupplementEmptyRanges", "lời bổ sung chưa xác minh – kiểm tra"],
+      ["referenceFallbackRanges", "SRT chưa khớp, dùng chữ máy nghe – kiểm tra"]
+    ].forEach(function (entry) { (report[entry[0]] || []).forEach(function (r) { range(r, entry[1]); }); });
     (report.referenceSupplementRanges || []).forEach(function (r) {
       var captions = !plan && (report.reviewCaptionRanges || []).filter(function (c) {
         return c.Start < r.end && c.End > r.start && cues.some(function (source) { return Number(source.Index) === Number(c.SourceCueIndex) && source.RecognitionSupplement === true; });
       });
       if (captions && captions.length) {
         captions.forEach(function (c) {
-          add(c.Start, c.End, "Chữ tự nhận diện được dùng tại caption " + c.Index + ": “" + c.Text + "”. Đoạn này chưa khớp SRT; hãy kiểm tra chữ.", null, c.Index);
+          add(c.Start, c.End, "chữ máy nghe (ngoài SRT) – kiểm tra", null, c.Index);
         });
-      } else range(r, "Đã thêm chữ tự nhận diện tại đoạn này vì chưa khớp SRT; hãy kiểm tra chữ.");
+      } else range(r, "chữ máy nghe (ngoài SRT) – kiểm tra");
     });
-    (report.captionOverlapReviewCues || []).forEach(function (index) { cue(index, "Đã điều chỉnh mép caption chồng nhau; cần nghe lại"); });
-    if (plan) (plan.captionMappingReviewCues || []).forEach(function (index) { cue(index, "Mốc caption xung đột; đã giữ timing dự phòng"); });
+    (report.captionOverlapReviewCues || []).forEach(function (index) { cue(index, "đã chỉnh mép chồng nhau – nghe lại"); });
+    if (plan) (plan.captionMappingReviewCues || []).forEach(function (index) { cue(index, "mốc caption xung đột – kiểm mép"); });
     if (plan) (plan.sourceGapReviewRanges || []).forEach(function (gap) {
       var mapped = false;
       (plan.pictureSegments || plan.visualSegments || plan.segments || []).forEach(function (s) {
@@ -206,10 +211,18 @@
         if (!(b > a)) return;
         var scale = (s.NewEndFrame - s.NewStartFrame) / (s.SourceEndFrame - s.SourceStartFrame);
         add((s.NewStartFrame + (a - s.SourceStartFrame) * scale) / plan.frameRate, (s.NewStartFrame + (b - s.SourceStartFrame) * scale) / plan.frameRate,
-          "Khoảng không lời nguồn giữa SRT " + gap.leftCue + "–" + gap.rightCue + " chưa tách: chưa có điểm cắt voice an toàn; cần rà tay");
+          "chưa tách khoảng lặng SRT " + gap.leftCue + "–" + gap.rightCue + " – cắt tay");
         mapped = true;
       });
       if (!mapped) throw new Error("Không ánh xạ được khoảng không lời cần rà tay.");
+    });
+    // Label only after contiguous manual intervals have reached their final end.
+    // Source cue/block indices remain internal; Index is the displayed caption.
+    var finalCaptions = plan ? (plan.captions || []) : (report.reviewCaptionRanges || cues);
+    issues.forEach(function (issue) {
+      issue.captionIndices = finalCaptions.filter(function (c) {
+        return issue.captionIndex ? Number(c.Index) === Number(issue.captionIndex) : Number(c.Start) < issue.end && Number(c.End) > issue.start;
+      }).map(function (c) { return Number(c.Index); });
     });
     return issues;
   }
@@ -2209,7 +2222,7 @@
       if ((result.referenceNumberReviewCues || []).length) log("Giữ chữ SRT tại " + result.referenceNumberReviewCues.length + " câu đã nhận ra có phần số khác cách ghi của nhận diện.", "muted");
       if (referenceScope.length) log("Phạm vi SRT: " + referenceScope.map(function (item) { return "vùng " + (Number(item.sourceIndex) + 1) + " dùng cue " + item.firstCue + "–" + item.lastCue; }).join("; ") + " / " + result.referenceCueCount + " cue. " + result.referenceOutsideCueCount + " cue nằm ngoài audio được chọn.", "muted");
       var referenceSupplements = result.referenceSupplementRanges || [];
-      if (referenceSupplements.length) log("Đã thêm chữ tự nhận diện tại " + referenceSupplements.length + " vùng audio chưa khớp SRT: " + referenceSupplements.map(function (item) { return Number(item.start).toFixed(2) + "–" + Number(item.end).toFixed(2) + "s"; }).join("; ") + ". Xem caption được trích trong marker để kiểm tra chữ.", "warn");
+      if (referenceSupplements.length) log("Đã thêm chữ tự nhận diện tại " + referenceSupplements.length + " vùng audio chưa khớp SRT: " + referenceSupplements.map(function (item) { return Number(item.start).toFixed(2) + "–" + Number(item.end).toFixed(2) + "s"; }).join("; ") + ". Xem số Cue trong marker để kiểm tra chữ.", "warn");
       if ((result.referenceContextCoveredRanges || []).length) log("Đã loại " + result.referenceContextCoveredRanges.length + " vùng nhận diện trùng với đuôi/đầu câu SRT liền kề.", "muted");
       if ((result.referenceSupplementEmptyRanges || []).length) log("Có " + result.referenceSupplementEmptyRanges.length + " vùng chưa xác minh được lời bổ sung và còn khoảng chưa được caption bao phủ; cần nghe lại tại các marker.", "warn");
       var referenceReviews = (result.referenceReviewCues || []).filter(function (cue) { return String(cue.reason).indexOf("Giữ chữ SRT khớp phần lớn") !== 0; });

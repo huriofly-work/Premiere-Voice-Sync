@@ -35,6 +35,15 @@ function group(f){return api.group(f.collection,[{start:0,end:10}],m=>m.comments
 const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:comments+"\n"+tag,color:4});
 function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");}
 
+// Native checks use covering final caption indices, with no invented block label.
+for (const [captions, expected] of [[[{Index:20,Start:1,End:1.5},{Index:21,Start:1.5,End:2}], "Cue 20–21: hở hình 3 frame – kiểm tra"],
+  [[{Index:20,Start:3,End:4}], "Hở hình 3 frame – kiểm tra"]]) {
+  const native = fixture();
+  const result = apply(native.seq, [{start:1,end:2,reason:"hở hình 3 frame – kiểm tra"}], [{start:0,end:10}], "captions", captions);
+  assert.equal(result.reviewMarkerCount, 1); assert.equal(result.reviewMarkerFailureCount, 0);
+  assert.equal(native.values[0].comments, expected + "\n" + tag);
+}
+
 // Reuse the same native marker, including duration/GUID; identical reruns write nothing.
 let f=fixture([owned(1)]),g=group(f),original=f.values[0];api.add(g,desired(1));
 let r=api.commit(g);assert.equal(r.count,1);assert.equal(r.deleted,0);assert.equal(f.values[0],original);assert.equal(original.end.seconds,1.25);
