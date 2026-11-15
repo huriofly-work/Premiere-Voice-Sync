@@ -71,4 +71,4 @@ Sáu nhóm bỏ qua bởi `-NoWindowsIntegration` gồm `Test-InstallerLifecycle
 - Mỗi lượt native cần quyền mới, có giới hạn, do user cấp. Giữ project, jobs, models, cache, backups. Tuyệt đối tránh điều khiển Save/Undo hoặc ép đóng Premiere/helpers.
 - Việc ngoài kế hoạch không cần user duyệt trước nếu phục vụ việc đang làm, nhưng phải ghi rõ trong báo cáo. Mỗi bug fix cần lần cả luồng liên quan, shared/fallback, thêm reproducer và cập nhật [REGRESSION_MEMORY.md](REGRESSION_MEMORY.md).
 - Cách user làm việc: khi user báo lỗi kèm ví dụ đại diện, xem bằng chứng toàn lượt chạy thay vì đòi danh sách lỗi đầy đủ. Với thay đổi UX hoặc an toàn, trình kế hoạch có phạm vi trước và chờ duyệt. Bản sửa runtime đã duyệt đi theo quy trình đóng gói/cài đã xác minh, chỉ cài khi user đồng ý và đã tự đóng Premiere/helpers. Không hứa hết lỗi trên mọi trường hợp.
-- Trả lời bằng tiếng Việt. Claude Code là công cụ phát triển chính, Codex là lượt review bổ sung khi được yêu cầu.
+- Trả lời bằng tiếng Việt. Chỉ dùng Codex (review hoặc viết code) khi user yêu cầu (quyết định 15/11/2026).
