@@ -475,11 +475,11 @@ function Add-PvsCaptionEdgePadding {
         [Parameter(Mandatory)][object[]]$Captions,
         [Parameter(Mandatory)][double]$FrameRate,
         [Parameter(Mandatory)][int]$TimelineEndFrame,
-        [ValidateRange(0, 30)][int]$PaddingFrames = 0
+        [ValidateRange(0, 30)][int]$PaddingFrames = 5
     )
-    # Big update S6 decision (2026-10-25): keep caption timing as aligned, no
-    # edge padding by default. The pass still runs with 0 frames because it also
-    # resolves the planner's one-frame overlap and rejects unsafe overlaps.
+    # User decision (2026-11-15): restore up to five frames at caption edges
+    # in both workflows. Explicit 0 still resolves one-frame overlaps and
+    # rejects unsafe overlaps, without changing picture or voice boundaries.
     if ($Captions.Count -eq 0) { return }
     $startFrames = New-Object 'int[]' $Captions.Count
     $endFrames = New-Object 'int[]' $Captions.Count

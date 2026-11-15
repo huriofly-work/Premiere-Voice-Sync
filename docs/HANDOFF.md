@@ -30,7 +30,7 @@ Xem [kiến trúc](ARCHITECTURE.md), [cấu trúc repo](PROJECT_LAYOUT.md) và [
 ## Hướng phát triển hiện hành (quyết định của user, 13/11/2026)
 
 - Big update xây từng bước trên engine và panel 2.20.x, ra từng bản nhỏ; lỗi sửa trong lúc dùng. Từ 14/11/2026 mỗi lần commit, push, mở hay merge PR, build gói, công bố prerelease và cài đều hỏi user trước.
-- 2.20.89: caption giữ đúng mốc đã căn, không nới 5 frame. [Ghi chú](releases/notes/SUBTITLE_TIMING_2.20.89.md). Native pending.
+- Quyết định 15/11/2026 (issue #24): khôi phục nới mép caption tối đa 5 frame khi còn chỗ ở cả hai chức năng, không chồng caption; đảo quyết định 25/10 đã port vào 2.20.89. [Ghi chú 2.20.89](releases/notes/SUBTITLE_TIMING_2.20.89.md) giữ nguyên làm lịch sử. Native pending.
 - 2.20.90: Whisper large-v3-turbo thay Small, là model duy nhất. Replay Nam Cực giữ 254/255 câu SRT (cue 138 chuyển sửa tay); CPU chậm hơn Small khoảng 2 lần. [Ghi chú](releases/notes/ASR_TURBO_2.20.90.md). Native pending.
 - Đã đóng: nghiên cứu cue-first (S0–S10), chọn model ASR, Qwen, sequence kết quả riêng (Q5). Mã, test và báo cáo đã gỡ; lý do và phần còn giá trị ghi ở [bộ nhớ hồi quy](REGRESSION_MEMORY.md). Không đề xuất lại các hướng này.
 - Auto edit tiếp tục sửa trên sequence template đang mở như 2.20.x.

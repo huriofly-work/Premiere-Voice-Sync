@@ -239,16 +239,36 @@ $paddingCaptions = @(
     [pscustomobject]@{ Start=4.0; End=5.0; PartIndex=1; PartCount=1 }
 )
 $unpadded = @($paddingCaptions | ForEach-Object { $_.PSObject.Copy() })
-Add-PvsCaptionEdgePadding -Captions $unpadded -FrameRate 30 -TimelineEndFrame 153
+Add-PvsCaptionEdgePadding -Captions $unpadded -FrameRate 30 -TimelineEndFrame 153 -PaddingFrames 0
 if ((@($unpadded | ForEach-Object { '{0}-{1}' -f [Math]::Round($_.Start*30),[Math]::Round($_.End*30) }) -join ',') -ne '30-60,66-90,93-120,120-150') {
-    throw 'CAPTION_DEFAULT_PADDING_NOT_ZERO'
+    throw 'CAPTION_EXPLICIT_ZERO_PADDING_CHANGED'
 }
-Add-PvsCaptionEdgePadding -Captions $paddingCaptions -FrameRate 30 -TimelineEndFrame 153 -PaddingFrames 5
+Add-PvsCaptionEdgePadding -Captions $paddingCaptions -FrameRate 30 -TimelineEndFrame 153
 $starts = @($paddingCaptions | ForEach-Object { [int][Math]::Round([double]$_.Start * 30) })
 $ends = @($paddingCaptions | ForEach-Object { [int][Math]::Round([double]$_.End * 30) })
 if ($starts[0] -ne 25 -or $ends[0] -ne 63 -or $starts[1] -ne 63 -or $ends[1] -ne 92 -or
     $starts[2] -ne 92 -or $ends[2] -ne 120 -or $starts[3] -ne 120 -or $ends[3] -ne 153) {
     throw 'CAPTION_FIVE_FRAME_PADDING_FAILED'
+}
+
+# Four free frames are shared equally; touching cues keep their inner edge.
+foreach ($gapFrames in @(4,0)) {
+    $closeCaptions=@(
+        [pscustomobject]@{Start=1.0;End=2.0;PartIndex=1;PartCount=1},
+        [pscustomobject]@{Start=((60+$gapFrames)/30.0);End=3.0;PartIndex=1;PartCount=1}
+    )
+    Add-PvsCaptionEdgePadding -Captions $closeCaptions -FrameRate 30 -TimelineEndFrame 93
+    $boundary=60+$gapFrames/2
+    if ([Math]::Round($closeCaptions[0].End*30) -ne $boundary -or
+        [Math]::Round($closeCaptions[1].Start*30) -ne $boundary -or
+        [Math]::Round($closeCaptions[0].Start*30) -ne 25 -or
+        [Math]::Round($closeCaptions[1].End*30) -ne 93) { throw "CAPTION_CLOSE_GAP_PADDING_FAILED:$gapFrames" }
+}
+foreach ($invalidPadding in @(-1,31)) {
+    $rejected=$false
+    try { Add-PvsCaptionEdgePadding -Captions $unpadded -FrameRate 30 -TimelineEndFrame 153 -PaddingFrames $invalidPadding }
+    catch { if ($_.FullyQualifiedErrorId -like 'ParameterArgumentValidationError,*') { $rejected=$true } else { throw } }
+    if (-not $rejected) { throw "CAPTION_PADDING_RANGE_NOT_ENFORCED:$invalidPadding" }
 }
 
 $title='Trong Alien: Covenant, ta thấy David lái tàu Engineer để thả bom.'
@@ -363,7 +383,7 @@ try {
     @("Write-Output 'silence_start: 4.8'", "Write-Output 'silence_end: 5.2'") | Set-Content -LiteralPath (Join-Path $engineRoot 'runtime\fake-ffmpeg.ps1') -Encoding ASCII
     & (Join-Path $engineRoot 'build-sentence-plan.ps1') -JobPath $jobPath | Out-Null
     $displacedPlan=Get-Content -LiteralPath (Join-Path $temp 'sentence-edit-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    if($displacedPlan.summary.safeSentenceGroupCount -ne 2 -or $displacedPlan.captions[1].Start -ne 2.1 -or $displacedPlan.captions[1].End -ne 3.1){throw 'PLANNER_ACOUSTIC_CAPTION_CLAMPED_TO_WRONG_SENTENCE'}
+    if($displacedPlan.summary.safeSentenceGroupCount -ne 2 -or [Math]::Round($displacedPlan.captions[1].Start*30) -ne 58 -or [Math]::Round($displacedPlan.captions[1].End*30) -ne 98){throw 'PLANNER_ACOUSTIC_CAPTION_PADDING_OR_MAPPING_FAILED'}
     if($displacedPlan.segments[1].OriginalVoiceStartFrame -ne 150 -or $displacedPlan.segments[1].NewVoiceStartFrame -ne 150 -or $displacedPlan.plannedMainVideoEndFrame -ne 210){throw 'CAPTION_FIX_CHANGED_EDIT_CUTS_OR_DURATION'}
 }
 finally {
