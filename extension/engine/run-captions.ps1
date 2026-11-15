@@ -109,11 +109,11 @@ function Invoke-CaptionReferenceWindow {
             $leftText=(@($referenceSelection.Cues | Where-Object {
                 $edge=if($_.PSObject.Properties['CaptionEnd']){[double]$_.CaptionEnd}else{[double]$_.End}
                 [int]$_.Chapter -eq $Chapter -and $edge -le $Start+0.000001 -and $edge -ge $window.ReadStart
-            } | Sort-Object Start | Select-Object -Last 2 | ForEach-Object {$_.Text}) -join ' ')
+            } | Sort-PvsStableTimeOrder | Select-Object -Last 2 | ForEach-Object {$_.Text}) -join ' ')
             $rightText=(@($referenceSelection.Cues | Where-Object {
                 $edge=if($_.PSObject.Properties['CaptionStart']){[double]$_.CaptionStart}else{[double]$_.Start}
                 [int]$_.Chapter -eq $Chapter -and $edge -ge $End-0.000001 -and $edge -le $window.ReadEnd
-            } | Sort-Object Start | Select-Object -First 2 | ForEach-Object {$_.Text}) -join ' ')
+            } | Sort-PvsStableTimeOrder | Select-Object -First 2 | ForEach-Object {$_.Text}) -join ' ')
         }
         $inside=Get-PvsSubtitleContextInterior $recognized ($window.Start-$window.ReadStart) ($window.End-$window.ReadStart) $leftText $rightText
         if($inside.End -le $inside.Start){continue}
@@ -136,7 +136,7 @@ function Invoke-CaptionReferenceWindow {
         $left=@($referenceSelection.Cues | Where-Object {
             $edge=if($_.PSObject.Properties['CaptionEnd']){[double]$_.CaptionEnd}else{[double]$_.End}
             [int]$_.Chapter -eq $Chapter -and $edge -le $Start+0.000001
-        } | Sort-Object Start | Select-Object -Last 1)
+        } | Sort-PvsStableTimeOrder | Select-Object -Last 1)
         if(-not $unresolved.Count -and $left.Count){
             $primaryTail=Select-PvsPrimarySubtitleTail $PrimaryRecognition $Source $Start $End $Chapter ([string]$left[0].Text)
             if($null -ne $primaryTail){

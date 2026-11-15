@@ -45,6 +45,36 @@ function New-ManualFixture([string]$Middle){
     }
     New-PvsAutoEditManualReview -Cues $refs -Aligned $aligned -Edited $edited -Sources $sources -MainVideo ([pscustomobject]@{start=0;end=35}) -FrameRate 30
 }
+# Separate -ml 1 packets retain text even when their timestamps cannot anchor
+# a strict edit. The last lexical packet need not have the latest End.
+& {
+    $refs=@(for($i=0;$i -lt 3;$i++){[pscustomobject]@{Index=$i+1;Start=$i*5.0;End=($i+1)*5.0;Text=@('Opening anchor has enough unique words.','Middle window keeps its original words.','Closing anchor supplies different complete context.')[$i]}})
+    $segments=@(for($i=0;$i -lt 3;$i++){
+        $tokens=@($refs[$i].Text -split ' ')
+        for($j=0;$j -lt $tokens.Count;$j++){
+            $a=$i*5.0+$j*0.2;$b=$a+0.2
+            if($i -eq 1){
+                if($j -lt 3){$a=5.0;$b=if($j -lt 2){5.0}else{5.2}}
+                if($j -ge 4){$a=5.8;$b=if($j -eq 4){6.6}else{5.8}}
+            }
+            [pscustomobject]@{text=$tokens[$j];offsets=[pscustomobject]@{from=$a*1000;to=$b*1000}}
+        }
+    })
+    $words=@((Convert-PvsReferenceRecognition ([pscustomobject]@{transcription=$segments}) 0 -PreserveSurface).Words)
+    $sources=@([pscustomobject]@{start=10;end=25})
+    $aligned=@(Align-CuesToRecognizedWords $refs $words $sources)
+    if([Math]::Abs($aligned[1].End-16.6) -gt 0.000001){throw "TIED_CUE_END_NOT_MAXIMUM:expected=16.6;actual=$($aligned[1].End)"}
+    $edited=Resolve-PvsEditedReference $refs $words $sources {return}
+    $manual=New-PvsAutoEditManualReview $refs $aligned $edited $sources ([pscustomobject]@{start=0;end=15}) 30
+    if($null -eq $manual -or ($manual.Cues.Text -join ' ') -cne ($refs.Text -join ' ')){throw 'TIED_MANUAL_TEXT_ORDER_OR_SRT_RETENTION_LOST'}
+    $middle=@($manual.Cues[0].ManualCaptionCues | Where-Object {$_.ReferenceCueIndices -contains 2})
+    if($middle.Count -ne 1 -or [Math]::Abs($middle[0].End-16.6) -gt 0.000001){throw 'TIED_MANUAL_CELL_END_NOT_MAXIMUM'}
+    if($edited.Resolved -or $edited.OmittedCueIndices.Count -or $manual.Cues[0].WordTimings.Count -or -not $manual.Cues[0].EditBoundaryReviewRequired){throw 'TIED_TEXT_RETENTION_PROMOTED_TIMING_OR_OMISSION'}
+    $parts=@(Split-PvsManualReviewCaptionCue $manual.Cues[0] 42 30)
+    $middleParts=@($parts | Where-Object ManualCaptionCellIndex -eq 1)
+    if(($middleParts.Text -join ' ') -cne $refs[1].Text -or $middleParts[-1].EndFrame -ne 498 -or @($middleParts | Where-Object VoiceBoundaryAligned).Count){throw 'TIED_FINAL_CAPTION_LOST_TEXT_END_OR_ESTIMATED_STATUS'}
+    Write-Host 'TIED_MANUAL_CAPTIONS_OK:SRT-exact-text;max-word-end;final-caption;estimated-only'
+}
 $actual='Tên Xkqz, mã 250.000 đang được đọc.'
 $result=New-ManualFixture $actual
 if($edited.Resolved -or $null -eq $result -or $result.Blocks.Count -ne 1 -or $result.Status -ne 'manual-review-pending'){throw 'BOUNDED_REVIEW_NOT_CREATED'}

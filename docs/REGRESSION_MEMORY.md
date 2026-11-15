@@ -1,5 +1,58 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #22 — Từ trùng Start bị đảo thứ tự, caption kết thúc sớm (15/11/2026)
+
+- **Nguyên nhân.** Whisper `-ml 1 -sow` sinh nhiều packet đầu cửa sổ cùng
+  `from`, có packet zero-length. Cache của mẫu thực có 569 segment/43 span
+  bằng không. `Sort-Object Chapter,Start` trên Windows PowerShell 5.1 không
+  ổn định, đảo packet trước khi resolver/manual fallback ghép chữ. Các sort
+  theo Start trong numeric identity/coverage/supplement cũng có cùng nguy cơ.
+  Cue/cell lấy End của phần tử cuối có thể bỏ mất End lớn hơn ở packet trước.
+  Strict matcher thực tế yêu cầu span dương **và không overlap**, không chỉ
+  Start tăng; không được nới điều kiện đó để chữa chữ.
+- **Sửa và invariant.** Sort thời gian của word/cue dùng vị trí trong chuỗi
+  đầu vào làm khóa cuối, không sửa packet nguồn hoặc dùng End để xếp word.
+  Cue/cell và surface subtitle lấy End lớn nhất. Giữ zero span trong dữ liệu
+  lexical cả primary/retry; adapter riêng cho timing repair giữ hợp đồng
+  positive-span cũ. Retry zero/overlap chỉ unresolved cục bộ, không cấp recovery
+  hoặc omission; NaN/backward/outside vẫn bị từ chối. Retry đã xác minh thay
+  cả zero packet ở mép trái cửa sổ, không để lại bản sao từ. Giữ mọi ngưỡng identity,
+  số, lời thêm, ambiguity, DTW/quiet/cut/omission và provenance ước lượng.
+  Rà mọi sort Start trong engine; các sort còn lại chỉ xếp clip, silence hoặc
+  hình học frame, không xếp chữ. Unit projection kiểm toàn span raw đóng góp,
+  kể cả component số không còn trong mapping: test overlap cũ lộ ra sau khi
+  sửa sort ổn định, không được dựa vào đảo chữ tình cờ để từ chối timing sai.
+- **Regression.** `Test-EditedReference` thất bại trên code cũ với
+  `TIED_WORD_DECODE_ORDER_LOST` (ba packet đầu bị đảo); khóa cả retry zero,
+  input bất biến và không omission; thêm ca tái hiện
+  `RETRY_LEFT_EDGE_ZERO_PACKET_DUPLICATED` trước khi sửa merge cửa sổ.
+  `Test-AutoEditManualReview` tái hiện
+  `TIED_CUE_END_NOT_MAXIMUM:expected=16.6;actual=15.8`, sau sửa giữ nguyên SRT
+  khi cell khớp đủ chữ, End lớn nhất tới caption cuối và vẫn estimated.
+  `Test-CaptionOnly` khóa thứ tự numeric identity và End hợp của surface.
+  Test cũ `Test-SubtitleUnitProjection` tiếp tục từ chối raw overlap.
+- **Replay đo được.** Toàn voice gốc, một clip 100%, template đơn giản 30 fps;
+  chạy entrypoint alignment và sentence planner cũ/mới, runtime hash-pinned,
+  bản sao cache/backend trong vùng ignored; không ghi dữ liệu người dùng.
+  Kết quả: 83 caption ở cả hai phía, 17 vùng yêu cầu hết đảo thứ tự;
+  chuỗi caption nguyên cue khớp chính xác 37/65 → 51/65, unresolved metadata
+  28 → 20 (cell nhiều cue có thể giữ chữ đúng nhưng metadata vẫn pending).
+  Marker builder production: 34 issue/17 vị trí frame → 12 issue/12 vị trí dự kiến.
+  Tên riêng/ASR khác thật còn review, không chép SRT để ép điểm. End thay đổi
+  theo DTW đo lại, không phải mọi cue đều kéo dài. Replay template khác native
+  gốc: caption timing retry 3 → 0, estimatedRangeCount 0 → 0 không có nghĩa
+  mọi manual cell đều đã có timing xác minh. Không dùng cache hit/miss khác
+  nhau để kết luận tốc độ. Bảng 17 cue và JSON/log chỉ ở `_local/`.
+- **Kiểm chứng.** Bảy nhóm liên quan đạt; standard suite đạt 70 nhóm/130
+  script PowerShell parse, sáu nhóm Windows integration bỏ qua. Hai JS syntax
+  check và executor parity đạt; `git diff --check` sạch. SHA-256 voice/SRT
+  nguồn không đổi, primary cache dùng lại trùng bản gốc. Codex viết sửa và tự
+  rà; Claude đọc diff và chạy lại standard suite (70 nhóm đạt). **Native
+  Premiere pending**.
+- **Còn lại.** Tám cue trong khối sửa tay vẫn hiện chữ ASR vì khác SRT một dấu
+  hoặc một từ (ví dụ thanh điệu, tên riêng): khôi phục chữ SRT trong khối này
+  đòi khớp chính xác. Giữ marker review; đổi luật đó cần user quyết riêng.
+
 ## Thông báo bên thứ ba trong gói phát hành (13/11/2026)
 
 Trước khi chuyển repo sang public, rà gói phát hành thấy ZIP chứa FFmpeg 8.1.2

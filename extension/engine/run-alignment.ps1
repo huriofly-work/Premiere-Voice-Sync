@@ -184,15 +184,25 @@ $recognizeWindow = {
     foreach ($word in (ConvertTo-PvsBoundedEditWords -Words @(Convert-WhisperJsonToWords "$outBase.json" 0 -PreserveSurface) -Duration ($windowEnd-$windowStart) -Scale $scale)) {
         # Whisper's final token can extend beyond the cropped PCM file. The
         # physical chapter edge is authoritative, just as in the first pass.
-        if ($word.End -gt $word.Start) { $word }
+        # Keep lexical zero spans just as in the primary pass. Consumers that
+        # require real word boundaries still reject them; dropping text here
+        # can make a complete retry look like deleted speech.
+        $word
     }
+}
+$recognizeTimedWindow = {
+    param($voice,[double]$windowStart,[double]$windowEnd,[string]$Prompt='')
+    # Timing repair retains its existing positive-span input contract. The
+    # lexical/omission resolver separately sees every packet and rejects any
+    # unverified boundary rather than mistaking a dropped word for deletion.
+    & $script:recognizeWindow $voice $windowStart $windowEnd $Prompt | Where-Object {$_.End -gt $_.Start}
 }
 $editedReference=$null
 $referenceRecovery=[pscustomobject]@{Repaired=$false;RecoveredCueIndices=@();Recovery=@()}
 $manualReview=[pscustomobject]@{Blocks=@();Status='complete'}
 $incomplete=@($aligned | Where-Object {$_.Confidence -lt $lowConfidenceThreshold -or @($_.WordTimings).Count -ne @(ConvertTo-NormalizedWords $_.Text).Count})
 if($incomplete.Count){
-    $referenceRecovery=Repair-PvsAutoEditReferenceWords -Cues $targetCues -Aligned $aligned -Words $recognized.ToArray() -Sources $voiceClips -RecognizeWindow $recognizeWindow -Language $language -LowConfidenceThreshold $lowConfidenceThreshold
+    $referenceRecovery=Repair-PvsAutoEditReferenceWords -Cues $targetCues -Aligned $aligned -Words $recognized.ToArray() -Sources $voiceClips -RecognizeWindow $recognizeTimedWindow -Language $language -LowConfidenceThreshold $lowConfidenceThreshold
     if($referenceRecovery.RecoveredCueIndices.Count){$aligned=@($referenceRecovery.Cues)}
 }
 if($incomplete.Count -and -not $referenceRecovery.Repaired){
@@ -220,7 +230,7 @@ if($incomplete.Count -and -not $referenceRecovery.Repaired){
         if($manualReview.Blocks.Count){$editedReference=$null}
     }
 }
-$wordTimingRecoveredCues = @(Repair-PvsMissingCueWordTimings -Cues $aligned -VoiceClips $voiceClips -RecognizeWindow $recognizeWindow)
+$wordTimingRecoveredCues = @(Repair-PvsMissingCueWordTimings -Cues $aligned -VoiceClips $voiceClips -RecognizeWindow $recognizeTimedWindow)
 # Recognition can extend a word a few milliseconds beyond its chapter file,
 # especially after compensating for a Premiere speed change. Clamp every cue
 # to the real chapter clip and make adjacent cue boundaries monotonic so QE
@@ -258,7 +268,7 @@ for ($alignedIndex = 1; $alignedIndex -lt $aligned.Count; $alignedIndex++) {
 }
 $valid = @($aligned | Where-Object { $null -ne $_.Start -and $null -ne $_.End })
 $numericCues=@($aligned | Where-Object {-not ($_.PSObject.Properties['ManualEditBlock'] -and $_.ManualEditBlock)})
-$numericCaptions=if($numericCues.Count){Repair-PvsNumericCaptionTimings -Cues $numericCues -VoiceClips $voiceClips -RecognizeWindow $recognizeWindow -Language $language}else{[pscustomobject]@{Refined=@();Review=@()}}
+$numericCaptions=if($numericCues.Count){Repair-PvsNumericCaptionTimings -Cues $numericCues -VoiceClips $voiceClips -RecognizeWindow $recognizeTimedWindow -Language $language}else{[pscustomobject]@{Refined=@();Review=@()}}
 $captionTiming=Prepare-PvsAutoCaptionTimings -ApplyEditTiming -FrameRate ([double]$job.sequence.frameRate) -Cues $aligned -TargetCues $targetCues -Voices $voiceClips -AnalysisDir $analysisDir -FfmpegPath $ffmpegPath -WhisperPath $whisperPath -CpuWhisperPath $cpuWhisperPath -ModelPath $modelPath -ModelName ([string]$engine.model) -Backend $recognitionBackend -BackendArguments $whisperArguments -Language $language -MaxCharacters $(if($algorithm -and $algorithm.PSObject.Properties['maxCaptionCharacters']){[int]$algorithm.maxCaptionCharacters}else{42})
 $alignedSrt = Join-Path $job.outputFolder 'aligned.vi.srt'
 foreach($block in $manualReview.Blocks){

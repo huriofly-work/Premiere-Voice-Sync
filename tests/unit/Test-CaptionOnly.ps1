@@ -5,6 +5,19 @@ $root=Resolve-Path (Join-Path $PSScriptRoot '..\..')
 . "$root\extension\engine\lib\Alignment.ps1"
 . "$root\extension\engine\lib\CaptionOnly.ps1"
 
+# Caption-only keeps same-start packets in lexical order in number identity
+# and supplement scans too. Surface End is a union, not the final packet End.
+& {
+    $text='This number is 25 today.'
+    $segments=@();$tokens=@($text -split ' ')
+    for($i=0;$i -lt $tokens.Count;$i++){$segments+=[pscustomobject]@{text=$tokens[$i];start=0;end=1.0+$i*0.1}}
+    $recognition=Convert-PvsSubtitleRecognition ([pscustomobject]@{segments=$segments}) 0 3
+    $recognition.Surfaces[-2].End=2.0
+    $cues=@(New-PvsRecognizedSubtitleCues $recognition.Surfaces $recognition.Words 10 0)
+    if($cues.Count -ne 1 -or $cues[0].Text -cne $text -or $cues[0].End -ne 12){throw 'TIED_SUBTITLE_SURFACE_END_OR_ORDER_LOST'}
+    if(-not (Test-PvsSubtitleNumberReferenceIdentity $cues[0] $recognition.Words @([pscustomobject]@{start=10;end=13}))){throw 'TIED_SUBTITLE_NUMERIC_WORD_ORDER_LOST'}
+}
+
 $json=[pscustomobject]@{transcription=@(
     [pscustomobject]@{text='Xin';offsets=[pscustomobject]@{from=100;to=300}},
     [pscustomobject]@{text='chào,';offsets=[pscustomobject]@{from=300;to=500}},
