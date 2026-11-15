@@ -107,7 +107,7 @@ function New-PvsAutoEditManualReview {
         $end=if($known.ContainsKey($last)){$found.Aligned[$last].End}else{$Sources[$ch].end}
         $chapterWords=@($words | Where-Object Chapter -eq $ch)
         if($first -eq $chapters[$ch].first -and $Sources[$ch].start+$chapterWords[0].Start -lt $start-0.000001){$start=$Sources[$ch].start}
-        if($last -eq $chapters[$ch].last -and $Sources[$ch].start+$chapterWords[-1].End -gt $end+0.000001){$end=$Sources[$ch].end}
+        if($last -eq $chapters[$ch].last -and $Sources[$ch].start+($chapterWords | Measure-Object End -Maximum).Maximum -gt $end+0.000001){$end=$Sources[$ch].end}
         while($end-$start -gt 30 -or $last-$first+1 -gt 40){
             $cuts=@($found.Matches | Where-Object {
                 $_.Chapter -eq $ch -and $_.Cue -ge $first -and $_.Cue -lt $last -and
@@ -139,7 +139,7 @@ function New-PvsAutoEditManualReview {
         $start=if($left){[double]$left.Start}else{[double]$Sources[$ch].start};$end=if($right){[double]$right.End}else{[double]$Sources[$ch].end}
         $chapterWords=@($words | Where-Object Chapter -eq $ch)
         if($first -eq $chapters[$ch].first -and $Sources[$ch].start+$chapterWords[0].Start -lt $start-0.000001){$start=$Sources[$ch].start}
-        if($last -eq $chapters[$ch].last -and $Sources[$ch].start+$chapterWords[-1].End -gt $end+0.000001){$end=$Sources[$ch].end}
+        if($last -eq $chapters[$ch].last -and $Sources[$ch].start+($chapterWords | Measure-Object End -Maximum).Maximum -gt $end+0.000001){$end=$Sources[$ch].end}
         $sourceStart=[double]$Cues[$first].Start
         if($range.exclusiveLeft -ge 0){$start=[double]$found.Aligned[$range.exclusiveLeft].End;$sourceStart=[double]$Cues[$range.exclusiveLeft].End}
         elseif($first -eq $chapters[$ch].first -and $ch -gt 0){$sourceStart=[double]$Cues[$first-1].End}
@@ -162,15 +162,15 @@ function New-PvsAutoEditManualReview {
             $captionKnown.Add($c)
         }
         $cells=New-Object System.Collections.Generic.List[object];$wordCursor=0;$retained=New-Object System.Collections.Generic.List[int]
-        foreach($c in @($captionKnown | Sort-Object Start)){
+        foreach($c in @($captionKnown | Sort-PvsStableTimeOrder)){
             $before=New-Object System.Collections.Generic.List[object]
             while($wordCursor -lt $heard.Count -and $offset+$heard[$wordCursor].Start -lt $c.Start-0.000001){$before.Add($heard[$wordCursor]);$wordCursor++}
-            if($before.Count){$text=Join-PvsManualRecognitionSurface $before.ToArray();if($null -eq $text){return $null};$cells.Add([pscustomobject]@{Text=$text;Start=$offset+$before[0].Start;End=$offset+$before[$before.Count-1].End;ReferenceCueIndices=@()})}
+            if($before.Count){$text=Join-PvsManualRecognitionSurface $before.ToArray();if($null -eq $text){return $null};$cells.Add([pscustomobject]@{Text=$text;Start=$offset+$before[0].Start;End=$offset+($before | Measure-Object End -Maximum).Maximum;ReferenceCueIndices=@()})}
             if($wordCursor -ge $heard.Count -or [Math]::Abs($offset+$heard[$wordCursor].Start-$c.Start) -gt 0.000001){return $null}
             while($wordCursor -lt $heard.Count -and $offset+$heard[$wordCursor].End -le $c.End+0.000001){$wordCursor++}
             $cells.Add([pscustomobject]@{Text=[string]$c.Text;Start=[double]$c.Start;End=[double]$c.End;ReferenceCueIndices=@([int]$c.Index)});$retained.Add([int]$c.Index)
         }
-        if($wordCursor -lt $heard.Count){$tail=@($heard[$wordCursor..($heard.Count-1)]);$text=Join-PvsManualRecognitionSurface $tail;if($null -eq $text){return $null};$cells.Add([pscustomobject]@{Text=$text;Start=$offset+$tail[0].Start;End=$offset+$tail[-1].End;ReferenceCueIndices=@()})}
+        if($wordCursor -lt $heard.Count){$tail=@($heard[$wordCursor..($heard.Count-1)]);$text=Join-PvsManualRecognitionSurface $tail;if($null -eq $text){return $null};$cells.Add([pscustomobject]@{Text=$text;Start=$offset+$tail[0].Start;End=$offset+($tail | Measure-Object End -Maximum).Maximum;ReferenceCueIndices=@()})}
         # A zero/overlapping native token is not a word boundary. Merge display
         # cells locally, preserving all text, and declare sentence estimates.
         $display=New-Object System.Collections.Generic.List[object]

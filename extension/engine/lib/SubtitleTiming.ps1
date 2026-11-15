@@ -60,7 +60,7 @@ function Get-PvsUncoveredSubtitleRecognitionRanges {
     $seen=@{}
     foreach($range in $Ranges){
         $cursor=[double]$range.start
-        foreach($cue in @($Cues | Where-Object {$_.Start -lt $range.end -and $_.End -gt $range.start} | Sort-Object Start)){
+        foreach($cue in @($Cues | Where-Object {$_.Start -lt $range.end -and $_.End -gt $range.start} | Sort-PvsStableTimeOrder)){
             if($cue.Start-$cursor -ge 1.0/$FrameRate -and -not (Test-PvsSubtitleQuietGap $cursor $cue.Start $Quiet)){
                 $key='{0:F3}|{1:F3}' -f $cursor,[double]$cue.Start
                 if(-not $seen.ContainsKey($key)){$seen[$key]=$true;[pscustomobject]@{sourceIndex=$range.sourceIndex;start=$cursor;end=[double]$cue.Start;reason=$range.reason}}

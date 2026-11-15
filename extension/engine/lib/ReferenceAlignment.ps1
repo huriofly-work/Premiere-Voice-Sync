@@ -7,6 +7,20 @@ $script:PvsWordMapperPath=Join-Path $PSScriptRoot 'WordMapper.ps1'
 # reference uniqueness, timing, proof validity, or a mutable caption object.
 $script:PvsNormalizedWordCache=New-Object 'System.Collections.Generic.Dictionary[string,string[]]' ([StringComparer]::Ordinal)
 
+function Sort-PvsStableTimeOrder {
+    param([Parameter(ValueFromPipeline=$true)]$InputObject,[string[]]$Property=@('Start'))
+    begin {$items=New-Object System.Collections.Generic.List[object]}
+    process {
+        # Windows PowerShell 5.1 Sort-Object is unstable. A packet's position
+        # in the incoming decode/merge sequence breaks timestamp ties; End
+        # must never order words. Decorate locally so callers stay immutable.
+        $row=[ordered]@{Value=$InputObject;Sequence=$items.Count}
+        foreach($name in $Property){$row[$name]=$InputObject.$name}
+        $items.Add([pscustomobject]$row)
+    }
+    end {$items | Sort-Object -Property (@($Property)+@('Sequence')) | ForEach-Object {$_.Value}}
+}
+
 function Get-PvsReferenceLexicalWords {
     param([string]$Text,[bool]$CharacterMode=$false)
     if(-not $CharacterMode){return @(ConvertTo-NormalizedWords $Text)}
@@ -135,11 +149,11 @@ function Convert-PvsReferenceMappingToCues {
             continue
         }
         $first=$RecognizedWords[($indexes | Measure-Object -Minimum).Minimum]
-        $last=$RecognizedWords[($indexes | Measure-Object -Maximum).Maximum]
+        $latestEnd=($indexes | ForEach-Object {[double]$RecognizedWords[$_].End} | Measure-Object -Maximum).Maximum
         $groups=$indexes | ForEach-Object {$RecognizedWords[$_].Chapter} | Group-Object | Sort-Object Count -Descending
         $chapter=if($FixedChapter -ge 0){$FixedChapter}else{[int]$groups[0].Name}
         $offset=if($chapter -ge 0 -and $chapter -lt $VoiceClips.Count){[double]$VoiceClips[$chapter].start}else{0.0}
-        $output.Add([pscustomobject]@{Index=$index;OriginalStart=$originalStart;OriginalEnd=$originalEnd;Start=$offset+[double]$first.Start;End=$offset+[double]$last.End;Text=$Cues[$cueIndex].Text;Chapter=$chapter;Confidence=[Math]::Round($exact/[double]$indexes.Count,3);WordTimings=$timings.ToArray()})
+        $output.Add([pscustomobject]@{Index=$index;OriginalStart=$originalStart;OriginalEnd=$originalEnd;Start=$offset+[double]$first.Start;End=$offset+[double]$latestEnd;Text=$Cues[$cueIndex].Text;Chapter=$chapter;Confidence=[Math]::Round($exact/[double]$indexes.Count,3);WordTimings=$timings.ToArray()})
     }
     return $output.ToArray()
 }
@@ -424,7 +438,7 @@ function Find-PvsEditedReferenceMatches {
 
 function Resolve-PvsEditedReference {
     param([object[]]$Cues,[object[]]$Words,[object[]]$Sources,[scriptblock]$RecognizeWindow,[bool]$CharacterMode=$false,[int]$MinimumAnchorWords=0)
-    $heard=@($Words | Sort-Object Chapter,Start)
+    $heard=@($Words | Sort-PvsStableTimeOrder -Property Chapter,Start)
     $initial=Find-PvsEditedReferenceMatches $Cues $heard $Sources $CharacterMode $MinimumAnchorWords
     # Without a reliable island there is no evidence of an edited script.
     if(-not $initial.Ordered -or -not $initial.Matches.Count -or $initial.Matches.Count -eq $Cues.Count){return $null}
@@ -460,18 +474,24 @@ function Resolve-PvsEditedReference {
             # No SRT prompt. Re-read the actual join, including both retained
             # anchors; an empty retry never proves that content was removed.
             $retry=@(& $RecognizeWindow $source $start $end)
-            $valid=$true;$edge=0.0
+            $valid=$true;$edge=0.0;$previousStart=0.0;$boundaryValid=$true
             foreach($w in $retry){
                 $a=[double]$w.Start;$b=[double]$w.End
-                if([string]::IsNullOrWhiteSpace([string]$w.Text) -or [double]::IsNaN($a) -or [double]::IsNaN($b) -or [double]::IsInfinity($a) -or [double]::IsInfinity($b) -or $a -lt $edge-0.000001 -or $b -le $a -or $b -gt $end-$start+0.000001){$valid=$false;break};$edge=$b
+                if([string]::IsNullOrWhiteSpace([string]$w.Text) -or [double]::IsNaN($a) -or [double]::IsNaN($b) -or [double]::IsInfinity($a) -or [double]::IsInfinity($b) -or $a -lt 0 -or $a -lt $previousStart-0.000001 -or $b -lt $a -or $b -gt $end-$start+0.000001){$valid=$false;break}
+                if($a -lt $edge-0.000001 -or $b -le $a){$boundaryValid=$false}
+                $previousStart=$a;$edge=[Math]::Max($edge,$b)
             }
             if(-not $valid){throw 'EDITED_REFERENCE_RETRY_TIMING_INVALID'}
+            # Preserve complete lexical packets, but exactly the same positive,
+            # non-overlapping boundaries are still required for recovery or
+            # omission. A zero/tied packet goes to the manual path locally.
             $expected=@(foreach($anchor in @($left,$right)){if($anchor){Get-PvsReferenceLexicalWords $anchor.Text $CharacterMode}})
             $complete=@(foreach($cue in @($(if($left){$Cues[$first-1]})) + @($Cues[$first..$last]) + @($(if($right){$Cues[$last+1]}))){if($cue){Get-PvsReferenceLexicalWords $cue.Text $CharacterMode}})
             $text=@($retry | ForEach-Object {[string]$_.Text}) -join ' '
             $ambiguous=$false
             for($missing=$first;$missing -le $last;$missing++){if($initial.DuplicateCues.ContainsKey($missing)){$ambiguous=$true}}
-            if($retry.Count -and $text -ceq ($complete -join ' ')){
+            if(-not $boundaryValid){$reason='retry-word-boundary-unverified'}
+            elseif($retry.Count -and $text -ceq ($complete -join ' ')){
                 $status='recovered';$reason='initial-ASR-miss'
                 foreach($index in $indices){$recovered.Add($index)}
             }elseif($retry.Count -and $text -ceq ($expected -join ' ') -and -not $ambiguous){
@@ -486,7 +506,15 @@ function Resolve-PvsEditedReference {
                     foreach($name in @('DtwFirst','DtwLast','DtwBoundaryStart')){if($copy.PSObject.Properties[$name] -and $null -ne $copy.$name){$copy.$name=$shift+[double]$copy.$name}}
                     $copy
                 })
-                $heard=@(@($heard | Where-Object {[int]$_.Chapter -ne $chapter -or [double]$source.start+[double]$_.End -le $start+0.000001 -or [double]$source.start+[double]$_.Start -ge $end-0.000001})+$replacement | Sort-Object Chapter,Start)
+                # The replacement owns its inclusive left edge, including
+                # zero spans there. Preserve only packets strictly before it
+                # or starting at/after the exclusive right edge.
+                $outside=@($heard | Where-Object {
+                    $packetStart=[double]$source.start+[double]$_.Start
+                    $packetEnd=[double]$source.start+[double]$_.End
+                    [int]$_.Chapter -ne $chapter -or ($packetEnd -le $start+0.000001 -and $packetStart -lt $start-0.000001) -or $packetStart -ge $end-0.000001
+                })
+                $heard=@(@($outside)+$replacement | Sort-PvsStableTimeOrder -Property Chapter,Start)
             }
         }
         if($status -eq 'unresolved'){foreach($index in $indices){$unresolved.Add($index)}}

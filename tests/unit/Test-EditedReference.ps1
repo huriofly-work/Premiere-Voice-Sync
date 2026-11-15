@@ -1,6 +1,30 @@
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot\..\..\extension\engine\lib\ReferenceAlignment.ps1"
+# -ml 1/-sow emits separate packets with tied starts, including zero spans.
+# Keep lexical packets in decode order without treating them as cut evidence.
+$tiedRefs=@(for($i=0;$i -lt 7;$i++){[pscustomobject]@{Index=$i+1;Start=$i*3.0;End=($i+1)*3.0;Text="Window$i begins with these original words."}})
+$tiedSegments=@(for($i=0;$i -lt $tiedRefs.Count;$i++){
+    $tokens=@($tiedRefs[$i].Text -split ' ')
+    for($j=0;$j -lt $tokens.Count;$j++){
+        $a=$i*3.0+[Math]::Max(0,$j-2)*0.2
+        $b=if($j -lt 2){$a}else{$a+0.2}
+        [pscustomobject]@{text=$tokens[$j];offsets=[pscustomobject]@{from=$a*1000;to=$b*1000}}
+    }
+})
+$tiedWords=@((Convert-PvsReferenceRecognition ([pscustomobject]@{transcription=$tiedSegments}) 0 -PreserveSurface).Words)
+# Two ordinary islands let the strict resolver inspect the tied windows.
+foreach($i in @(0,6)){for($j=0;$j -lt 6;$j++){$w=$tiedWords[$i*6+$j];$w.Start=$i*3.0+$j*0.2;$w.End=$w.Start+0.2}}
+$tiedSnapshot=ConvertTo-Json -InputObject $tiedWords -Depth 8 -Compress
+$tiedResult=Resolve-PvsEditedReference $tiedRefs $tiedWords @([pscustomobject]@{start=0;end=21}) {return}
+if($null -eq $tiedResult -or ($tiedResult.Words.Text -join '|') -cne ($tiedWords.Text -join '|')){throw "TIED_WORD_DECODE_ORDER_LOST:expected=$($tiedWords.Text -join '|');actual=$($tiedResult.Words.Text -join '|')"}
+if($tiedResult.Resolved -or $tiedResult.OmittedCueIndices.Count){throw 'ZERO_SPAN_GRANTED_STRICT_OMISSION_AUTHORITY'}
+if((ConvertTo-Json -InputObject $tiedWords -Depth 8 -Compress) -cne $tiedSnapshot){throw 'TIED_WORD_INPUT_MUTATED'}
+# A retry containing all words still cannot authorize a strict edit when
+# native packets have zero or overlapping spans. Keep the primary text.
+$tiedRetry=Resolve-PvsEditedReference $tiedRefs $tiedWords @([pscustomobject]@{start=0;end=21}) {param($source,$start,$end);$tiedWords}
+if($tiedRetry.Resolved -or $tiedRetry.OmittedCueIndices.Count -or @($tiedRetry.Ranges | Where-Object reason -ne 'retry-word-boundary-unverified').Count -or ($tiedRetry.Words.Text -join '|') -cne ($tiedWords.Text -join '|')){throw 'TIED_RETRY_WEAKENED_EVIDENCE_OR_LOST_TEXT'}
+Write-Host 'TIED_WORD_ORDER_OK:decode-order;zero-span-no-omission;immutable'
 $cues=@(for($i=0;$i -lt 7;$i++){[pscustomobject]@{Index=$i+1;Start=$i*3.0;End=($i+1)*3.0;Text="Cau$i giu nguyen chu nguon day."}})
 function New-TestWords([int[]]$Indices,[double]$Offset=0){
     $position=0
@@ -68,3 +92,16 @@ if($ambiguous.Resolved -or $ambiguous.OmittedCueIndices.Count){throw 'REPEATED_R
 $words=@(New-TestWords @(6,0))
 if($null -ne (Resolve-PvsEditedReference $cues $words $sources $retry)){throw 'REORDERED_SPEECH_ACCEPTED'}
 Write-Host 'EDITED_REFERENCE_EDGE_GUARDS_OK:head;tail;repeated-reference;reordered-speech'
+# A complete positive-span retry replaces the zero packet at its inclusive
+# left edge too. Keeping that packet would duplicate its lexical token.
+& {
+    $retryWords=@(New-TestWords @(0,1,2))
+    $primary=@($retryWords | ForEach-Object {$_.PSObject.Copy()})
+    $primary[0].End=$primary[0].Start
+    $result=Resolve-PvsEditedReference $cues[0..2] $primary @([pscustomobject]@{start=10;end=11.8}) {
+        param($source,$start,$end)
+        foreach($w in $retryWords){if(10+$w.Start -ge $start-0.000001 -and 10+$w.End -le $end+0.000001){$copy=$w.PSObject.Copy();$copy.Start+=10-$start;$copy.End+=10-$start;$copy}}
+    }
+    if(-not $result.Resolved -or $result.Words.Count -ne $retryWords.Count -or ($result.Words.Text -join '|') -cne ($retryWords.Text -join '|')){throw 'RETRY_LEFT_EDGE_ZERO_PACKET_DUPLICATED'}
+    Write-Host 'EDITED_REFERENCE_ZERO_EDGE_OK:replacement-once;strict-positive-retry'
+}

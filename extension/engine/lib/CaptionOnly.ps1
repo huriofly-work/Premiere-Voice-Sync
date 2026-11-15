@@ -34,7 +34,7 @@ function New-PvsRecognizedSubtitleCues {
             foreach($name in @('SubtitleTimingQuality','SubtitleTimingOrigin','NumericSurfaceText')){if($word.PSObject.Properties[$name]){$timing | Add-Member -NotePropertyName $name -NotePropertyValue $word.$name}}
             $timings.Add($timing)
         }
-        $cueEnd=[double]$surface.End
+        $cueEnd=if($pieces.Count -eq 1){[double]$surface.End}else{[Math]::Max($cueEnd,[double]$surface.End)}
         $nextGap=if ($index+1 -lt $Surfaces.Count) { [double]$Surfaces[$index+1].Start-$cueEnd } else { 0.0 }
         $surfaceTokens=@([regex]::Matches([string]$surface.Text,'\S+') | ForEach-Object {$_.Value})
         $nextTokens=@(if($index+1 -lt $Surfaces.Count){[regex]::Matches([string]$Surfaces[$index+1].Text,'\S+') | ForEach-Object {$_.Value}})
@@ -151,6 +151,18 @@ function New-PvsSubtitleUnitReferenceProjection {
         if($expanded.ContainsKey([int]$timing.TargetWordIndex)){$timing | Add-Member NoteProperty SubtitleTimingQuality 'estimated' -Force}
     }
     if(-not (Test-PvsReferenceCueTiming $cue $Sources[$Chapter].start $Sources[$Chapter].end $Chapter)){return $null}
+    # The lexical projection can omit a raw numeric component from its mapped
+    # timings. Validate the entire contributing raw span as well: stable
+    # lexical order must not let an overlapping discarded packet pass through.
+    $rawIndices=@($mapping | Where-Object {$_ -ge 0})
+    $firstRaw=[int]($rawIndices | Measure-Object -Minimum).Minimum
+    $lastRaw=[int]($rawIndices | Measure-Object -Maximum).Maximum
+    $edge=0.0
+    foreach($word in $Heard[$firstRaw..$lastRaw]){
+        $a=[double]$word.Start;$b=[double]$word.End
+        if([int]$word.Chapter -ne $Chapter -or [double]::IsNaN($a) -or [double]::IsNaN($b) -or [double]::IsInfinity($a) -or [double]::IsInfinity($b) -or $a -lt $edge-0.000001 -or $b -le $a -or $b -gt $Sources[$Chapter].end-$Sources[$Chapter].start+0.000001){return $null}
+        $edge=$b
+    }
     # Verify the complete surrounding sentence AND unit dimension using the
     # original recognition. General fuzzy identity must not bypass this check.
     if(-not (Test-PvsSubtitleNumberReferenceIdentity $cue $ValidationWords $Sources)){return $null}
@@ -163,7 +175,7 @@ function Test-PvsSubtitleNumberReferenceIdentity {
     $chapter=[int]$Cue.Chapter
     if($chapter -lt 0 -or $chapter -ge $Sources.Count -or $null -eq $Cue.Start -or $null -eq $Cue.End){return $false}
     $target=@(ConvertTo-NormalizedWords $Cue.Text)
-    $heard=@($Words | Where-Object {[int]$_.Chapter -eq $chapter -and [double]$Sources[$chapter].start+[double]$_.Start -ge [double]$Cue.Start-0.000001 -and [double]$Sources[$chapter].start+[double]$_.End -le [double]$Cue.End+0.000001} | Sort-Object Start)
+    $heard=@($Words | Where-Object {[int]$_.Chapter -eq $chapter -and [double]$Sources[$chapter].start+[double]$_.Start -ge [double]$Cue.Start-0.000001 -and [double]$Sources[$chapter].start+[double]$_.End -le [double]$Cue.End+0.000001} | Sort-PvsStableTimeOrder)
     if($Cue.PSObject.Properties['SubtitleUnitProjection'] -and $Cue.SubtitleUnitProjection){$heard=@(Expand-PvsSubtitleUnitWords $heard)}
     $expected=Get-PvsSubtitleNumericSpan $target -RequireDigits
     $actual=Get-PvsSubtitleNumericSpan @($heard.Text)
@@ -701,7 +713,7 @@ function Select-PvsSubtitleReference {
                 $remaining=@($_.cueIndices | Where-Object {$skipped -contains $_})
                 if($remaining.Count){[pscustomobject]@{sourceIndex=$_.chapter;start=$_.audioStart;end=$_.audioEnd;cueIndices=$remaining}}
             })
-            $retained=@(@($edited.Cues)+@($partial.ToArray()) | Sort-Object Start,End)
+            $retained=@(@($edited.Cues)+@($partial.ToArray()) | Sort-PvsStableTimeOrder -Property Start,End)
             return [pscustomobject]@{Cues=$retained;Ranges=@();FallbackRanges=@();ReferenceCueCount=$Cues.Count;SelectedCueCount=$retained.Count;OutsideCueCount=0;OutsideAudioWordCount=0;SkippedCues=@($skipped | ForEach-Object {[pscustomobject]@{cueIndex=$_;reason='edited-reference-unresolved'}});SkippedCueCount=$skipped.Count;UnverifiedRanges=$unverified;RecoveredCueIndices=$edited.RecoveredCueIndices;EditedReference=$edited;RecognitionWords=$edited.Words;PartialReferenceCueIndices=$partialIndices}
         }
     }
@@ -930,7 +942,7 @@ function Get-PvsAutoEditReferenceWordCoverage {
     if($chapter -lt 0 -or $chapter -ge $Sources.Count -or -not (Test-PvsReferenceCueTiming $Cue $Sources[$chapter].start $Sources[$chapter].end $chapter)){return $null}
     $tokens=@(ConvertTo-NormalizedWords $Cue.Text);$timings=@($Cue.WordTimings)
     $offset=[double]$Sources[$chapter].start
-    $heard=@($Words | Where-Object {[int]$_.Chapter -eq $chapter -and $offset+[double]$_.Start -lt $Cue.End-0.000001 -and $offset+[double]$_.End -gt $Cue.Start+0.000001} | Sort-Object Start)
+    $heard=@($Words | Where-Object {[int]$_.Chapter -eq $chapter -and $offset+[double]$_.Start -lt $Cue.End-0.000001 -and $offset+[double]$_.End -gt $Cue.Start+0.000001} | Sort-PvsStableTimeOrder)
     if(-not $tokens.Count -or $heard.Count -ne $timings.Count -or -not $heard.Count){return $null}
     $previousIndex=-1
     for($i=0;$i -lt $heard.Count;$i++){
@@ -1027,7 +1039,7 @@ function Complete-PvsSubtitleReference {
     }
     for($chapter=0;$chapter -lt $Sources.Count;$chapter++){
         $source=$Sources[$chapter]
-        $known=@($output | Where-Object {[int]$_.Chapter -eq $chapter} | Sort-Object Start)
+        $known=@($output | Where-Object {[int]$_.Chapter -eq $chapter} | Sort-PvsStableTimeOrder)
         for($index=1;$index -lt $known.Count;$index++){
             if($known[$index].Start -lt $known[$index-1].End-0.000001){throw 'SUBTITLE_REFERENCE_CAPTION_BOUNDS_OVERLAP'}
         }
@@ -1037,7 +1049,7 @@ function Complete-PvsSubtitleReference {
             $known=@()
             for($index=$output.Count-1;$index -ge 0;$index--){if([int]$output[$index].Chapter -eq $chapter){$output.RemoveAt($index)}}
         }
-        $heard=@($Words | Where-Object {[int]$_.Chapter -eq $chapter} | Sort-Object Start)
+        $heard=@($Words | Where-Object {[int]$_.Chapter -eq $chapter} | Sort-PvsStableTimeOrder)
         $wordCursor=0
         $gaps=New-Object System.Collections.Generic.List[object]
         $cursor=[double]$source.start
@@ -1077,7 +1089,7 @@ function Complete-PvsSubtitleReference {
     }
     # Generated cue indices are independent of the original reference indices.
     # Unique indices are needed by subsequent DTW/numeric caption review stages.
-    $ordered=@($output | Sort-Object Start,End)
+    $ordered=@($output | Sort-PvsStableTimeOrder -Property Start,End)
     for($index=0;$index -lt $ordered.Count;$index++){
         $copy=$ordered[$index].PSObject.Copy()
         if(-not ($copy.PSObject.Properties['RecognitionSupplement'])){$copy | Add-Member -NotePropertyName ReferenceCueIndex -NotePropertyValue ([int]$copy.Index) -Force}
