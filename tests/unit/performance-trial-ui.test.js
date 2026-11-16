@@ -1,6 +1,10 @@
 "use strict";
 const assert=require("assert"),fs=require("fs"),vm=require("vm"),path=require("path").win32,crypto=require("crypto");
 const source=fs.readFileSync(require("path").join(__dirname,"../../extension/js/main.js"),"utf8");
+const stageTimings=[
+  {stage:"Prepare",milliseconds:5,complete:true,detail:{clipEnumerationMs:2,clipEnumerationItems:13,nameReads:20,startSecondsReads:32,sortMs:1,comparatorCalls:10}},
+  {stage:"Markers",milliseconds:5,complete:true,detail:{ownerGroupsTotal:2,ownerGroups:1,markersPerGroup:[4],markerCommit:{collectionBefore:0,collectionAfter:4,readPasses:3,readMs:1,creates:4,nameWrites:4,commentsWrites:4,endWrites:4,colorWrites:4,colorReads:12,deletes:0,verificationMs:1,commitMs:3}}}
+];
 async function scenario(options={}){
   const calls=[],rows=[],warnings=[],controls={workflowNotice:{hidden:true}},base="stable-source\r\n",hash=crypto.createHash("sha256").update(base.replace(/\r\n/g,"\n")).digest("hex");
   let request=0;
@@ -20,7 +24,7 @@ async function scenario(options={}){
     if(expression.includes("abortDiagnosticEdit")){callback(JSON.stringify({ok:false,done:true,timings:[]}));return;}
     if(expression.includes("advanceDiagnosticEdit")){
       if(options.evalError){callback("EvalScript error.");return;}
-      callback(JSON.stringify(request++===0?{ok:true,done:false,nextCall:1,nextStage:"Voice",stage:"Hình",stageIndex:1,stageCount:2,milliseconds:4,checkpoint:options.pause?"Hình":""}:{ok:true,done:true,result:{ok:true,private:"SECRET_MEDIA_NAME_AND_PATH"},timings:[{stage:"Voice",milliseconds:5,complete:true}]}));return;
+      callback(JSON.stringify(request++===0?{ok:true,done:false,nextCall:1,nextStage:"Voice",stage:"Hình",stageIndex:1,stageCount:2,milliseconds:4,checkpoint:options.pause?"Hình":""}:{ok:true,done:true,result:{ok:true,private:"SECRET_MEDIA_NAME_AND_PATH"},timings:stageTimings}));return;
     }
     throw Error("Unexpected host call");
   }};
@@ -41,6 +45,10 @@ async function scenario(options={}){
 }
 (async()=>{
   let r=await scenario();assert(r.result.ok);assert.strictEqual(r.calls.filter(c=>c[0]==="yield").length,2);assert(r.calls.filter(c=>c[0]==="yield").every(c=>c[1]===150));assert.deepStrictEqual(r.rows.filter(r=>r.type==="request").map(r=>r.stage),["Hình","Voice"]);
+  assert.deepStrictEqual(r.rows.find(row=>row.type==="finish").timings,stageTimings,"Details must reach Performance finish.timings unchanged");
+  const response=r.rows.find(row=>row.type==="response");
+  assert.equal(response.hostMilliseconds,4);assert.equal(typeof response.wallMilliseconds,"number");
+  assert(Number.isFinite(response.wallMilliseconds-response.hostMilliseconds),"Keep the outside-script wall minus host measurement");
   r=await scenario({pause:true});assert(r.result.ok);assert(r.rows.some(r=>r.type==="user-observation"&&r.previewHealthy===true));
   r=await scenario({fast:true});assert(r.result.ok);assert(r.calls.filter(c=>c[0]==="yield").every(c=>c[1]===20));assert(r.calls.some(c=>c[0]==="host"&&c[1].includes('"fast")')));assert.strictEqual(r.rows[0].profile,"fast");assert.strictEqual(r.rows[0].yieldMilliseconds,20);
   r=await scenario({fast:true,noDelay:true});assert(r.result.ok);assert.strictEqual(r.calls.filter(c=>c[0]==="yield").length,0,"No-delay keeps no artificial sleep, with bounded native batches.");assert(r.calls.some(c=>c[0]==="host"&&c[1].includes('"no-delay")')));assert.strictEqual(r.rows[0].profile,"no-delay");assert.strictEqual(r.rows[0].yieldMilliseconds,0);assert.strictEqual(r.rows[0].batchLimitsDisabled,false);assert.strictEqual(r.rows[0].nativeSpeedPairsPerBatch,4);assert.strictEqual(r.rows[0].captionCleanupDelayMilliseconds,0);

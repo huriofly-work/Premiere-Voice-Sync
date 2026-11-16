@@ -1,5 +1,37 @@
 # Đánh giá tăng tốc Premiere Voice Sync
 
+## Đo chi tiết timeline, issue #44 (16/11/2026)
+
+`Performance_*.jsonl` giữ các timing cũ và thêm `finish.timings[].detail`
+cho bước đầu vào, các bước `Chuẩn bị …` và `Cập nhật marker nguồn`:
+
+- Chuẩn bị: `clipEnumerationPasses/Items/Ms` đếm và đo vòng quét clip;
+  `clipItems` đếm truy cập trực tiếp `track.clips[index]`,
+  `clipCollectionReads/clipCountReads` đếm đọc collection/count.
+  `nameReads`, `startSecondsReads`, `endSecondsReads`, `secondsReads`,
+  `ticksReads` và `propertyReadMs` đo các điểm đọc sẵn có trong executor
+  và helper nội bộ được sinh; không phải tổng mọi property trong host.
+  `sortCalls/sortMs/comparatorCalls` đo sort hiện tại, gồm cả comparator
+  đọc `start.seconds` lặp lại. Giữ short-circuit, không lấy thêm giá trị native.
+- Marker nguồn: `ownerGroupsTotal` là số owner của lượt dựng, `ownerGroups`
+  và `markersPerGroup` là số nhóm/số marker yêu cầu trong host call đó
+  (vẫn tối đa một owner). `markerCommit` lấy từ `commit(...).timings`:
+  `collectionBefore/After`, `readPasses/readMs`, `creates`, `nameWrites`,
+  `commentsWrites`, `endWrites`, `colorWrites/colorReads`, `deletes`,
+  `verificationMs`, `commitMs`. Counter tính lần thử native, kể cả nhánh
+  bù trừ khi lỗi; collection là số row đã đọc xong gần nhất, không đọc thêm
+  để đo. Nhóm bị chặn trước commit dùng snapshot chuẩn bị.
+
+Các khoảng ms nằm trong `workMs` và có thể lồng nhau: property reads nằm
+trong enumeration/sort, read-back nằm trong verification/commit; không cộng
+chúng thành thời gian độc lập. Timer có độ phân giải ms, mock có thể trả 0.
+`response.wallMilliseconds/hostMilliseconds` và phép trừ wall − host giữ
+nguyên; trace lỗi vẫn không chặn tác vụ. Không có dòng riêng cho từng clip/marker.
+Kiểm mock so chuỗi native reads/writes/calls của direct/baseline/fast/no-delay
+giữa executor có counter và bản sinh không counter trong cùng lần chạy; không đổi batch limits, bốn speed pairs, guard hoặc
+transaction. **Phép đo native mới pending**, chưa kết luận nguyên nhân chậm
+hay mức tăng tốc từ mock.
+
 ## Căn chữ từ 2.20.23, đã tích hợp trong 2.20.25
 
 Lõi lexical edit-distance hiện có được thực hiện bằng compiled rolling rows, không đổi thuật toán/timestamp Whisper DTW. Máy không chạy được accelerator và cửa sổ nhỏ dùng PowerShell cũ. Không thêm lựa chọn hoặc bước bấm cho người dùng.
