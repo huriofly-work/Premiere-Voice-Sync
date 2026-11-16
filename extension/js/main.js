@@ -1656,7 +1656,7 @@
       fs.mkdirSync(logsRoot, { recursive: true });
       tracePath = path.join(logsRoot, "Performance_" + timestamp() + "_" + token + ".jsonl");
       security.assertNoLinks(fs, path, tracePath, false);
-      fs.writeFileSync(tracePath, JSON.stringify({ type: "start", revision: info.revision, baseHash: baseHash, profile: profile, workflow: workflow || "diagnostic", yieldMilliseconds: yieldMilliseconds, batchLimitsDisabled: false, nativeSpeedPairsPerBatch: 4, captionCleanupDelayMilliseconds: noDelay ? 0 : 50, pauseAtStages: pauseAtStages, createdAt: new Date().toISOString() }) + "\n", { encoding: "utf8", flag: "wx" });
+      fs.writeFileSync(tracePath, JSON.stringify({ type: "start", revision: info.revision, baseHash: baseHash, profile: profile, workflow: workflow || "diagnostic", yieldMilliseconds: yieldMilliseconds, batchLimitsDisabled: !!noDelay, nativeSpeedPairsPerBatch: noDelay ? null : 4, captionCleanupDelayMilliseconds: noDelay ? 0 : 50, pauseAtStages: pauseAtStages, createdAt: new Date().toISOString() }) + "\n", { encoding: "utf8", flag: "wx" });
       if (metrics) metrics.linkTimeline(path.basename(tracePath));
       log("Nhật ký hiệu năng chỉ lưu tên bước/thời gian, không có lời nói hay đường dẫn media: " + tracePath, "muted");
     } catch (ignoreTraceCreate) { disableTrace(); }

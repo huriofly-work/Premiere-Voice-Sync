@@ -28,7 +28,7 @@ async function scenario(options={}){
     }
     throw Error("Unexpected host call");
   }};
-  const promise=context.window.testApi.execute("C:\\secret\\voice.mp3",!!options.pause,!!options.fast,undefined,undefined,!!options.noDelay);
+  const promise=context.window.testApi.execute("C:\\secret\\voice.mp3",!!options.pause,!!options.fast,undefined,undefined,options.noDelay);
   if(options.pause){
     for(let i=0;i<100&&controls.workflowNotice.hidden!==false;i++)await new Promise(r=>setTimeout(r,1));
     assert.strictEqual(controls.workflowNotice.hidden,false);
@@ -46,12 +46,13 @@ async function scenario(options={}){
 (async()=>{
   let r=await scenario();assert(r.result.ok);assert.strictEqual(r.calls.filter(c=>c[0]==="yield").length,2);assert(r.calls.filter(c=>c[0]==="yield").every(c=>c[1]===150));assert.deepStrictEqual(r.rows.filter(r=>r.type==="request").map(r=>r.stage),["Hình","Voice"]);
   assert.deepStrictEqual(r.rows.find(row=>row.type==="finish").timings,stageTimings,"Details must reach Performance finish.timings unchanged");
+  assert.strictEqual(r.rows[0].batchLimitsDisabled,false);assert.strictEqual(r.rows[0].nativeSpeedPairsPerBatch,4);
   const response=r.rows.find(row=>row.type==="response");
   assert.equal(response.hostMilliseconds,4);assert.equal(typeof response.wallMilliseconds,"number");
   assert(Number.isFinite(response.wallMilliseconds-response.hostMilliseconds),"Keep the outside-script wall minus host measurement");
   r=await scenario({pause:true});assert(r.result.ok);assert(r.rows.some(r=>r.type==="user-observation"&&r.previewHealthy===true));
-  r=await scenario({fast:true});assert(r.result.ok);assert(r.calls.filter(c=>c[0]==="yield").every(c=>c[1]===20));assert(r.calls.some(c=>c[0]==="host"&&c[1].includes('"fast")')));assert.strictEqual(r.rows[0].profile,"fast");assert.strictEqual(r.rows[0].yieldMilliseconds,20);
-  r=await scenario({fast:true,noDelay:true});assert(r.result.ok);assert.strictEqual(r.calls.filter(c=>c[0]==="yield").length,0,"No-delay keeps no artificial sleep, with bounded native batches.");assert(r.calls.some(c=>c[0]==="host"&&c[1].includes('"no-delay")')));assert.strictEqual(r.rows[0].profile,"no-delay");assert.strictEqual(r.rows[0].yieldMilliseconds,0);assert.strictEqual(r.rows[0].batchLimitsDisabled,false);assert.strictEqual(r.rows[0].nativeSpeedPairsPerBatch,4);assert.strictEqual(r.rows[0].captionCleanupDelayMilliseconds,0);
+  r=await scenario({fast:true});assert(r.result.ok);assert(r.calls.filter(c=>c[0]==="yield").every(c=>c[1]===20));assert(r.calls.some(c=>c[0]==="host"&&c[1].includes('"fast")')));assert.strictEqual(r.rows[0].profile,"fast");assert.strictEqual(r.rows[0].yieldMilliseconds,20);assert.strictEqual(r.rows[0].batchLimitsDisabled,false);assert.strictEqual(r.rows[0].nativeSpeedPairsPerBatch,4);
+  r=await scenario({fast:true,noDelay:true});assert(r.result.ok);assert.strictEqual(r.calls.filter(c=>c[0]==="yield").length,0,"No-delay runs stages without artificial sleep or batch caps.");assert(r.calls.some(c=>c[0]==="host"&&c[1].includes('"no-delay")')));assert.strictEqual(r.rows[0].profile,"no-delay");assert.strictEqual(r.rows[0].yieldMilliseconds,0);assert.strictEqual(r.rows[0].batchLimitsDisabled,true);assert.strictEqual(r.rows[0].nativeSpeedPairsPerBatch,null);assert.strictEqual(r.rows[0].captionCleanupDelayMilliseconds,0);
   r=await scenario({pause:true,stop:true});assert(r.error.includes("Timeline mới dựng một phần"));assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1);assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")).length,1);
   r=await scenario({evalError:true});assert(r.error);assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1);assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")).length,1);
   r=await scenario({active:true});assert(r.error.includes("ACTIVE"));assert(!r.calls.some(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")));
