@@ -1,5 +1,30 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #44 — Đo chi tiết staged timeline, không đổi hành vi (16/11/2026)
+
+- **Thiếu số đo.** `workMs` chưa tách quét/property/sort clip và transaction
+  marker; không thể quy thời gian dài cho một native operation cụ thể.
+- **Invariant.** Chỉ đo điểm truy cập hiện có; giữ short-circuit, comparator,
+  native calls/arguments/order, guard/hậu kiểm, batch limits, bốn speed pairs,
+  transaction và compensation. `_markerTools.commit` trả thêm `timings`;
+  executor sinh thêm `detail` từng host call, panel chuyển nguyên vào finish.
+  Không sửa logger panel hoặc phép ghi wall/host.
+- **Test.** Marker mock thiếu counters đỏ trước sửa. Thêm đối chiếu counter
+  create/update/delete và timer dùng clock xác định; giữ các ca rollback cũ.
+  Staged mock kiểm tổng clip/property/comparator/owner và marker commit;
+  digest chuỗi native reads/writes/calls/arguments trước sửa khóa tám fixture
+  direct/baseline/fast/no-delay với merge marker hoặc gap voice. Panel mock
+  kiểm detail nguyên vẹn và lỗi trace không dừng tác vụ.
+- **Kết quả.** Targeted mock, generator `--check`, syntax main/security,
+  Acorn ES3 host/executor/caption-input và `git diff --check` đạt. Standard
+  suite trên bản mã cuối đạt **72 nhóm/132 script PowerShell parse**, exit 0;
+  log `_local/timeline-metrics/suite.log`, TEMP/TMP trong thư mục `temp` cùng
+  chỗ. Sáu Windows integration skipped: InstallerLifecycle, InstallRollback,
+  PanelRegistry, NotificationShortcut, NativeNotifications, IncidentNotifications.
+  Dòng finish mock đầy đủ: `_local/timeline-metrics/mock-finish.jsonl`.
+  Tự rà diff, không có review độc lập. Native measurement pending; không chạy
+  Premiere/build bản phát hành/install/commit/push, không sửa runtime/dist/AppData.
+
 ## Sentence planner — Checker trộn decimal/double làm lệch frame (16/11/2026)
 
 - **Nguyên nhân.** `ConvertFrom-Json` trên PowerShell 5.1 trả số lẻ dạng

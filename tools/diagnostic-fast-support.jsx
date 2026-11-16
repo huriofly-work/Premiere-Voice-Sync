@@ -145,3 +145,41 @@ function diagnosticQEClipAtTicks(track, ticks, tolerance, trackKey) {
         return bestDistance <= tolerance ? best : null;
     } finally { diagnosticQeStats.milliseconds += (new Date()).getTime() - started; }
 }
+// Stage-local aggregates; callbacks evaluate the existing expressions once.
+var diagnosticDetail = null, diagnosticEnumerationStack = [];
+function diagnosticNewDetail(prepare, marker) {
+    diagnosticEnumerationStack = [];
+    if (marker) return { ownerGroupsTotal: 0, ownerGroups: 0, markersPerGroup: [] };
+    if (!prepare) return null;
+    return { clipEnumerationPasses: 0, clipEnumerationItems: 0, clipEnumerationMs: 0, clipItems: 0,
+        clipCollectionReads: 0, clipCountReads: 0, nameReads: 0,
+        startSecondsReads: 0, endSecondsReads: 0, secondsReads: 0, ticksReads: 0,
+        propertyReadMs: 0, sortCalls: 0, sortMs: 0, comparatorCalls: 0 };
+}
+function diagnosticCount(key) { if (diagnosticDetail && diagnosticDetail[key] !== undefined) diagnosticDetail[key]++; }
+function diagnosticRead(key, read) {
+    if (!diagnosticDetail || diagnosticDetail.propertyReadMs === undefined) return read();
+    diagnosticDetail[key]++;
+    var started = (new Date()).getTime();
+    try { return read(); } finally { diagnosticDetail.propertyReadMs += (new Date()).getTime() - started; }
+}
+function diagnosticSort(sort) {
+    if (!diagnosticDetail || diagnosticDetail.sortMs === undefined) return sort();
+    diagnosticDetail.sortCalls++;
+    var started = (new Date()).getTime();
+    try { return sort(); } finally { diagnosticDetail.sortMs += (new Date()).getTime() - started; }
+}
+function diagnosticEnumerationStart() {
+    if (!diagnosticDetail || diagnosticDetail.clipEnumerationMs === undefined) return;
+    diagnosticDetail.clipEnumerationPasses++;
+    diagnosticEnumerationStack.push((new Date()).getTime());
+}
+function diagnosticEnumerationEnd() {
+    if (!diagnosticDetail || diagnosticDetail.clipEnumerationMs === undefined) return;
+    diagnosticDetail.clipEnumerationMs += (new Date()).getTime() - diagnosticEnumerationStack.pop();
+}
+function diagnosticMarkerOwner(group, total) {
+    diagnosticDetail.ownerGroupsTotal = total;
+    diagnosticDetail.ownerGroups++;
+    diagnosticDetail.markersPerGroup.push(group && group.desired ? group.desired.length : null);
+}

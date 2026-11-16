@@ -22,7 +22,7 @@ const TPF = 8467200000;
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
 function tracks(items) { Object.defineProperty(items,"numTracks",{get(){return this.length;}}); return items; }
 function time(frame) { return { ticks:String(frame*TPF),seconds:frame/30 }; }
-function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false) {
+function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false, observe=false) {
   let nextId=0;
   const actions=[],nativeRows=[];let qeReads=0;
   function markers(){
@@ -86,11 +86,118 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     }
   }
   if(trace)plan.nativeProgressPath=trace==="external"?"/outside/native-progress.jsonl":"/fixture/native-progress.jsonl";
-  const context=vm.createContext({$: {_PVS:{}},Sequence:{CAPTION_FORMAT_SUBTITLE:0},app:{project,enableQE(){actions.push(["enableQE"]);}},qe:{project:{getActiveSequence(){return {getVideoTrackAt(i){return qeTrack(seq.videoTracks[i],true);},getAudioTrackAt(i){return qeTrack(seq.audioTracks[i],false);}};}}},Time:function(){this.ticks="0";},File:function(file){this.exists=!noCaption;this.name=String(file).split("/").pop();this.parent={fsName:String(file).includes("/")?String(file).slice(0,String(file).lastIndexOf("/")):"/fixture"};this.open=()=>trace!=="denied";this.write=text=>nativeRows.push(JSON.parse(text));this.close=()=>{};}});
+  // Observe native surfaces without adding property reads to their expressions.
+  const nativeCalls=[],proxies=new WeakMap(),rawByProxy=new WeakMap(),ids=new WeakMap();let nextNativeId=0;
+  function describe(value){
+    if(value!==null&&(typeof value==="object"||typeof value==="function")){
+      if(!ids.has(value))ids.set(value,++nextNativeId);
+      return {ref:ids.get(value)};
+    }
+    return typeof value==="string"?value.replace(/PVS_TEMP_CAPTION_\d+/g,"PVS_TEMP_CAPTION_TIME"):value;
+  }
+  function native(value){
+    if(!observe||value===null||(typeof value!=="object"&&typeof value!=="function"))return value;
+    if(proxies.has(value))return proxies.get(value);
+    const id=describe(value).ref;
+    const proxy=new Proxy(value,{
+      get(target,key){nativeCalls.push(["get",id,String(key)]);return native(Reflect.get(target,key,target));},
+      set(target,key,value){nativeCalls.push(["set",id,String(key),describe(value)]);return Reflect.set(target,key,rawByProxy.get(value)||value,target);},
+      apply(target,receiver,args){nativeCalls.push(["call",id,args.map(describe)]);return native(Reflect.apply(target,rawByProxy.get(receiver)||receiver,args.map(v=>rawByProxy.get(v)||v)));}
+    });
+    proxies.set(value,proxy);rawByProxy.set(proxy,value);ids.set(proxy,id);return proxy;
+  }
+  const context=vm.createContext({$: {_PVS:{}},Sequence:{CAPTION_FORMAT_SUBTITLE:0},app:native({project,enableQE(){actions.push(["enableQE"]);}}),qe:native({project:{getActiveSequence(){return {getVideoTrackAt(i){return qeTrack(seq.videoTracks[i],true);},getAudioTrackAt(i){return qeTrack(seq.audioTracks[i],false);}};}}}),Time:function(){this.ticks="0";},File:function(file){this.exists=!noCaption;this.name=String(file).split("/").pop();this.parent={fsName:String(file).includes("/")?String(file).slice(0,String(file).lastIndexOf("/")):"/fixture"};this.open=()=>trace!=="denied";this.write=text=>nativeRows.push(JSON.parse(text));this.close=()=>{};}});
   vm.runInContext(host,context);vm.runInContext(diagnostic,context);
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(plan)+";};",context);
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
-  return {context,actions,seq,plan,nested,voice,nativeRows,api:context.$._PVS,get qeReads(){return qeReads;}};
+  return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,api:context.$._PVS,get qeReads(){return qeReads;}};
+}
+function nativeDigests(){
+  const digests={};
+  for(const gaps of [false,true])for(const profile of ["direct","baseline","fast","no-delay"]){
+    const f=fixture(6,false,gaps,1,!gaps,true,false,true);
+    const result=profile==="direct"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
+    assert(result.ok,JSON.stringify(result));
+    digests[profile+":"+gaps]={rows:f.nativeCalls.length,sha256:require("crypto").createHash("sha256").update(JSON.stringify(f.nativeCalls)).digest("hex")};
+  }
+  return digests;
+}
+// Frozen before measurement changes: ordered native reads, writes, calls and arguments.
+assert.deepStrictEqual(nativeDigests(),{
+  "direct:false": {
+    "rows": 1777,
+    "sha256": "70ff25126515603c676a45b326f11e1a17bc57ec65cdd7013337f6f43451b733"
+  },
+  "baseline:false": {
+    "rows": 16915,
+    "sha256": "6a72dcb5a602d34527770b1af27453edf047e2d535f331ad09d06458e4e84e27"
+  },
+  "fast:false": {
+    "rows": 10828,
+    "sha256": "e1ed1d2f8e92cd0f3db41d9bc06a73e19796047611185eff7fde883dfa289313"
+  },
+  "no-delay:false": {
+    "rows": 10828,
+    "sha256": "e1ed1d2f8e92cd0f3db41d9bc06a73e19796047611185eff7fde883dfa289313"
+  },
+  "direct:true": {
+    "rows": 2722,
+    "sha256": "cd67763cfd2bce9a72f4780d4da26bfc3419580039778d767ac62decefe29bb0"
+  },
+  "baseline:true": {
+    "rows": 24585,
+    "sha256": "4dca5c10974ca7cb4f40062cb8823e3925505daca2038210a3b2ae779ec428a1"
+  },
+  "fast:true": {
+    "rows": 15680,
+    "sha256": "53f2455631cab94395a222a30a7fcc02f451b383e22854846bfc16a53a1209a4"
+  },
+  "no-delay:true": {
+    "rows": 15680,
+    "sha256": "53f2455631cab94395a222a30a7fcc02f451b383e22854846bfc16a53a1209a4"
+  }
+});
+if(process.argv.includes("--timeline-native-digests")){console.log(JSON.stringify(nativeDigests()));process.exit(0);}
+for(const profile of ["baseline","fast","no-delay"]){
+  const f=fixture(6),r=finishTrial(f,profile);
+  assert(r.report.ok);
+  const prepared=r.timings.filter(t=>t.stage.startsWith("Chuẩn bị")||t.stage==="Kiểm tra đầu vào và chuẩn bị");
+  for(const t of prepared){
+    assert(t.detail,"Prepare details: "+t.stage);
+    for(const field of ["clipEnumerationPasses","clipEnumerationItems","clipEnumerationMs","clipItems","clipCollectionReads","clipCountReads","nameReads","startSecondsReads","endSecondsReads","ticksReads","propertyReadMs","sortCalls","sortMs","comparatorCalls"])assert(t.detail[field]>=0,field);
+  }
+  const input=r.timings[0].detail;
+  assert(input.clipEnumerationPasses>0&&input.clipEnumerationItems>0&&input.nameReads>0);
+  const cut=r.timings.find(t=>t.stage==="Chuẩn bị sau Cắt V1–A1 linked").detail;
+  assert.equal(cut.clipEnumerationPasses,2);assert.equal(cut.clipEnumerationItems,13);
+  assert.equal(cut.clipItems,13);assert.equal(cut.clipCountReads,15);
+  assert.equal(cut.nameReads,20);assert.equal(cut.sortCalls,2);
+  assert(cut.comparatorCalls>0);
+  assert.equal(cut.startSecondsReads,12+2*cut.comparatorCalls,"Keep both native start reads on every comparison");
+  const voice=r.timings.find(t=>t.stage==="Chuẩn bị sau Cắt voice A2").detail;
+  assert.equal(voice.clipEnumerationPasses,1);assert.equal(voice.clipEnumerationItems,6);assert.equal(voice.nameReads,6);
+  for(const label of ["Chuẩn bị sau Cập nhật marker nguồn","Chuẩn bị hậu kiểm"])assert(r.timings.some(t=>t.stage===label&&t.detail.ticksReads>0),label);
+  const markers=r.timings.filter(t=>t.stage==="Cập nhật marker nguồn");
+  assert.equal(markers.reduce((n,t)=>n+t.detail.ownerGroups,0),2);
+  assert(markers.every(t=>t.detail.ownerGroups===1&&t.detail.ownerGroupsTotal===2&&t.detail.markersPerGroup.length===1));
+  assert.equal(markers.reduce((n,t)=>n+t.detail.markersPerGroup[0],0),4);
+  for(const t of markers){
+    const m=t.detail.markerCommit;assert.equal(m.readPasses,3);
+    assert.equal(m.collectionAfter,m.collectionBefore+m.creates-m.deletes);
+    assert.equal(m.creates,t.detail.markersPerGroup[0]);
+    assert.equal(m.nameWrites,m.creates);assert.equal(m.commentsWrites,m.creates);assert.equal(m.endWrites,m.creates);
+    assert.equal(m.colorWrites,m.creates);assert.equal(m.colorReads,3*m.creates);
+    assert(m.readMs>=0&&m.verificationMs>=0&&m.commitMs>=m.readMs&&m.commitMs>=m.verificationMs);
+  }
+  if(process.argv.includes("--timeline-example")&&profile==="fast")console.log(JSON.stringify({type:"finish",ok:true,timings:r.timings}));
+}
+{
+  const f=fixture(1);let reads=0;
+  Object.defineProperty(f.seq.videoTracks[0].clips[0],"name",{get(){reads++;throw Error("NATIVE_NAME_READ_FAILED");}});
+  const r=finishTrial(f,"fast"),t=r.timings[r.timings.length-1];
+  assert(!r.report.ok);assert(r.report.error.includes("NATIVE_NAME_READ_FAILED"));
+  assert.equal(reads,1);assert(t.failed);assert.equal(t.detail.nameReads,2);
+  assert(t.detail.propertyReadMs>=0,"Keep partial counters when a native read throws");
 }
 // #1/#8: unreadable mapping and failed source read-back keep visible warnings.
 {

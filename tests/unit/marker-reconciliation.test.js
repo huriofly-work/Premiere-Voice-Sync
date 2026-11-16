@@ -35,6 +35,43 @@ function group(f){return api.group(f.collection,[{start:0,end:10}],m=>m.comments
 const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:comments+"\n"+tag,color:4});
 function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");}
 
+// Commit counters cover the existing passes, including unchanged/manual rows.
+{
+  const f=fixture([owned(1),owned(2),{seconds:9,name:"manual"}]),g=group(f);
+  api.add(g,Object.assign(desired(1),{end:1.5,color:3}));
+  api.add(g,Object.assign(desired(3),{end:3.5}));
+  const readsBefore=f.reads.first,r=api.commit(g),t=r.timings;
+  assert.equal(r.failures.length,0);assert(t,"Commit must return aggregate timings");
+  assert.equal(t.collectionBefore,3);assert.equal(t.collectionAfter,3);
+  assert.equal(t.readPasses,3);assert.equal(t.readPasses,f.reads.first-readsBefore);
+  assert.equal(t.creates,1);assert.equal(t.deletes,1);
+  assert.equal(t.nameWrites,1);assert.equal(t.commentsWrites,2);assert.equal(t.endWrites,2);
+  assert.equal(t.colorWrites,2);assert.equal(t.colorReads,3+4+3+2);
+  for(const key of ["readMs","verificationMs","commitMs"])assert(t[key]>=0,key);
+  assert(t.commitMs>=t.readMs);assert(t.commitMs>=t.verificationMs);
+}
+{
+  let tick=0;
+  const timed=vm.createContext({$:{_PVS:{}},Date:function(){this.getTime=()=>tick++;}});
+  vm.runInContext(source,timed);
+  const tools=timed.$._PVS._markerTools,f=fixture(),g=tools.group(f.collection,[{start:0,end:10}],m=>m.comments.includes(tag),0.5/30);
+  tools.add(g,desired(1));
+  const t=tools.commit(g).timings;
+  assert.equal(t.readMs,3);assert.equal(t.verificationMs,7);assert.equal(t.commitMs,13);
+}
+{
+  const f=fixture([owned(1),{seconds:9,name:"manual"}]),g=group(f);
+  api.add(g,Object.assign(desired(1),{end:1.5}));
+  f.faults.comments="COMMENT_WRITE_FAILED";
+  const r=api.commit(g),t=r.timings;
+  assert(r.failures.some(x=>x.includes("COMMENT_WRITE_FAILED")));
+  assert.equal(t.readPasses,2);assert.equal(t.collectionBefore,2);assert.equal(t.collectionAfter,2);
+  assert.equal(t.creates,0);assert.equal(t.deletes,0);
+  assert.equal(t.nameWrites,1);assert.equal(t.commentsWrites,2);assert.equal(t.endWrites,1);
+  assert.equal(t.colorReads,5);assert.equal(t.colorWrites,0);
+  assert.equal(f.values[0].comments,owned(1).comments,"Count compensation without changing restoration");
+}
+
 // PR #37 review: aggregate independent reproductions before legacy assertions.
 {
   const failures=[];let passed=0;
