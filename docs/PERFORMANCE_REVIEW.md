@@ -27,8 +27,8 @@ trong enumeration/sort, read-back nằm trong verification/commit; không cộng
 chúng thành thời gian độc lập. Timer có độ phân giải ms, mock có thể trả 0.
 `response.wallMilliseconds/hostMilliseconds` và phép trừ wall − host giữ
 nguyên; trace lỗi vẫn không chặn tác vụ. Không có dòng riêng cho từng clip/marker.
-Kiểm mock khóa chuỗi native reads/writes/calls của direct/baseline/fast/no-delay
-bằng digest trước sửa; không đổi batch limits, bốn speed pairs, guard hoặc
+Kiểm mock so chuỗi native reads/writes/calls của direct/baseline/fast/no-delay
+giữa executor có counter và bản sinh không counter trong cùng lần chạy; không đổi batch limits, bốn speed pairs, guard hoặc
 transaction. **Phép đo native mới pending**, chưa kết luận nguyên nhân chậm
 hay mức tăng tốc từ mock.
 

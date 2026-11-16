@@ -3,6 +3,7 @@ const assert = require("assert"), fs = require("fs"), path = require("path"), vm
 const root = path.join(__dirname, "../..");
 const host = fs.readFileSync(path.join(root,"extension/jsx/host.jsx"),"utf8");
 const diagnostic = fs.readFileSync(path.join(root,"extension/jsx/diagnostic-executor.jsx"),"utf8");
+let fixtureExecutor = diagnostic;
 const { output } = require("../../tools/Build-DiagnosticExecutor.js");
 assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
 const TPF = 8467200000;
@@ -107,57 +108,31 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     proxies.set(value,proxy);rawByProxy.set(proxy,value);ids.set(proxy,id);return proxy;
   }
   const context=vm.createContext({$: {_PVS:{}},Sequence:{CAPTION_FORMAT_SUBTITLE:0},app:native({project,enableQE(){actions.push(["enableQE"]);}}),qe:native({project:{getActiveSequence(){return {getVideoTrackAt(i){return qeTrack(seq.videoTracks[i],true);},getAudioTrackAt(i){return qeTrack(seq.audioTracks[i],false);}};}}}),Time:function(){this.ticks="0";},File:function(file){this.exists=!noCaption;this.name=String(file).split("/").pop();this.parent={fsName:String(file).includes("/")?String(file).slice(0,String(file).lastIndexOf("/")):"/fixture"};this.open=()=>trace!=="denied";this.write=text=>nativeRows.push(JSON.parse(text));this.close=()=>{};}});
-  vm.runInContext(host,context);vm.runInContext(diagnostic,context);
+  vm.runInContext(host,context);vm.runInContext(fixtureExecutor,context);
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(plan)+";};",context);
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
   return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,api:context.$._PVS,get qeReads(){return qeReads;}};
 }
-function nativeDigests(){
-  const digests={};
-  for(const gaps of [false,true])for(const profile of ["direct","baseline","fast","no-delay"]){
-    const f=fixture(6,false,gaps,1,!gaps,true,false,true);
-    const result=profile==="direct"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
-    assert(result.ok,JSON.stringify(result));
-    digests[profile+":"+gaps]={rows:f.nativeCalls.length,sha256:require("crypto").createHash("sha256").update(JSON.stringify(f.nativeCalls)).digest("hex")};
-  }
+function nativeDigests(executor){
+  const digests={},previous=fixtureExecutor;fixtureExecutor=executor;
+  try{
+    for(const gaps of [false,true])for(const profile of ["direct","baseline","fast","no-delay"]){
+      const f=fixture(6,false,gaps,1,!gaps,true,false,true);
+      const result=profile==="direct"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
+      assert(result.ok,JSON.stringify(result));
+      digests[profile+":"+gaps]={rows:f.nativeCalls.length,sha256:require("crypto").createHash("sha256").update(JSON.stringify(f.nativeCalls)).digest("hex")};
+    }
+  }finally{fixtureExecutor=previous;}
   return digests;
 }
-// Frozen before measurement changes: ordered native reads, writes, calls and arguments.
-assert.deepStrictEqual(nativeDigests(),{
-  "direct:false": {
-    "rows": 1777,
-    "sha256": "70ff25126515603c676a45b326f11e1a17bc57ec65cdd7013337f6f43451b733"
-  },
-  "baseline:false": {
-    "rows": 16915,
-    "sha256": "6a72dcb5a602d34527770b1af27453edf047e2d535f331ad09d06458e4e84e27"
-  },
-  "fast:false": {
-    "rows": 10828,
-    "sha256": "e1ed1d2f8e92cd0f3db41d9bc06a73e19796047611185eff7fde883dfa289313"
-  },
-  "no-delay:false": {
-    "rows": 10828,
-    "sha256": "e1ed1d2f8e92cd0f3db41d9bc06a73e19796047611185eff7fde883dfa289313"
-  },
-  "direct:true": {
-    "rows": 2722,
-    "sha256": "cd67763cfd2bce9a72f4780d4da26bfc3419580039778d767ac62decefe29bb0"
-  },
-  "baseline:true": {
-    "rows": 24585,
-    "sha256": "4dca5c10974ca7cb4f40062cb8823e3925505daca2038210a3b2ae779ec428a1"
-  },
-  "fast:true": {
-    "rows": 15680,
-    "sha256": "53f2455631cab94395a222a30a7fcc02f451b383e22854846bfc16a53a1209a4"
-  },
-  "no-delay:true": {
-    "rows": 15680,
-    "sha256": "53f2455631cab94395a222a30a7fcc02f451b383e22854846bfc16a53a1209a4"
-  }
-});
-if(process.argv.includes("--timeline-native-digests")){console.log(JSON.stringify(nativeDigests()));process.exit(0);}
+// Trace counters must add no native reads, writes or calls. Compare against the
+// same executor generated without counters in this Node runtime: proxy traps
+// also see engine-internal reads (for example during sort), so frozen hashes
+// differ between Node versions.
+const measuredDigests=nativeDigests(diagnostic),unmeasuredDigests=nativeDigests(output({measure:false}).text);
+assert.deepStrictEqual(measuredDigests,unmeasuredDigests);
+assert.notStrictEqual(output({measure:false}).text,diagnostic,"unmeasured build must differ from the measured executor");
+if(process.argv.includes("--timeline-native-digests")){console.log(JSON.stringify(measuredDigests));process.exit(0);}
 for(const profile of ["baseline","fast","no-delay"]){
   const f=fixture(6),r=finishTrial(f,profile);
   assert(r.report.ok);

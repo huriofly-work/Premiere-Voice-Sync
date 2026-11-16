@@ -12,9 +12,16 @@
 - **Test.** Marker mock thiếu counters đỏ trước sửa. Thêm đối chiếu counter
   create/update/delete và timer dùng clock xác định; giữ các ca rollback cũ.
   Staged mock kiểm tổng clip/property/comparator/owner và marker commit;
-  digest chuỗi native reads/writes/calls/arguments trước sửa khóa tám fixture
-  direct/baseline/fast/no-delay với merge marker hoặc gap voice. Panel mock
+  tám fixture direct/baseline/fast/no-delay với merge marker hoặc gap voice
+  so digest chuỗi native reads/writes/calls/arguments giữa executor có counter
+  và bản sinh `generate(..., {measure:false})` trong cùng runtime. Panel mock
   kiểm detail nguyên vẹn và lỗi trace không dừng tác vụ.
+- **CI Node 22 khác Node 26.** Bản đầu khóa sha256 cứng chụp trên Node 26; CI
+  Node 22 ít hơn 36 dòng ở cả bốn profile có gap, kể cả direct không qua
+  generator. Proxy mock ghi cả lượt đọc nội bộ của engine (vd. lúc `sort`),
+  nên hash cứng phụ thuộc phiên bản Node, không phải hành vi tool. Sửa: so hai
+  bản build cùng lần chạy; thử chèn thêm `app.project` vào bản đo thì test đỏ
+  đúng `deepStrictEqual`.
 - **Kết quả.** Targeted mock, generator `--check`, syntax main/security,
   Acorn ES3 host/executor/caption-input và `git diff --check` đạt. Standard
   suite trên bản mã cuối đạt **72 nhóm/132 script PowerShell parse**, exit 0;
