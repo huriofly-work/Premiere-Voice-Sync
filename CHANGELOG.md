@@ -2,6 +2,10 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
+## Chưa phát hành
+
+- Dựng theo voice bỏ giới hạn chia đợt trong từng bước để giảm lượt gọi Premiere; Dừng/Tạm dừng có hiệu lực khi bước hiện tại kết thúc, timeline không vẽ lại trong bước dài (#47).
+
 ## 2.20.92 — 2026-11-16
 
 Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. [Ghi chú phát hành](docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md).

@@ -88,7 +88,19 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   }
   if(trace)plan.nativeProgressPath=trace==="external"?"/outside/native-progress.jsonl":"/fixture/native-progress.jsonl";
   // Observe native surfaces without adding property reads to their expressions.
-  const nativeCalls=[],proxies=new WeakMap(),rawByProxy=new WeakMap(),ids=new WeakMap();let nextNativeId=0;
+  const nativeCalls=[],nativeMutations=[],methodNames=new WeakMap(),proxies=new WeakMap(),rawByProxy=new WeakMap(),ids=new WeakMap();let nextNativeId=0;
+  const mutationMethods=new Set(["move","remove","setSpeed","razor","createMarker","deleteMarker","setColorByIndex","createCaptionTrack","importFiles","createBin","deleteBin","clearInPoint","clearOutPoint","openSequence"]);
+  function mutationValue(value){
+    value=rawByProxy.get(value)||value;
+    if(Array.isArray(value))return value.map(mutationValue);
+    if(value&&typeof value==="object"){
+      if("nodeId" in value)return {nodeId:value.nodeId};
+      if("ticks" in value)return {ticks:value.ticks};
+      if("seconds" in value)return {seconds:value.seconds};
+      if("start" in value)return {start:mutationValue(value.start),name:value.name,comments:value.comments};
+    }
+    return describe(value);
+  }
   function describe(value){
     if(value!==null&&(typeof value==="object"||typeof value==="function")){
       if(!ids.has(value))ids.set(value,++nextNativeId);
@@ -101,9 +113,9 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     if(proxies.has(value))return proxies.get(value);
     const id=describe(value).ref;
     const proxy=new Proxy(value,{
-      get(target,key){nativeCalls.push(["get",id,String(key)]);return native(Reflect.get(target,key,target));},
-      set(target,key,value){nativeCalls.push(["set",id,String(key),describe(value)]);return Reflect.set(target,key,rawByProxy.get(value)||value,target);},
-      apply(target,receiver,args){nativeCalls.push(["call",id,args.map(describe)]);return native(Reflect.apply(target,rawByProxy.get(receiver)||receiver,args.map(v=>rawByProxy.get(v)||v)));}
+      get(target,key){nativeCalls.push(["get",id,String(key)]);const value=Reflect.get(target,key,target);if(typeof value==="function")methodNames.set(value,String(key));return native(value);},
+      set(target,key,value){nativeCalls.push(["set",id,String(key),describe(value)]);nativeMutations.push(["set",target.nodeId||null,String(key),mutationValue(value)]);return Reflect.set(target,key,rawByProxy.get(value)||value,target);},
+      apply(target,receiver,args){nativeCalls.push(["call",id,args.map(describe)]);const name=methodNames.get(target);if(mutationMethods.has(name))nativeMutations.push(["call",name,args.map(mutationValue)]);return native(Reflect.apply(target,rawByProxy.get(receiver)||receiver,args.map(v=>rawByProxy.get(v)||v)));}
     });
     proxies.set(value,proxy);rawByProxy.set(proxy,value);ids.set(proxy,id);return proxy;
   }
@@ -111,7 +123,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   vm.runInContext(host,context);vm.runInContext(fixtureExecutor,context);
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(plan)+";};",context);
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
-  return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,api:context.$._PVS,get qeReads(){return qeReads;}};
+  return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,nativeMutations,api:context.$._PVS,get qeReads(){return qeReads;}};
 }
 function nativeDigests(executor){
   const digests={},previous=fixtureExecutor;fixtureExecutor=executor;
@@ -133,6 +145,37 @@ const measuredDigests=nativeDigests(diagnostic),unmeasuredDigests=nativeDigests(
 assert.deepStrictEqual(measuredDigests,unmeasuredDigests);
 assert.notStrictEqual(output({measure:false}).text,diagnostic,"unmeasured build must differ from the measured executor");
 if(process.argv.includes("--timeline-native-digests")){console.log(JSON.stringify(measuredDigests));process.exit(0);}
+// Ignore read-only guards/lookups, but retain every observed native property
+// write and mutating call with its arguments, alongside clip-specific actions.
+for(const [count,gaps,voiceSpeed,merged] of [[6,false,1,true],[65,false,1,false],[65,true,1.1,false],[130,true,0.9,false]]){
+  const baseline=fixture(count,false,gaps,voiceSpeed,merged,true,false,true),noDelay=fixture(count,false,gaps,voiceSpeed,merged,true,false,true);
+  const expected=finishTrial(baseline,"baseline"),actual=finishTrial(noDelay,"no-delay");
+  assert(expected.report.ok&&actual.report.ok);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(noDelay.nativeMutations)),JSON.parse(JSON.stringify(baseline.nativeMutations)),"No-delay native set/call mutations and arguments must equal baseline in order.");
+  assert(noDelay.nativeMutations.some(row=>row[0]==="set")&&noDelay.nativeMutations.some(row=>row[0]==="call"));
+  assert.deepStrictEqual(noDelay.actions,baseline.actions);
+  assert.deepStrictEqual(actual.report,expected.report);
+  const stages=actual.timings.filter(t=>t.stage!=="Cập nhật marker nguồn");
+  assert(stages.every(t=>t.complete),"No-delay must complete every loop stage in one host call, except marker owners.");
+  for(const label of ["Đọc marker nguồn","Cắt V1–A1 linked","Bỏ hình–A1 theo SRT đã lược","Tăng speed V1–A1","Dồn vị trí V1–A1","Giảm speed V1–A1","Đối chiếu mép V1–A1","Cắt voice A2","Bỏ lát khoảng lặng A2","Dồn voice A2","Chuẩn bị marker voice","Chuẩn bị marker tốc độ"])assert.equal(stages.filter(t=>t.stage===label).length,1,label);
+}
+console.log("NO_DELAY_STAGE_PARITY_OK:one-call-per-loop;native-set-call-mutations-equal-baseline;marker-owner-boundary-preserved");
+// Freeze time to isolate iteration caps, then advance it beyond every budget
+// to prove that only baseline/fast yield on elapsed time.
+for(const profile of ["baseline","fast","no-delay"])for(const clock of ["frozen","elapsed"]){
+  const f=fixture(130);vm.runInContext('var clockTicks=0;Date.prototype.getTime=function(){return '+(clock==="frozen"?'0':'(clockTicks+=1000)')+';};',f.context);
+  let r=JSON.parse(f.api.beginDiagnosticEdit("fixture","clock",profile));const cuts=[];
+  while(!r.done){const before=f.actions.length,stage=r.nextStage;r=JSON.parse(f.api.advanceDiagnosticEdit("clock",r.nextCall));if(stage==="Cắt V1–A1 linked")cuts.push(f.actions.slice(before).filter(a=>a[0]==="razor").length);}
+  assert(r.result.ok);
+  if(profile==="no-delay"){
+    assert.deepStrictEqual(cuts,[129]);
+    assert(r.timings.filter(t=>t.stage!=="Cập nhật marker nguồn").every(t=>t.complete));
+  }else{
+    const limit=clock==="elapsed"?1:profile==="fast"?100:20;
+    assert.equal(Math.max(...cuts),limit,profile+":"+clock);
+    assert(cuts.length>1);
+  }
+}
 for(const profile of ["baseline","fast","no-delay"]){
   const f=fixture(6),r=finishTrial(f,profile);
   assert(r.report.ok);
@@ -259,7 +302,7 @@ for(const profile of [undefined,"baseline","fast","no-delay"])for(const [count,g
   assert.deepStrictEqual(result.report,stableReport,"Scheduling must preserve full postcheck report.");
   assert.deepStrictEqual(trial.actions,stable.actions,"Every native editing call must stay identical and in order.");
   assert.deepStrictEqual(result.checkpoints,["Hình V1–A1","Voice A2","Marker","Caption"]);
-  if(count>=65)assert(result.timings.some(t=>!t.complete),"Every profile, including no-delay, bounds native batches.");
+  if(count>=65&&profile!=="no-delay")assert(result.timings.some(t=>!t.complete&&t.stage!=="Cập nhật marker nguồn"),"Baseline/fast retain bounded native batches.");
   for(const timing of result.timings)for(const field of ["checkMs","rebindMs","workMs","snapshotMs","qeLookupMs","qeQueries","qeHits","qeBuilds","qeFallbacks","qeCacheReuses","qeCountChanges","qeCandidateMisses","qeInvalidLayouts","qeItemReads","qeEarlyHits","qeNearestScans"])assert(timing[field]>=0,field);
   if((profile==="fast" || profile==="no-delay") && count>=65)assert(trial.qeReads<stable.qeReads,"Fast exact-start lookup must reduce native QE reads without changing edits.");
   if(profile==="fast" || profile==="no-delay"){
@@ -514,19 +557,25 @@ for(const profile of ["baseline","fast","no-delay"]){
     const previous=f.actions.filter(a=>a[0]==="speed").length;
     r=JSON.parse(f.api.advanceDiagnosticEdit("sparse-speed",r.nextCall));
     const added=f.actions.filter(a=>a[0]==="speed").length-previous;
-    assert(added<=8,"Skipped entries cannot consume or enlarge the four linked-pair work allowance.");
+    if(profile!=="no-delay")assert(added<=8,"Skipped entries cannot consume or enlarge the four linked-pair work allowance.");
   }while(!r.done);
   assert(r.result.ok);
   const speedBatches=r.timings.filter(t=>t.stage==="Tăng speed V1–A1"||t.stage==="Giảm speed V1–A1");
+  if(profile==="no-delay")assert.equal(speedBatches.length,2,"Each speed stage must run once without a pair cap.");
   assert(speedBatches.length<Math.ceil(65/4)*2,"Opposite-speed/unchanged entries must not force four-entry empty batches.");
 }
 {
-  const f=fixture(65);let r=JSON.parse(f.api.beginDiagnosticEdit("fixture","bounded","no-delay"));
-  while(!r.done&&r.nextStage!=="Tăng speed V1–A1")r=JSON.parse(f.api.advanceDiagnosticEdit("bounded",r.nextCall));
-  assert(!r.done);r=JSON.parse(f.api.advanceDiagnosticEdit("bounded",r.nextCall));
-  assert(!r.done&&r.nextStage==="Tăng speed V1–A1","No-delay must return control within a long speed loop.");
-  assert(f.actions.filter(a=>a[0]==="speed").length<=8,"At most four linked pairs in one native call.");
-  const count=f.actions.length;JSON.parse(f.api.abortDiagnosticEdit("bounded"));assert.equal(f.actions.length,count,"Cancel at a pair boundary adds no native editing.");
+  const f=fixture(65);let stopRequested=false,r=JSON.parse(f.api.beginDiagnosticEdit("fixture","stage-stop","no-delay"));
+  while(!r.done&&r.nextStage!=="Tăng speed V1–A1")r=JSON.parse(f.api.advanceDiagnosticEdit("stage-stop",r.nextCall));
+  // Simulate Stop arriving during the first native speed call. The panel can
+  // act on it only once this synchronous host stage has returned.
+  const push=f.actions.push;
+  f.actions.push=function(row){if(row[0]==="speed")stopRequested=true;return push.apply(this,arguments);};
+  assert(!r.done);r=JSON.parse(f.api.advanceDiagnosticEdit("stage-stop",r.nextCall));
+  assert(stopRequested);
+  assert(!r.done&&r.nextStage!=="Tăng speed V1–A1","Stop requested during speed takes effect after the whole stage.");
+  assert(f.actions.filter(a=>a[0]==="speed").length>8);
+  const count=f.actions.length;JSON.parse(f.api.abortDiagnosticEdit("stage-stop"));assert.equal(f.actions.length,count,"Cancel at the next stage boundary adds no native editing.");
 }
 for(const mode of [true,"denied","external"]){
  const direct=fixture(6,false,false,1,false,false,mode),staged=fixture(6,false,false,1,false,false,mode);
@@ -547,7 +596,7 @@ for(const mode of [true,"denied","external"]){
  const f=fixture(6,false,false,1,false,false,true);const r=JSON.parse(f.api.executePlan("timeline-executor.json"));assert(r.ok);
  assert.equal(f.nativeRows[0].operation,"read-plan");assert.equal(f.nativeRows[0].phase,"before");assert.equal(f.nativeRows[1].phase,"after");
 }
-console.log("BOUNDED_NATIVE_EXECUTOR_OK:full-compact-call-and-report-parity;no-delay-four-pair-cap;cancel-between-pairs;native-progress;trace-failure-and-external-path-safe");
+console.log("PROFILE_NATIVE_EXECUTOR_OK:full-compact-call-and-report-parity;baseline-fast-four-pair-cap;no-delay-whole-stage;cancel-between-stages;native-progress;trace-failure-and-external-path-safe");
 // Marker lifecycle on the actual executor, including no-delay safe boundaries.
 function sourceMarkerState(f,item){return item.getMarkers().items.map(m=>[m.start.seconds,m.name,m.comments]);}
 for(const profile of ["baseline","fast","no-delay"]){
@@ -574,4 +623,4 @@ for(const profile of ["baseline","fast","no-delay"]){
   assert(!response.result.ok);assert(response.result.clipMarkerFailures.some(x=>x.includes("changed since preparation")));assert.deepStrictEqual(sourceMarkerState(f,f.nested),manualState);
 }
 console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-old;plan-without-write;cancel-between-owners;marker-change-guard");
-console.log("DIAGNOSTIC_EXECUTOR_MOCK_OK:exact-native-call-parity;exact-report-parity;bounded-batches;four-checkpoints;duplicate-call-guard;timeline-and-sequence-guard;abort-no-new-edit;no-save-or-Undo-clear;generated-source-current;review-markers-all-profiles;marker-failure-reports-partial-result");
+console.log("DIAGNOSTIC_EXECUTOR_MOCK_OK:exact-native-call-parity;exact-report-parity;profile-batch-policy;four-checkpoints;duplicate-call-guard;timeline-and-sequence-guard;abort-no-new-edit;no-save-or-Undo-clear;generated-source-current;review-markers-all-profiles;marker-failure-reports-partial-result");
