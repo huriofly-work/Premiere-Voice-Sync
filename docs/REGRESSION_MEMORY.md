@@ -1,5 +1,52 @@
 # Bộ nhớ hồi quy của project
 
+## Sentence planner — Checker trộn decimal/double làm lệch frame (16/11/2026)
+
+- **Nguyên nhân.** `ConvertFrom-Json` trên PowerShell 5.1 trả số lẻ dạng
+  `[decimal]`. Planner tạo acoustic groups với giờ `[double]`, nhưng
+  `Assert-PvsAcousticPartitionPlan` cộng mép reference JSON chưa ép kiểu vào
+  midpoint. End 174.533/Start 174.767 ở 30 fps cho planner
+  5239.4999999999991 → 5239; checker decimal cho 5239.500 → 5240 và báo nhầm
+  `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED`.
+- **Invariant/sửa.** Checker tính frame bằng cùng phép toán `[double]` và
+  đúng thứ tự như planner; không trộn decimal từ `ConvertFrom-Json` vào phép
+  tính frame. Ép kiểu mép reference, main clip, ngưỡng gap và mép voice trước
+  phép toán; midpoint luôn cộng mép trái rồi mép phải, chia 2.0 rồi nhân fps.
+  `Assert-PvsManualReviewPlan` cũng ép bốn mép source/voice sang `[double]`
+  trước nhân fps. Giữ nguyên mã/đầu ra planner, ngưỡng và toàn bộ check/proof.
+- **Test trước sửa.** `Test-AutoEditAcousticPartitions.ps1`, ca
+  `JSON_DECIMAL_HALF_FRAME`: reference qua `Copy-Json`, xác nhận kiểu decimal,
+  tạo groups bằng helper production và dùng đúng phép toán planner; frame
+  đầu `[5052,5239]`, mép chung 5239. Đỏ đúng
+  `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED`, log
+  `_local/partition-decimal/red-tests.log`. Audit thêm bốn ca
+  `JSON_DECIMAL_MANUAL_SOURCE` chạy shipping planner cho sourceEnd 2.05,
+  sourceStart 4.15, voice end 32.05 và voice start 4.15: cả bốn đỏ
+  `MANUAL_REVIEW_BLOCK_WAS_CUT_OR_LOST` trước sửa manual checker, log
+  `_local/partition-decimal/audit-red-tests.log`.
+- **Test sau sửa.** Nhóm acoustic đạt, gồm hai mép midpoint, từ chối frame
+  bị sửa và cả bốn ca manual với frame planner 61/125/961/125 giữ nguyên;
+  log `_local/partition-decimal/green-tests.log`. Standard suite đạt
+  **72 nhóm/132 script PowerShell parse**, exit code 0, log
+  `_local/partition-decimal/suite.log`; TEMP/TMP đặt dưới
+  `_local/partition-decimal/temp`. Sáu nhóm Windows integration bỏ qua:
+  InstallerLifecycle, InstallRollback, PanelRegistry, NotificationShortcut,
+  NativeNotifications, IncidentNotifications. `git diff --check` đạt.
+- **Audit giữ nguyên.** `Add-PvsCuePicturePlan` còn phép trừ gap và midpoint
+  source/word-time chưa ép kiểu (264–267); đây là bên tạo picture plan, chưa
+  có regression chứng minh checker lệch nên không đổi đầu ra. Trong
+  `Assert-PvsCuePicturePlan`, giờ/speed từ JSON còn tham gia tính sai số
+  (phép nhân fps và tính lại speed), nhưng frame/duration là số nguyên và
+  dung sai hiện có chưa tái hiện lỗi. `Test-PvsAcousticReferenceCut` còn cộng voice start với word
+  time JSON và kiểm margin; checker whole-cue đã ép hai mép word sang double.
+  `Split-PvsManualReviewCaptionCue` và guard display-cell trong
+  `New-PvsAutoEditManualReview` còn nhân giờ cell chưa ép kiểu với fps; đó
+  là đường tạo caption, chưa có regression so với checker nên giữ nguyên.
+- **Nghiệm thu.** Chỉ kiểm ngoại tuyến với dữ liệu tổng hợp;
+  **native acceptance pending**. Không chạy Premiere, build, cài, commit
+  hoặc push; không sửa runtime/dist/AppData. Tự rà diff và các path liên
+  quan, không có lượt review độc lập.
+
 ## Nghiệm thu native 2.20.91 (15/11/2026)
 
 User cài 2.20.91 (gói SHA-256 `2C9F66FB…71CEDE`) và chạy lại Dựng theo voice
