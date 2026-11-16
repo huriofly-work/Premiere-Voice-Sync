@@ -205,6 +205,7 @@ for(const profile of ["baseline","fast","no-delay"]){
     assert.equal(m.creates,t.detail.markersPerGroup[0]);
     assert.equal(m.nameWrites,m.creates);assert.equal(m.commentsWrites,m.creates);assert.equal(m.endWrites,m.creates);
     assert.equal(m.colorWrites,m.creates);assert.equal(m.colorReads,3*m.creates);
+    for(const field of ["createMs","nameWriteMs","commentsWriteMs","endWriteMs","colorWriteMs","colorReadMs","deleteMs"])assert(m[field]>=0,field);
     assert(m.readMs>=0&&m.verificationMs>=0&&m.commitMs>=m.readMs&&m.commitMs>=m.verificationMs);
   }
   if(process.argv.includes("--timeline-example")&&profile==="fast")console.log(JSON.stringify({type:"finish",ok:true,timings:r.timings}));
