@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
+& node (Join-Path $PSScriptRoot 'cache-clip-sort-keys.test.js')
+if ($LASTEXITCODE -ne 0) { throw 'CACHE_CLIP_SORT_KEYS_TEST_FAILED' }
 & node (Join-Path $PSScriptRoot 'diagnostic-fast-support.test.js')
 if ($LASTEXITCODE -ne 0) { throw 'DIAGNOSTIC_FAST_SUPPORT_TEST_FAILED' }
 & node (Join-Path $PSScriptRoot 'diagnostic-executor.test.js')

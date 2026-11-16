@@ -4,6 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
+- Sắp xếp clip chỉ đọc mốc bắt đầu một lần mỗi clip để giảm lượt đọc Premiere, giữ thứ tự và lệnh sửa timeline (#51).
 - Dựng theo voice bỏ giới hạn chia đợt trong từng bước để giảm lượt gọi Premiere; Dừng/Tạm dừng có hiệu lực khi bước hiện tại kết thúc, timeline không vẽ lại trong bước dài (#47).
 
 ## 2.20.92 — 2026-11-16

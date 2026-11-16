@@ -4,7 +4,8 @@ const root = path.join(__dirname, "../..");
 const host = fs.readFileSync(path.join(root,"extension/jsx/host.jsx"),"utf8");
 const diagnostic = fs.readFileSync(path.join(root,"extension/jsx/diagnostic-executor.jsx"),"utf8");
 let fixtureExecutor = diagnostic;
-const { output } = require("../../tools/Build-DiagnosticExecutor.js");
+const { output, generate } = require("../../tools/Build-DiagnosticExecutor.js");
+let fixtureHost = host;
 assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
 const TPF = 8467200000;
 // Run explicitly before the legacy assertions to capture the pre-fix failure.
@@ -120,7 +121,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     proxies.set(value,proxy);rawByProxy.set(proxy,value);ids.set(proxy,id);return proxy;
   }
   const context=vm.createContext({$: {_PVS:{}},Sequence:{CAPTION_FORMAT_SUBTITLE:0},app:native({project,enableQE(){actions.push(["enableQE"]);}}),qe:native({project:{getActiveSequence(){return {getVideoTrackAt(i){return qeTrack(seq.videoTracks[i],true);},getAudioTrackAt(i){return qeTrack(seq.audioTracks[i],false);}};}}}),Time:function(){this.ticks="0";},File:function(file){this.exists=!noCaption;this.name=String(file).split("/").pop();this.parent={fsName:String(file).includes("/")?String(file).slice(0,String(file).lastIndexOf("/")):"/fixture"};this.open=()=>trace!=="denied";this.write=text=>nativeRows.push(JSON.parse(text));this.close=()=>{};}});
-  vm.runInContext(host,context);vm.runInContext(fixtureExecutor,context);
+  vm.runInContext(fixtureHost,context);vm.runInContext(fixtureExecutor,context);
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(plan)+";};",context);
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
   return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,nativeMutations,api:context.$._PVS,get qeReads(){return qeReads;}};
@@ -145,6 +146,34 @@ const measuredDigests=nativeDigests(diagnostic),unmeasuredDigests=nativeDigests(
 assert.deepStrictEqual(measuredDigests,unmeasuredDigests);
 assert.notStrictEqual(output({measure:false}).text,diagnostic,"unmeasured build must differ from the measured executor");
 if(process.argv.includes("--timeline-native-digests")){console.log(JSON.stringify(measuredDigests));process.exit(0);}
+// Recreate the previous three comparators in the same runtime; compare mutations
+// separately because caching deliberately removes native property reads.
+let previousHost = host;
+for (const site of ["videoPieces", "audioPieces", "coverageItems"]) {
+  const call = "sortItemsByStart("+site+");";
+  assert.equal(previousHost.split(call).length,2,"Exactly one production sort site: "+site);
+  previousHost = previousHost.replace(call,site+".sort(function(a,b){return Number(a.start.seconds)-Number(b.start.seconds);});");
+}
+const savedBaseline=process.argv.indexOf("--sort-baseline");
+if(savedBaseline>=0)previousHost=fs.readFileSync(process.argv[savedBaseline+1],"utf8");
+const previousExecutor=generate(previousHost);
+for(const [count,gaps,voiceSpeed,merged] of [[6,false,1,true],[65,false,1,false],[65,true,1.1,false],[130,true,0.9,false]])for(const profile of ["direct","baseline","fast","no-delay"]){
+  function run(source,executor){
+    fixtureHost=source;fixtureExecutor=executor;
+    try {
+      const f=fixture(count,false,gaps,voiceSpeed,merged,true,false,true);
+      const report=profile==="direct"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
+      assert(report.ok,JSON.stringify(report));
+      return {report,mutations:JSON.parse(JSON.stringify(f.nativeMutations)),actions:f.actions,reads:f.nativeCalls.filter(row=>row[0]==="get").length};
+    } finally {fixtureHost=host;fixtureExecutor=diagnostic;}
+  }
+  const before=run(previousHost,previousExecutor),after=run(host,diagnostic);
+  assert.deepStrictEqual(after.mutations,before.mutations,"Cached sorts retain every native mutation and argument in order: "+profile);
+  assert.deepStrictEqual(after.actions,before.actions);
+  assert.deepStrictEqual(after.report,before.report);
+  assert(after.reads<before.reads,"Native reads must decrease: "+profile);
+}
+console.log("CACHE_SORT_NATIVE_PARITY_OK:16-fixtures;previous-comparators;fewer-native-reads;same-mutations-actions-reports");
 // Ignore read-only guards/lookups, but retain every observed native property
 // write and mutating call with its arguments, alongside clip-specific actions.
 for(const [count,gaps,voiceSpeed,merged] of [[6,false,1,true],[65,false,1,false],[65,true,1.1,false],[130,true,0.9,false]]){
@@ -191,7 +220,10 @@ for(const profile of ["baseline","fast","no-delay"]){
   assert.equal(cut.clipItems,13);assert.equal(cut.clipCountReads,15);
   assert.equal(cut.nameReads,20);assert.equal(cut.sortCalls,2);
   assert(cut.comparatorCalls>0);
-  assert.equal(cut.startSecondsReads,12+2*cut.comparatorCalls,"Keep both native start reads on every comparison");
+  assert.equal(cut.startSecondsReads,24,"12 collection-filter reads plus one key read per V1/A1 item; comparators read only keys");
+  const coverage=r.timings.find(t=>t.stage==="Chuẩn bị hậu kiểm").detail;
+  assert.equal(coverage.sortCalls,1);assert(coverage.comparatorCalls>0);
+  assert.equal(coverage.startSecondsReads,6,"One coverage key read per item");
   const voice=r.timings.find(t=>t.stage==="Chuẩn bị sau Cắt voice A2").detail;
   assert.equal(voice.clipEnumerationPasses,1);assert.equal(voice.clipEnumerationItems,6);assert.equal(voice.nameReads,6);
   for(const label of ["Chuẩn bị sau Cập nhật marker nguồn","Chuẩn bị hậu kiểm"])assert(r.timings.some(t=>t.stage===label&&t.detail.ticksReads>0),label);
