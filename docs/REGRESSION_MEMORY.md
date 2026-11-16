@@ -40,6 +40,54 @@
   lập. **Native pending**; không chạy Premiere, commit/push/build/install;
   không sửa runtime/dist/AppData.
 
+## Issue #49 — Tách chi phí từng thao tác marker (16/11/2026)
+
+- **Bằng chứng/thiếu số đo.** Lượt 2.20.92 ngày 16/11: một owner A2 voice,
+  19 marker mong muốn, `commitMs=25192` trong một host call không phản hồi;
+  before/after 24/19, readPasses/readMs 3/74, creates/nameWrites 18/18,
+  commentsWrites/endWrites 19/19, colorWrites/colorReads 18/103, deletes 23,
+  verificationMs 191. 2.20.90 trước chuyển marker review sang voice clip có
+  stage 0,09 s; chưa đủ để quy chi phí cho operation nào.
+- **Đo/invariant.** Thêm createMs/nameWriteMs/commentsWriteMs/endWriteMs/
+  colorWriteMs/colorReadMs/deleteMs vào timings, gồm cả thao tác ném lỗi và
+  compensation, không thêm native read/write. Giữ scope, tolerance, đọc lại
+  mọi replacement trước xóa marker cũ, xác minh xóa và một commit mỗi owner.
+  readMs/verificationMs bao gồm một phần colorReadMs nên không cộng tất cả
+  timer thành tổng độc lập. Host giữ ES3, executor sinh lại, không sửa generator
+  hay batch conditions đang được xử lý ở PR #48.
+- **Rà ghi dư.** Không bỏ thao tác: marker cũ đã được so giá trị trước ghi;
+  màu đọc ngay sau set có colorFailures riêng, snapshot màu của toàn collection
+  phục vụ fingerprint/compensation. Chưa chứng minh hai lượt đọc đó thay thế
+  nhau được khi native/proxy lỗi. Ghi khôi phục giữ nguyên vì native có thể
+  mutate rồi throw, không chỉ thay field đã dự định. Không tuyên bố giảm thời
+  gian native khi chưa có số đo từng loại.
+- **Regression trước sửa.** Marker mock đỏ đúng thiếu createMs; log
+  `_local/marker-write-cost/timing-red.log`. Clock xác định tính từng native
+  operation và so counters/tổng ms, gồm update/create/delete mutate rồi throw,
+  xóa giả thành công, lỗi màu và compensation. Giữ các ca reconciliation cũ.
+  Probe/runner mock đỏ vì chưa hỗ trợ cost-list; log `probe-red.log` cùng chỗ.
+- **Probe riêng.** `Probe-MarkerWriteCost.jsx` đo N lần bảy thao tác và một
+  collection read, thử start kiểu Time và seconds rồi đọc lại, chỉ dọn đúng
+  tag trên ProjectItem media trong project bỏ đi với documentId/nodeId/scope
+  rõ ràng. Snapshot đầy đủ và dọn trong finally; marker không gắn được tag
+  được báo để kiểm tra thủ công, không xóa. Không truy cập sequence/Save/Undo.
+  Test kiểm ES3, arithmetic, N/giới hạn duyệt, tag/scope, lỗi/false-success,
+  cleanup và pre-state. Mẫu native tại
+  [MARKER_WRITE_COST_PROBE_2026-11-16](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+- **Kết quả.** Targeted marker/probe và executor parity measured/unmeasured
+  đạt, generator `--check`, syntax main/security, ES3 host/executor/probe và
+  `git diff --check` đạt. Standard suite đạt **73 nhóm/133 script PowerShell
+  parse**, exit 0; log `_local/marker-write-cost/suite.log`, TEMP/TMP ở thư mục
+  `temp` cùng chỗ. Sáu Windows integration skipped: InstallerLifecycle,
+  InstallRollback, PanelRegistry, NotificationShortcut, NativeNotifications,
+  IncidentNotifications. Đối chiếu thêm với host gốc `552bb75`: 10 ca thành
+  công/lỗi cho cùng thứ tự ghi native, lượt đọc collection, state mọi field và
+  kết quả/compensation; log `host-parity.log` cùng chỗ. Ví dụ clock xác định
+  trong `timing-example.json`: create/name/comments/end/color-write/color-read/
+  delete = 2/3/10/14/22/156/17 ms, tổng 224 = commitMs; chỉ là mock.
+  Native acceptance và số đo mới pending; không chạy Premiere/build release/
+  install/commit/push. Chỉ tự rà mã/diff, chưa có review độc lập.
+
 ## Issue #47 — No-delay chạy hết loop stage, bỏ batch caps (16/11/2026)
 
 - **Quyết định/nguyên nhân.** User chốt ngày16/11/2026 đảo batch caps của

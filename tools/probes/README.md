@@ -1,4 +1,72 @@
-# Probe marker trên clip voice — issue #34
+# Probe native marker
+
+## Đo chi phí ghi marker — issue #49
+
+`Probe-MarkerWriteCost.jsx` là phép đo riêng, **chưa chạy native**. Không dùng
+project/media thật, kể cả bản duplicate sequence: ProjectItem chia sẻ marker
+với mọi sequence dùng cùng nguồn. User tự tạo project bỏ đi, import media thử
+riêng và chọn ProjectItem từ `cost-list` theo `nodeId`. Probe chỉ duyệt cây
+ProjectItem, không truy cập sequence, Save hoặc Undo. Bắt buộc truyền đúng
+`documentId`, `nodeId`, tag `[PremiereVoiceSync:marker-write-cost:v1]` và scope
+`throwaway-project`; scope là xác nhận của người chạy về project thử, không
+phải cơ chế tự phát hiện media thật. Mỗi lượt native cần được user cho phép.
+
+Dùng cấu hình debug/Node 22+ bên dưới. Sau khi user đã cho phép phép đo:
+
+```powershell
+$probePath = (Resolve-Path tools/probes/Probe-MarkerWriteCost.jsx).Path
+node tools/probes/run-probe.js 8099 load $probePath
+node tools/probes/run-probe.js 8099 cost-list
+# Thay hai ID bang gia tri cost-list tra ve cua project/media thu.
+$documentId = '<documentId>'
+$nodeId = '<nodeId>'
+$probeTag = '[PremiereVoiceSync:marker-write-cost:v1]'
+node tools/probes/run-probe.js 8099 cost-run $documentId $nodeId $probeTag throwaway-project
+# Co the them N cuoi lenh, so nguyen 1..100; mac dinh 10.
+```
+
+Probe dành sẵn N vị trí nguồn không trùng marker cũ, cách nhau 2 giây, bắt đầu
+tìm từ giây 1, giới hạn 100.000 giây; cần media thử đủ dài cho
+`sourcePositions` (với collection trống, N=10 cần ít nhất 20 giây, N=100 cần
+ít nhất 200 giây). Cây project tối đa 10.000 item/32 cấp, collection tối đa
+10.000 marker. Không chọn sequence ProjectItem; thiếu API xác định media/màu
+thì dừng. Có tag probe tồn tại từ trước thì từ chối đo tiếp.
+
+JSON `metrics` ghi `count`, `totalMs`, `averageMs` cho N lần `createMarker`,
+`name`, `comments`, `end`, `setColorByIndex`, `getColorByIndex`, `deleteMarker`
+và **một** lượt đọc toàn collection (gồm start/end/name/comments/type/color).
+Gắn tag ban đầu, snapshot, hậu kiểm và cleanup nằm ngoài các số đo này;
+không cộng `collectionRead` với đọc màu thành tổng độc lập. Đọc metadata và
+kiểm tra sau ghi không phải native proof về tốc độ hoặc UI.
+
+`moves` ghi riêng hai lần thử gán start của marker đã có tag: `Time` và số
+giây; mỗi lần có before/requested/after, assignmentError/readError và accepted.
+Gán không ném lỗi vẫn có thể bị bỏ qua; gán ném lỗi vẫn có thể đã đổi vị trí.
+Chưa dùng kết quả giả lập này để triển khai di chuyển marker trong host.
+
+Probe luôn thử dọn các marker mới có tag trong `finally`, rồi so toàn bộ
+collection với snapshot trước phép thử, gồm GUID và mọi field đã đọc.
+`deletionVerified` kiểm riêng kết quả N lần xóa đo được; nếu chúng thất bại
+nhưng cleanup cứu được thì `ok` vẫn false. Thành công cần `ok: true`,
+`deletionVerified: true`, `cleanup.verified: true`, không có cleanup errors.
+Native tạo rồi ném lỗi trước khi gắn tag, hoặc ghi tag thất bại, có thể để lại
+marker không tag: script báo collection khác và **không xóa** marker đó.
+User kiểm tra thủ công trong project bỏ đi; không chạy lặp mù khi lỗi/timeout.
+Runner chờ tối đa 10 phút cho `cost-run`/`cost-cleanup` (các lệnh cũ giữ 30 giây),
+timeout không hủy native call. Chờ host trả quyền điều khiển, kiểm tra trạng
+thái trước mọi lệnh tiếp theo. Lệnh dọn riêng chỉ xóa đúng tag trên item/scope:
+
+```powershell
+node tools/probes/run-probe.js 8099 cost-cleanup $documentId $nodeId $probeTag throwaway-project
+```
+
+Lệnh dọn riêng xác nhận phần không tag giữ nguyên so với trạng thái ngay trước
+khi dọn, không thay thế snapshot của lượt `cost-run` bị gián đoạn. Ghi JSON và
+quan sát vào [mẫu kết quả](../../docs/reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md),
+kiểm tra collection còn nguyên, rồi gỡ cấu hình debug tạm. Mock chỉ chứng minh
+phép tính, giới hạn và cleanup giả lập; chưa đo Premiere.
+
+## Marker trên clip voice — issue #34
 
 Phép thử nhỏ trước khi làm feature: tạo/đọc marker Comment tại thời gian SOURCE
 trên ProjectItem voice, so vị trí dự đoán trên timeline, quan sát khi kéo/trim bằng

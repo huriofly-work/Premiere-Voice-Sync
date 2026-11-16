@@ -814,6 +814,13 @@ $._PVS.restorePendingCaptionAudioExport = function (journalPath) {
 // Synchronous reconciliation of one marker owner. Compensation covers marker
 // data only, never timeline edits, user Undo, Save, or a process crash.
 $._PVS._markerTools = (function () {
+    function readColor(marker, timings) {
+        if (!timings) return marker.getColorByIndex();
+        var started = (new Date()).getTime();
+        timings.colorReads++;
+        try { return marker.getColorByIndex(); }
+        finally { timings.colorReadMs += (new Date()).getTime() - started; }
+    }
     function read(collection, timings) {
         var readStarted = timings ? (new Date()).getTime() : 0;
         if (timings) timings.readPasses++;
@@ -826,7 +833,7 @@ $._PVS._markerTools = (function () {
                     end = Number(typeof marker.end === "number" ? marker.end : marker.end.seconds);
                     if (!isFinite(end)) throw new Error("Unreadable marker end.");
                 }
-                try { if (typeof marker.getColorByIndex === "function") color = Number((timings ? timings.colorReads++ : 0, marker.getColorByIndex())); } catch (ignoreColor) {}
+                try { if (typeof marker.getColorByIndex === "function") color = Number(readColor(marker, timings)); } catch (ignoreColor) {}
                 if (color === null || !isFinite(color)) color = null;
                 rows.push({ ref: marker, guid: String(marker.guid || ""), seconds: seconds, end: end,
                     name: String(marker.name || ""), comments: String(marker.comments || ""),
@@ -899,27 +906,52 @@ $._PVS._markerTools = (function () {
         var commitStarted = (new Date()).getTime();
         var timings = { collectionBefore: g.before.length, collectionAfter: g.before.length,
             readPasses: 0, readMs: 0, creates: 0, nameWrites: 0, commentsWrites: 0,
-            endWrites: 0, colorWrites: 0, colorReads: 0, deletes: 0, verificationMs: 0, commitMs: 0 };
+            endWrites: 0, colorWrites: 0, colorReads: 0, deletes: 0,
+            createMs: 0, nameWriteMs: 0, commentsWriteMs: 0, endWriteMs: 0,
+            colorWriteMs: 0, colorReadMs: 0, deleteMs: 0, verificationMs: 0, commitMs: 0 };
         function finishResult() { timings.commitMs = (new Date()).getTime() - commitStarted; return result; }
         var result = { count: 0, deleted: 0, merged: 0, colorFailures: [], failures: [], timings: timings };
         var changed = [], created = [], removed = [], before, kept = [], wanted = [], mutationAttempted = false;
         if (g.blocked) { result.failures.push("Marker group has an invalid request; old markers retained."); return finishResult(); }
         function mutate() { mutationAttempted = true; if (touch) touch(); }
+        function writeField(marker, field, value, counter, elapsed) {
+            var started = (new Date()).getTime();
+            timings[counter]++;
+            try { marker[field] = value; }
+            finally { timings[elapsed] += (new Date()).getTime() - started; }
+        }
+        function setColor(marker, color) {
+            var started = (new Date()).getTime();
+            timings.colorWrites++;
+            try { marker.setColorByIndex(color); }
+            finally { timings.colorWriteMs += (new Date()).getTime() - started; }
+        }
+        function removeMarker(marker) {
+            var started = (new Date()).getTime();
+            timings.deletes++;
+            try { g.collection.deleteMarker(marker); }
+            finally { timings.deleteMs += (new Date()).getTime() - started; }
+        }
         function writeColor(marker, color, previous) {
             try {
                 if (previous && previous.color === null) throw new Error("Cannot snapshot old marker color; color left unchanged.");
                 if (previous && previous.color === color) return;
-                timings.colorWrites++; marker.setColorByIndex(color);
+                setColor(marker, color);
                 var colorVerificationStarted = (new Date()).getTime();
                 try {
-                    if (typeof marker.getColorByIndex === "function" && Number((timings.colorReads++, marker.getColorByIndex())) !== color) throw new Error("Marker color verification failed.");
+                    if (typeof marker.getColorByIndex === "function" && Number(readColor(marker, timings)) !== color) throw new Error("Marker color verification failed.");
                 } finally { timings.verificationMs += (new Date()).getTime() - colorVerificationStarted; }
             } catch (e) { result.colorFailures.push(e.message || String(e)); }
         }
         function create(seconds, originalRows, journal) {
             mutate();
             var marker;
-            try { timings.creates++; marker = g.collection.createMarker(seconds); }
+            try {
+                var createStarted = (new Date()).getTime();
+                timings.creates++;
+                try { marker = g.collection.createMarker(seconds); }
+                finally { timings.createMs += (new Date()).getTime() - createStarted; }
+            }
             catch (nativeError) {
                 // Native APIs can mutate and then throw. Recover a single new,
                 // blank comment marker only when its provenance is unambiguous.
@@ -945,9 +977,9 @@ $._PVS._markerTools = (function () {
                 if (old && (!owned(g, old) || matches.length !== 1)) throw new Error("Marker ownership changed.");
                 if (!marker) marker = create(spec.seconds, before, created);
                 else if (old.name !== spec.name || old.comments !== spec.comments || old.color !== spec.color || (spec.end !== undefined && old.end !== spec.end)) { changed.push(old); mutate(); }
-                if (!old || old.name !== spec.name) { timings.nameWrites++; marker.name = spec.name; }
-                if (!old || old.comments !== spec.comments) { timings.commentsWrites++; marker.comments = spec.comments; }
-                if (spec.end !== undefined && (!old || old.end !== spec.end)) { timings.endWrites++; marker.end = spec.end; }
+                if (!old || old.name !== spec.name) writeField(marker, "name", spec.name, "nameWrites", "nameWriteMs");
+                if (!old || old.comments !== spec.comments) writeField(marker, "comments", spec.comments, "commentsWrites", "commentsWriteMs");
+                if (spec.end !== undefined && (!old || old.end !== spec.end)) writeField(marker, "end", spec.end, "endWrites", "endWriteMs");
                 writeColor(marker, spec.color, old);
                 kept.push({ ref: marker, guid: String(marker.guid || "") });
                 wanted.push(spec);
@@ -968,7 +1000,7 @@ $._PVS._markerTools = (function () {
                 var found = false, staleState = fingerprint([before[o]], false);
                 for (var er = 0; er < expectedRows.length; er++) if (fingerprint([expectedRows[er]], false) === staleState) { expectedRows.splice(er, 1); found = true; break; }
                 if (!found) throw new Error("Obsolete marker changed before cleanup.");
-                removed.push(before[o]); mutate(); timings.deletes++; g.collection.deleteMarker(before[o].ref);
+                removed.push(before[o]); mutate(); removeMarker(before[o].ref);
             }
             verificationStarted = (new Date()).getTime();
             try {
@@ -983,14 +1015,15 @@ $._PVS._markerTools = (function () {
             // A preparation conflict has made no mutations. Do not overwrite it.
             if (!mutationAttempted) return finishResult();
             for (var c = created.length - 1; c >= 0; c--) {
-                try { timings.deletes++; g.collection.deleteMarker(created[c].ref); } catch (deleteError) { result.failures.push("Marker restoration: " + deleteError.message); }
+                try { removeMarker(created[c].ref); } catch (deleteError) { result.failures.push("Marker restoration: " + deleteError.message); }
             }
             for (var u = changed.length - 1; u >= 0; u--) {
                 try {
                     var saved = changed[u];
-                    timings.nameWrites++; saved.ref.name = saved.name; timings.commentsWrites++; saved.ref.comments = saved.comments;
-                    if (saved.end !== null) { timings.endWrites++; saved.ref.end = saved.end; }
-                    if (saved.color !== null && Number((timings.colorReads++, saved.ref.getColorByIndex())) !== saved.color) { timings.colorWrites++; saved.ref.setColorByIndex(saved.color); }
+                    writeField(saved.ref, "name", saved.name, "nameWrites", "nameWriteMs");
+                    writeField(saved.ref, "comments", saved.comments, "commentsWrites", "commentsWriteMs");
+                    if (saved.end !== null) writeField(saved.ref, "end", saved.end, "endWrites", "endWriteMs");
+                    if (saved.color !== null && Number(readColor(saved.ref, timings)) !== saved.color) setColor(saved.ref, saved.color);
                 } catch (updateError) { result.failures.push("Marker restoration: " + updateError.message); }
             }
             for (var r = 0; r < removed.length; r++) {
@@ -998,9 +1031,10 @@ $._PVS._markerTools = (function () {
                     var currentRows = read(g.collection, timings), prior = removed[r];
                     if (find(currentRows, prior)) continue;
                     var restored = create(prior.seconds, currentRows, []);
-                    timings.nameWrites++; restored.name = prior.name; timings.commentsWrites++; restored.comments = prior.comments;
-                    if (prior.end !== null) { timings.endWrites++; restored.end = prior.end; }
-                    if (prior.color !== null) { timings.colorWrites++; restored.setColorByIndex(prior.color); }
+                    writeField(restored, "name", prior.name, "nameWrites", "nameWriteMs");
+                    writeField(restored, "comments", prior.comments, "commentsWrites", "commentsWriteMs");
+                    if (prior.end !== null) writeField(restored, "end", prior.end, "endWrites", "endWriteMs");
+                    if (prior.color !== null) setColor(restored, prior.color);
                 } catch (restoreError) { result.failures.push("Marker restoration: " + restoreError.message); }
             }
             verificationStarted = (new Date()).getTime();
