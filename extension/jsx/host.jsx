@@ -1393,6 +1393,13 @@ $._PVS.executePlan = function (planPath) {
         } catch (ignoreProgressWrite) {} finally { if (file) try { file.close(); } catch (ignoreProgressClose) {} }
     }
     function asArray(value) { return value instanceof Array ? value : (value ? [value] : []); }
+    function sortItemsByStart(items) {
+        var keyed = [], i;
+        for (i = 0; i < items.length; i++) keyed.push({ item: items[i], key: Number(items[i].start.seconds) });
+        keyed.sort(function (a, b) { return a.key - b.key; });
+        for (i = 0; i < keyed.length; i++) items[i] = keyed[i].item;
+        return items;
+    }
     function findLinkedTrack(sequence, spec, mainEnd) {
         for (var ti = 0; ti < sequence.audioTracks.numTracks; ti++) {
             var track = sequence.audioTracks[ti];
@@ -1768,8 +1775,8 @@ $._PVS.executePlan = function (planPath) {
             var aItem = audioTrack.clips[ai];
             if (String(aItem.name) === String(linkedSpecs[0].name) && Number(aItem.start.seconds) < mainEnd - 0.001) audioPieces.push(aItem);
         }
-        videoPieces.sort(function (a, b) { return Number(a.start.seconds) - Number(b.start.seconds); });
-        audioPieces.sort(function (a, b) { return Number(a.start.seconds) - Number(b.start.seconds); });
+        sortItemsByStart(videoPieces);
+        sortItemsByStart(audioPieces);
         var omittedPieceFlags = [];
         if (plan.editedSourceMap) {
             var expectedPieces = sourceSegments.slice(0);
@@ -2014,7 +2021,7 @@ $._PVS.executePlan = function (planPath) {
         }
         var coverageItems = videoPieces.slice(0);
         for (var coverageFillIndex = 0; coverageFillIndex < fillClips.length; coverageFillIndex++) coverageItems.push(fillClips[coverageFillIndex]);
-        coverageItems.sort(function (left, right) { return Number(left.start.seconds) - Number(right.start.seconds); });
+        sortItemsByStart(coverageItems);
         for (var coverageIndex = 1; coverageIndex < coverageItems.length; coverageIndex++) {
             var previousCoverageEnd = frameOf(coverageItems[coverageIndex - 1].end);
             var nextCoverageStart = frameOf(coverageItems[coverageIndex].start);
