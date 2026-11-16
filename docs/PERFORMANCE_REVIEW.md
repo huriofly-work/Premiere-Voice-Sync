@@ -1,5 +1,30 @@
 # Đánh giá tăng tốc Premiere Voice Sync
 
+## Chi phí marker voice, issue #49 (16/11/2026)
+
+2.20.92 có một host call `Cập nhật marker nguồn` 25.192 ms (một owner A2,
+19 marker mong muốn): đọc collection chỉ 74 ms, verification 191 ms;
+18 create/name/color writes, 19 comments/end writes, 23 deletes và 103 color
+reads. Chưa xác định operation chiếm phần lớn chi phí; chênh với stage 0,09 s
+của 2.20.90 trước chuyển marker review sang voice clip không phải A/B kiểm soát.
+
+`finish.timings[].detail.markerCommit` bổ sung `createMs`, `nameWriteMs`,
+`commentsWriteMs`, `endWriteMs`, `colorWriteMs`, `colorReadMs`, `deleteMs`,
+đếm thời gian các lệnh hiện có, cả lỗi/compensation. Bảy timer này tách nhau;
+`readMs` và `verificationMs` có chứa colorReadMs, không cộng lại thành tổng.
+Không bỏ write/read nào khi chưa chứng minh được dư; reuse marker cũ vẫn bỏ
+qua giá trị không đổi. Chưa kết luận tăng tốc hoặc bật di chuyển marker.
+
+Ví dụ mock clock xác định (không phải Premiere): createMs 2, nameWriteMs 3,
+commentsWriteMs 10, endWriteMs 14, colorWriteMs 22, colorReadMs 156, deleteMs 17;
+tổng bảy field bằng commitMs 224. Standard suite đạt 73 nhóm, sáu nhóm Windows
+integration bỏ qua; log `_local/marker-write-cost/suite.log`.
+
+Probe riêng đo từng operation và thử gán start Time/seconds trên media thử
+trong project bỏ đi, không truy cập sequence. [Quy trình](../tools/probes/README.md),
+[mẫu kết quả pending](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+Mock xác nhận phép tính và giới hạn/cleanup, chưa là native measurement.
+
 ## Đo chi tiết timeline, issue #44 (16/11/2026)
 
 `Performance_*.jsonl` giữ các timing cũ và thêm `finish.timings[].detail`

@@ -5,7 +5,7 @@ const context=vm.createContext({$:{_PVS:{}}});vm.runInContext(source,context);
 const api=context.$._PVS._markerTools,apply=context.$._PVS._applyReviewMarkers;
 const tag="[PremiereVoiceSync:review-marker:v1:captions]";
 const owned=(seconds,note="old")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:note+"\n"+tag,color:4,end:seconds+0.25});
-function fixture(initial=[]){
+function fixture(initial=[],onMarker=m=>m){
   let id=0;const values=[],events=[],faults={},reads={first:0,next:0};
   function marker(data){
     let name=data.name||"",comments=data.comments||"",color=data.color===undefined?4:data.color;
@@ -13,7 +13,7 @@ function fixture(initial=[]){
       get name(){return name;},set name(v){events.push(["name",this.guid,v]);name=v;if(faults.name){const f=faults.name;delete faults.name;throw Error(f);}},
       get comments(){return comments;},set comments(v){events.push(["comments",this.guid,v]);comments=v;if(faults.comments){const f=faults.comments;delete faults.comments;throw Error(f);}},
       getColorByIndex(){return color;},setColorByIndex(v){events.push(["color",this.guid,v]);if(faults.color)throw Error("COLOR_FAILED");color=v;}};
-    values.push(m);return m;
+    values.push(m);return onMarker(m);
   }
   initial.forEach(marker);
   const collection={getFirstMarker(){reads.first++;return values[0]||null;},getNextMarker(m){reads.next++;return values[values.indexOf(m)+1]||null;},
@@ -47,7 +47,7 @@ function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");
   assert.equal(t.creates,1);assert.equal(t.deletes,1);
   assert.equal(t.nameWrites,1);assert.equal(t.commentsWrites,2);assert.equal(t.endWrites,2);
   assert.equal(t.colorWrites,2);assert.equal(t.colorReads,3+4+3+2);
-  for(const key of ["readMs","verificationMs","commitMs"])assert(t[key]>=0,key);
+  for(const key of ["readMs","verificationMs","commitMs","createMs","nameWriteMs","commentsWriteMs","endWriteMs","colorWriteMs","colorReadMs","deleteMs"])assert(t[key]>=0,key);
   assert(t.commitMs>=t.readMs);assert(t.commitMs>=t.verificationMs);
 }
 {
@@ -57,7 +57,47 @@ function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");
   const tools=timed.$._PVS._markerTools,f=fixture(),g=tools.group(f.collection,[{start:0,end:10}],m=>m.comments.includes(tag),0.5/30);
   tools.add(g,desired(1));
   const t=tools.commit(g).timings;
-  assert.equal(t.readMs,3);assert.equal(t.verificationMs,7);assert.equal(t.commitMs,13);
+  const operationMs=["createMs","nameWriteMs","commentsWriteMs","endWriteMs","colorWriteMs","colorReadMs","deleteMs"];
+  assert(operationMs.every(k=>t[k]>=0));
+  assert(operationMs.reduce((sum,k)=>sum+t[k],0)<=t.commitMs);
+  assert(t.readMs>=3);assert(t.verificationMs>=7);assert(t.commitMs>=13);
+}
+// Charge only native operations on a deterministic clock, including mutations
+// that throw and the compensation that follows. Timing adds no native access.
+for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnce","color"]){
+  let tick=0;
+  const timed=vm.createContext({$:{_PVS:{}},Date:function(){this.getTime=()=>tick;}});
+  vm.runInContext(source,timed);
+  const tools=timed.$._PVS._markerTools;
+  const costs={creates:2,nameWrites:3,commentsWrites:5,endWrites:7,colorWrites:11,colorReads:13,deletes:17};
+  const actual=Object.fromEntries(Object.keys(costs).map(k=>[k,0]));
+  function charge(counter){actual[counter]++;tick+=costs[counter];}
+  function wrap(m){
+    for(const [field,counter] of [["name","nameWrites"],["comments","commentsWrites"],["end","endWrites"]]){
+      const desc=Object.getOwnPropertyDescriptor(m,field);let value=desc.value;
+      Object.defineProperty(m,field,{configurable:true,get(){return desc.get?desc.get.call(m):value;},set(v){charge(counter);if(desc.set)desc.set.call(m,v);else value=v;}});
+    }
+    for(const [method,counter] of [["getColorByIndex","colorReads"],["setColorByIndex","colorWrites"]]){
+      const fn=m[method];m[method]=function(...args){charge(counter);return fn.apply(this,args);};
+    }
+    return m;
+  }
+  const f=fixture([owned(1),owned(2),{seconds:9,name:"manual"}],wrap);
+  for(const [method,counter] of [["createMarker","creates"],["deleteMarker","deletes"]]){
+    const fn=f.collection[method];f.collection[method]=function(...args){charge(counter);return fn.apply(this,args);};
+  }
+  const g=tools.group(f.collection,[{start:0,end:10}],m=>m.comments.includes(tag),0.5/30);
+  tools.add(g,Object.assign(desired(1),{end:1.5,color:3}));tools.add(g,Object.assign(desired(3),{end:3.5}));
+  if(failure)f.faults[failure]=failure==="comments"?"TIMED_COMMENT_FAILURE":true;
+  for(const key of Object.keys(actual))actual[key]=0;
+  const before=tick,r=tools.commit(g),t=r.timings;
+  const fields={creates:"createMs",nameWrites:"nameWriteMs",commentsWrites:"commentsWriteMs",endWrites:"endWriteMs",colorWrites:"colorWriteMs",colorReads:"colorReadMs",deletes:"deleteMs"};
+  for(const [counter,field] of Object.entries(fields)){
+    assert.equal(t[counter],actual[counter],failure+":"+counter);
+    assert.equal(t[field],actual[counter]*costs[counter],failure+":"+field);
+  }
+  assert.equal(t.commitMs,tick-before);
+  assert.equal(Object.values(fields).reduce((sum,k)=>sum+t[k],0),t.commitMs,"Operation totals are disjoint");
 }
 {
   const f=fixture([owned(1),{seconds:9,name:"manual"}]),g=group(f);

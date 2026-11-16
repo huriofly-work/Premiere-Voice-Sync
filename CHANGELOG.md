@@ -2,6 +2,10 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
+## Chưa phát hành
+
+- Log marker tách thời gian tạo, ghi tên/comments/end/màu, đọc màu và xóa (gồm bù lỗi); thêm probe riêng đo trên ProjectItem media thử và kiểm tra khả năng đổi vị trí marker, chưa chạy native, chưa bỏ lệnh ghi (#49).
+
 ## 2.20.92 — 2026-11-16
 
 Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. [Ghi chú phát hành](docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md).
