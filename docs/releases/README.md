@@ -1,7 +1,8 @@
 # Phát hành và ghi chú phiên bản
 
 Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_RESTART_2026-11-14.md));
-bản public đầu tiên là 2.20.91 (stable, user chạy thật ngày 15/11/2026). Trong lịch
+bản public đầu tiên là 2.20.91 (stable, user chạy thật ngày 15/11/2026); 2.20.92 là
+prerelease còn chờ nghiệm thu Premiere. Trong lịch
 sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
 2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 
@@ -12,6 +13,7 @@ sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90
 
 ## Ghi chú theo phiên bản
 
+- [2.20.92 — Sửa lỗi dừng ở bước lập kế hoạch, thêm số đo timeline](notes/AUTO_EDIT_ACOUSTIC_2.20.92.md)
 - [2.20.91 — Sửa lỗi sau lượt chạy thật: chữ SRT, mép caption, marker gắn clip voice](notes/REVIEW_MARKERS_2.20.91.md)
 - [2.20.88 — Giảm tính chữ lặp và các đợt đổi tốc độ không có việc](notes/AUTO_EDIT_ACOUSTIC_2.20.88.md)
 - [2.20.87 — Chia đợt native có giới hạn và dữ liệu gọn](notes/AUTO_EDIT_ACOUSTIC_2.20.87.md)
