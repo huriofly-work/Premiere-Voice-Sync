@@ -63,6 +63,43 @@ foreach($fps in @(0,-1,[double]::NaN,[double]::PositiveInfinity)){
 }
 $cue=[pscustomobject]@{Index=1;Chapter=0;Text=($cells.Text -join ' ');Start=10.0;End=22.0;OriginalStart=0;OriginalEnd=13.0;Confidence=0.0;ManualEditBlock=$true;EditBoundaryReviewRequired=$true;ManualReferenceCueIndices=@(1,2,3,4);ManualCaptionCues=$cells;WordTimings=@()}
 $cues=@($cue)
+# JSON fractional values must follow the shipping planner's double midpoint
+# arithmetic, including both sides of a boundary exactly on a half frame.
+& {
+    $references=Copy-Json @(
+        [pscustomobject]@{Index=1;Text=$refs[0].Text;Start=168.4;End=174.533},
+        [pscustomobject]@{Index=2;Text=$refs[1].Text;Start=174.767;End=180.0}
+    )
+    Check ($references[0].End -is [decimal] -and $references[1].Start -is [decimal]) 'json-half-frame-references-are-decimal'
+    $v=Copy-Json $voices;$v[0].end=16.0
+    $owner=Copy-Json $cue;$owner.ManualReferenceCueIndices=@(1,2);$owner.End=16.0
+    $proofs=@($cuts[0]);$q=@($quiet[0]);$fps=30.0;$minimumGap=0.5
+    $groups=@(New-PvsAcousticEditGroups @($owner) $references $v $proofs $q $fps)
+    Check ($groups.Count -eq 2) 'json-half-frame-independent-groups'
+    # Match build-sentence-plan.ps1: absorb short gaps in seconds before
+    # quantizing source and voice boundaries once onto the frame grid.
+    $gap=[double]$groups[1].SourceStart-[double]$groups[0].SourceEnd
+    if($gap -lt $minimumGap){
+        $boundary=(([double]$groups[0].SourceEnd)+([double]$groups[1].SourceStart))/2.0
+        $groups[0].SourceEnd=$boundary;$groups[1].SourceStart=$boundary
+    }
+    $segments=@(foreach($g in $groups){
+        $va=[int][Math]::Round(([double]$g.VoiceStart)*$fps);$vb=[int][Math]::Round(([double]$g.VoiceEnd)*$fps)
+        [pscustomobject]@{Kind='retime';FirstTargetCue=$g.FirstCue;LastTargetCue=$g.LastCue;Chapter=$g.Chapter;SourceStartFrame=[int][Math]::Round(([double]$g.SourceStart)*$fps);SourceEndFrame=[int][Math]::Round(([double]$g.SourceEnd)*$fps);OriginalVoiceStartFrame=$va;OriginalVoiceEndFrame=$vb;NewStartFrame=$va-300;NewEndFrame=$vb-300}
+    })
+    Check ($segments[0].SourceStartFrame -eq 5052 -and $segments[0].SourceEndFrame -eq 5239 -and $segments[1].SourceStartFrame -eq 5239) 'json-half-frame-planner-frames-5052-5239'
+    $fixture=Copy-Json ([pscustomobject]@{frameRate=$fps;acousticEditReferenceCues=$references;voiceClips=$v;acousticEditBoundaryProofs=$proofs;acousticEditQuiet=$q;settings=[pscustomobject]@{minSilenceDurationSeconds=0.12;boundarySafetyMarginSeconds=0.04};mainVideoClip=[pscustomobject]@{start=168.4};mainVideoSourceEnd=180.0;minNoDialogueGapSeconds=$minimumGap;segments=$segments;mainVideoSourceEndFrame=5400;plannedMainVideoEndFrame=180})
+    Write-Host 'JSON_DECIMAL_HALF_FRAME:planner=5052-5239;shared-boundary=5239;fps=30'
+    Assert-PvsAcousticPartitionPlan $fixture
+    foreach($side in @('left','right')){
+        $bad=Copy-Json $fixture
+        if($side -eq 'left'){$bad.segments[0].SourceEndFrame=5240}else{$bad.segments[1].SourceStartFrame=5240}
+        $rejected=$false
+        try{Assert-PvsAcousticPartitionPlan $bad}catch{$rejected=$_.Exception.Message -eq 'ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED'}
+        Check $rejected "json-half-frame-tamper-$side"
+    }
+    Write-Host 'JSON_DECIMAL_HALF_FRAME_OK:planner-double-midpoint;both-edges;tamper-rejected'
+}
 $uncalibrated=Copy-Json $cues
 Check ((Set-PvsManualAcousticCaptionTimings $cues $words $voices) -eq 4) 'complete-cells-refined-automatically'
 $retryCues=Copy-Json $uncalibrated;$broken=Copy-Json $words;$broken[0].Text='wrong'
@@ -148,6 +185,30 @@ try {
     Assert-PvsManualReviewPlan $pictureMerged
     Assert-PvsTrialPlanConservation $picturePlan $pictureMerged|Out-Null
     Check (($pictureMerged.pictureSegments|ConvertTo-Json -Depth 20 -Compress) -ceq ($picturePlan.pictureSegments|ConvertTo-Json -Depth 20 -Compress)) 'speed-merge-preserves-every-picture-cue'
+    # Audit the legacy manual checker against frames from the shipping planner.
+    # Decimal 2.05*30 rounds to 62; the planner's double rounds to 61.
+    # Decimal 4.15*30 rounds to 124; the planner's double rounds to 125.
+    $manualFailures=@()
+    foreach($edge in @('sourceEnd','sourceStart','end','start')){
+        $manualAlignment=Copy-Json $oldAlignment;$manualJob=Copy-Json ([pscustomobject]$job)
+        switch($edge){
+            sourceEnd {$manualAlignment.cues[0].OriginalEnd=2.05;$manualAlignment.autoEditManualReviewBlocks[0].sourceEnd=2.05;$manualJob.sequence.mainVideoClip.end=2.05;$frameProperty='SourceEndFrame';$expectedFrame=61}
+            sourceStart {$manualAlignment.cues[0].OriginalStart=4.15;$manualAlignment.autoEditManualReviewBlocks[0].sourceStart=4.15;$manualJob.sequence.mainVideoClip.start=4.15;$frameProperty='SourceStartFrame';$expectedFrame=125}
+            end {$manualAlignment.cues[0].End=32.05;$manualAlignment.autoEditManualReviewBlocks[0].end=32.05;$manualJob.sequence.voices[0].end=32.05;$frameProperty='OriginalVoiceEndFrame';$expectedFrame=961}
+            start {$manualAlignment.cues[0].Start=4.15;$manualAlignment.autoEditManualReviewBlocks[0].start=4.15;$manualJob.sequence.voices[0].start=4.15;$frameProperty='OriginalVoiceStartFrame';$expectedFrame=125}
+        }
+        $manualAlignment|ConvertTo-Json -Depth 25|Set-Content "$temp\alignment-result.json" -Encoding UTF8
+        $manualJob|ConvertTo-Json -Depth 12|Set-Content "$temp\job.json" -Encoding UTF8
+        Write-Host "JSON_DECIMAL_MANUAL_SOURCE:$edge;shipping-planner;fps=30"
+        try{& "$engine\build-sentence-plan.ps1" -JobPath "$temp\job.json"|Out-Null}
+        catch{$manualFailures+="$edge/$($_.Exception.Message)";Write-Host "JSON_DECIMAL_MANUAL_RED:$edge/$($_.Exception.Message)";continue}
+        $manualPlan=Get-Content "$temp\sentence-edit-plan.json" -Raw -Encoding UTF8|ConvertFrom-Json
+        $retime=@($manualPlan.segments|Where-Object Kind -eq 'retime')[0]
+        Check ($retime.($frameProperty) -eq $expectedFrame) "json-manual-planner-$edge-$expectedFrame"
+        Assert-PvsManualReviewPlan $manualPlan
+        Write-Host "JSON_DECIMAL_MANUAL_SOURCE_OK:$edge;shipping-planner-frames-preserved"
+    }
+    if($manualFailures.Count){throw ('JSON_DECIMAL_MANUAL_FRAMES_FAILED:'+($manualFailures -join ';'))}
 } finally {
     $full=[IO.Path]::GetFullPath($temp)
     if(-not $full.StartsWith(([IO.Path]::GetFullPath($testRoot).TrimEnd('\')+'\'),[StringComparison]::OrdinalIgnoreCase)){throw 'UNSAFE_TEST_CLEANUP'}

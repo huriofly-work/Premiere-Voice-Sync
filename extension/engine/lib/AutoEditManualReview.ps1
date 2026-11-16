@@ -251,8 +251,8 @@ function Assert-PvsManualReviewPlan {
     if($partitioned){Assert-PvsAcousticPartitionPlan $Plan}
     if($Plan.PSObject.Properties['pictureCueRevision']){Assert-PvsCuePicturePlan $Plan}
     foreach($task in $Plan.manualReviewBlocks){
-        $a=[int][Math]::Round($task.sourceStart*$fps);$b=[int][Math]::Round($task.sourceEnd*$fps)
-        $va=[int][Math]::Round($task.start*$fps);$vb=[int][Math]::Round($task.end*$fps)
+        $a=[int][Math]::Round(([double]$task.sourceStart)*$fps);$b=[int][Math]::Round(([double]$task.sourceEnd)*$fps)
+        $va=[int][Math]::Round(([double]$task.start)*$fps);$vb=[int][Math]::Round(([double]$task.end)*$fps)
         $owner=@($Plan.segments | Where-Object {$_.Kind -eq 'retime' -and $_.Chapter -eq $task.chapter -and $_.SourceStartFrame -le $a -and $_.SourceEndFrame -ge $b -and $_.OriginalVoiceStartFrame -le $va -and $_.OriginalVoiceEndFrame -ge $vb})
         if($a -ge $b -or $va -ge $vb -or (-not $partitioned -and $owner.Count -ne 1)){throw 'MANUAL_REVIEW_BLOCK_WAS_CUT_OR_LOST'}
         for($cell=0;$cell -lt $task.captionCells.Count;$cell++){

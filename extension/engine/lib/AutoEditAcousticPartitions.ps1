@@ -470,27 +470,35 @@ function Assert-PvsAcousticPartitionPlan {
     $references=@($Plan.acousticEditReferenceCues);$voices=@($Plan.voiceClips);$fps=[double]$Plan.frameRate
     $proofs=@($Plan.acousticEditBoundaryProofs);$quiet=@($Plan.acousticEditQuiet)
     $settings=$Plan.settings;$used=0;$next=1;$previous=$null
+    $mainSourceStart=[double]$Plan.mainVideoClip.start;$mainSourceEnd=[double]$Plan.mainVideoSourceEnd;$minimumGap=[double]$Plan.minNoDialogueGapSeconds
     Test-PvsAcousticReferenceCuts $proofs $references $voices $quiet $fps $settings.minSilenceDurationSeconds $settings.boundarySafetyMarginSeconds -RequireAll
     $retimes=@($Plan.segments | Where-Object Kind -eq 'retime')
     for($i=0;$i -lt $retimes.Count;$i++){
         $s=$retimes[$i];$first=[int]$s.FirstTargetCue;$last=[int]$s.LastTargetCue;$ch=[int]$s.Chapter
         if($first -ne $next -or $last -lt $first -or $last -gt $references.Count -or $ch -lt 0 -or $ch -ge $voices.Count){throw 'ACOUSTIC_PARTITION_REFERENCE_LOST'}
         $sourceStart=[double]$references[$first-1].Start;$sourceEnd=[double]$references[$last-1].End
-        if($i -eq 0){if($sourceStart-$Plan.mainVideoClip.start -lt $Plan.minNoDialogueGapSeconds){$sourceStart=[double]$Plan.mainVideoClip.start}}
-        elseif($sourceStart-$references[$first-2].End -lt $Plan.minNoDialogueGapSeconds){$sourceStart=($sourceStart+$references[$first-2].End)/2.0}
-        if($i -eq $retimes.Count-1){if($Plan.mainVideoSourceEnd-$sourceEnd -lt $Plan.minNoDialogueGapSeconds){$sourceEnd=[double]$Plan.mainVideoSourceEnd}}
-        elseif($references[$last].Start-$sourceEnd -lt $Plan.minNoDialogueGapSeconds){$sourceEnd=($sourceEnd+$references[$last].Start)/2.0}
+        # Match the planner's double arithmetic before rounding JSON times.
+        if($i -eq 0){if($sourceStart-$mainSourceStart -lt $minimumGap){$sourceStart=$mainSourceStart}}
+        else{
+            $previousSourceEnd=[double]$references[$first-2].End
+            if($sourceStart-$previousSourceEnd -lt $minimumGap){$sourceStart=($previousSourceEnd+$sourceStart)/2.0}
+        }
+        if($i -eq $retimes.Count-1){if($mainSourceEnd-$sourceEnd -lt $minimumGap){$sourceEnd=$mainSourceEnd}}
+        else{
+            $nextSourceStart=[double]$references[$last].Start
+            if($nextSourceStart-$sourceEnd -lt $minimumGap){$sourceEnd=($sourceEnd+$nextSourceStart)/2.0}
+        }
         if($s.SourceStartFrame -ne [int][Math]::Round($sourceStart*$fps) -or $s.SourceEndFrame -ne [int][Math]::Round($sourceEnd*$fps)){throw 'ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED'}
         if($null -eq $previous -or $previous.Chapter -ne $ch){
-            if(($null -eq $previous -and $ch -ne 0) -or $s.OriginalVoiceStartFrame -ne [int][Math]::Round($voices[$ch].start*$fps) -or ($null -ne $previous -and ($ch -ne $previous.Chapter+1 -or $previous.OriginalVoiceEndFrame -ne [int][Math]::Round($voices[$previous.Chapter].end*$fps)))){throw 'ACOUSTIC_PARTITION_VOICE_EDGE_CHANGED'}
+            if(($null -eq $previous -and $ch -ne 0) -or $s.OriginalVoiceStartFrame -ne [int][Math]::Round(([double]$voices[$ch].start)*$fps) -or ($null -ne $previous -and ($ch -ne $previous.Chapter+1 -or $previous.OriginalVoiceEndFrame -ne [int][Math]::Round(([double]$voices[$previous.Chapter].end)*$fps)))){throw 'ACOUSTIC_PARTITION_VOICE_EDGE_CHANGED'}
         }else{
             $proof=@($proofs | Where-Object {$_.leftCue -eq $first-1 -and $_.rightCue -eq $first -and $_.chapter -eq $ch -and $_.cutFrame -eq $s.OriginalVoiceStartFrame})
             if($proof.Count -ne 1 -or $previous.OriginalVoiceEndFrame -ne $s.OriginalVoiceStartFrame){throw 'ACOUSTIC_PARTITION_UNPROVEN_CUT'};$used++
         }
         $next=$last+1;$previous=$s
     }
-    if($next -ne $references.Count+1 -or $used -ne $proofs.Count -or $null -eq $previous -or $previous.Chapter -ne $voices.Count-1 -or $previous.OriginalVoiceEndFrame -ne [int][Math]::Round($voices[-1].end*$fps)){throw 'ACOUSTIC_PARTITION_TAIL_LOST'}
-    $source=[int][Math]::Round($Plan.mainVideoClip.start*$fps);$output=0
+    if($next -ne $references.Count+1 -or $used -ne $proofs.Count -or $null -eq $previous -or $previous.Chapter -ne $voices.Count-1 -or $previous.OriginalVoiceEndFrame -ne [int][Math]::Round(([double]$voices[-1].end)*$fps)){throw 'ACOUSTIC_PARTITION_TAIL_LOST'}
+    $source=[int][Math]::Round($mainSourceStart*$fps);$output=0
     foreach($s in $Plan.segments){if($s.SourceStartFrame -ne $source -or $s.NewStartFrame -ne $output -or $s.SourceEndFrame -le $source -or $s.NewEndFrame -le $output){throw 'ACOUSTIC_PARTITION_FRAME_LOST'};$source=$s.SourceEndFrame;$output=$s.NewEndFrame}
     if($source -ne $Plan.mainVideoSourceEndFrame -or $output -ne $Plan.plannedMainVideoEndFrame){throw 'ACOUSTIC_PARTITION_FRAME_TAIL_LOST'}
 }
