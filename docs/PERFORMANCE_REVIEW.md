@@ -25,6 +25,29 @@ trong project bỏ đi, không truy cập sequence. [Quy trình](../tools/probes
 [mẫu kết quả pending](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
 Mock xác nhận phép tính và giới hạn/cleanup, chưa là native measurement.
 
+## Bỏ batch caps của no-delay, issue #47 (16/11/2026)
+
+Quyết định cuối của user ngày16/11/2026 đảo giới hạn từ2.20.87 cho profile
+`no-delay` mặc định Auto edit. Lần treo2.20.86 là native call không trả về;
+chia batch không thể giải cứu call đó. Số đo native2.20.92 do user cung cấp:
+76 host calls, timeline85,4s; chi phí mỗi lượt cộng dồn khoảng27s, gồm
+checks10,4s, snapshots6,4s và Premiere ngoài script10,5s (số làm tròn).
+
+No-delay chạy hết mỗi loop stage trong một host call: bỏ iteration cap,
+time budget và cap4 cặp speed. Baseline20 iteration/200ms và fast100
+iteration/600ms vẫn giữ nguyên, cả hai tối đa4 cặp speed. Marker-owner vẫn
+một nhóm nguồn mỗi call, là ranh giới transaction riêng. Giữ stage boundaries,
+signature/snapshot check giữa stage, rebind, snapshot theo `postMode`, hậu kiểm
+cuối và thứ tự/tham số mọi native mutation. Trace ghi `batchLimitsDisabled=true`,
+`nativeSpeedPairsPerBatch=null` ở no-delay; baseline/fast vẫn false/4.
+
+Đổi lại, Dừng/Tạm dừng chỉ có hiệu lực khi stage hiện tại trả về (hoặc giữa
+các marker owner); timeline không vẽ lại trong stage dài. Không ngắt native
+call đang chạy. Mock đối chiếu native set/call mutations với baseline, kiểm
+count/time/pair caps theo profile và digest có/không counter cùng runtime;
+không khóa hash theo phiên bản Node. **Nghiệm thu native thay đổi này pending**;
+số đo2.20.92 là cơ sở quyết định, chưa phải kết quả tăng tốc sau sửa.
+
 ## Đo chi tiết timeline, issue #44 (16/11/2026)
 
 `Performance_*.jsonl` giữ các timing cũ và thêm `finish.timings[].detail`
@@ -53,9 +76,10 @@ chúng thành thời gian độc lập. Timer có độ phân giải ms, mock c�
 `response.wallMilliseconds/hostMilliseconds` và phép trừ wall − host giữ
 nguyên; trace lỗi vẫn không chặn tác vụ. Không có dòng riêng cho từng clip/marker.
 Kiểm mock so chuỗi native reads/writes/calls của direct/baseline/fast/no-delay
-giữa executor có counter và bản sinh không counter trong cùng lần chạy; không đổi batch limits, bốn speed pairs, guard hoặc
-transaction. **Phép đo native mới pending**, chưa kết luận nguyên nhân chậm
-hay mức tăng tốc từ mock.
+giữa executor có counter và bản sinh không counter trong cùng lần chạy. Riêng
+thay đổi đo ở #44 giữ batch limits, bốn speed pairs, guard và transaction của
+2.20.92; #47 phía trên thay lịch no-delay sau đó. Số đo native2.20.92 do user
+cung cấp ghi ở #47; mock không chứng minh mức tăng tốc native.
 
 ## Căn chữ từ 2.20.23, đã tích hợp trong 2.20.25
 
@@ -141,7 +165,7 @@ Marker tốc độ chiếm tổng stage 12,545–33,658 s, bao gồm guard/snaps
 ## Những hướng không nên áp dụng ngay
 
 - Không nhiều worker cùng cắt/dồn/setSpeed timeline. [Adobe CEP Cookbook](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_12.x/Documentation/CEP%2012%20HTML%20Extension%20Cookbook.md#invoke-point-products-scripts-from-html-extension) nêu ExtendScript chạy trên main thread của host và khuyên chia script thành các lượt nhỏ để CEP event có cơ hội chạy. Nhiều Promise/process không biến thao tác DOM thành đa lõi an toàn; có thể làm queue dài hoặc mất thứ tự/guard.
-- Không bỏ timer/yield: phần này chỉ ~2–3 s cộng dồn trong các log, trong khi cơ chế đã giúp Premiere không bị đơ. Timer thực tế có thể trễ hơn 20 ms; wall time ngoài stage cần đo trước.
+- Khuyến nghị giữ timer/yield trong các log cũ đã được thay bằng quyết định #47 ngày16/11/2026 ở trên: no-delay không timer và không yield trong loop stage; baseline/fast giữ lịch harness. Ranh giới stage và marker owner vẫn trả quyền điều khiển; batching không thể ngắt native call bị kẹt.
 - Không bật Flash Attention cho DTW: [whisper.cpp v1.9.1](https://github.com/ggml-org/whisper.cpp/blob/v1.9.1/src/whisper.cpp#L3406) tự tắt DTW token timestamps khi flash attention bật. `CaptionTiming.ps1` cố ý dùng `-nfa`; bỏ cờ này có thể làm mất chính mốc đang cho kết quả tốt. Legacy recognition không DTW đã dùng mặc định Flash Attention của CLI.
 - Không tăng `--processors` để tự chia một voice dài: [upstream v1.9.1](https://github.com/ggml-org/whisper.cpp/blob/v1.9.1/src/whisper.cpp#L7118) chia theo số mẫu và cảnh báo chất lượng giảm quanh mép chia; không tự chọn chỗ nghỉ/câu. `--threads` và `--processors` không cùng nghĩa. Cần benchmark riêng nếu thay thread count, không mặc định lấy hết logical cores.
 - Chưa đổi model nhỏ/quantization/greedy decode hoặc bỏ pass legacy chỉ để nhanh. Tool dùng legacy để bảo toàn mốc dựng, DTW để bổ sung điểm cắt an toàn/caption; hai pass hiện không thay thế nhau. Bỏ một pass là thay thuật toán, phải nghiệm thu nội dung và timestamp riêng.

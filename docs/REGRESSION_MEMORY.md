@@ -48,6 +48,46 @@
   Native acceptance và số đo mới pending; không chạy Premiere/build release/
   install/commit/push. Chỉ tự rà mã/diff, chưa có review độc lập.
 
+## Issue #47 — No-delay chạy hết loop stage, bỏ batch caps (16/11/2026)
+
+- **Quyết định/nguyên nhân.** User chốt ngày16/11/2026 đảo batch caps của
+  2.20.87 cho no-delay mặc định Auto edit. Lần treo2.20.86 là native call
+  không trả về; chia batch không thể giải cứu call đó. Số đo native2.20.92
+  user cung cấp:76 calls/85,4s timeline, overhead cộng dồn khoảng27s
+  (checks10,4s, snapshots6,4s, Premiere ngoài script10,5s, số làm tròn).
+- **Invariant.** Generator bỏ count/time/pair yield chỉ ở no-delay, mỗi loop
+  stage hoàn tất trong một host call. Baseline20 iteration/200ms, fast100
+  iteration/600ms và cap4 cặp speed của cả hai giữ nguyên. Marker-owner giữ
+  `batchCount >= 1`: một owner group mỗi call, transaction riêng. Giữ stage
+  boundaries, signature/snapshot check giữa stage, rebind, `postMode`
+  snapshots, hậu kiểm cuối, thứ tự/tham số mọi native mutation và recovery.
+  Trace panel ghi no-delay true/null cho `batchLimitsDisabled`/
+  `nativeSpeedPairsPerBatch`; baseline/fast false/4.
+- **Đánh đổi.** Dừng/Tạm dừng chỉ có hiệu lực ở ranh giới stage (riêng marker
+  vẫn giữa các owner); timeline không vẽ lại trong stage dài. Không ngắt
+  native call đang chạy, không tự Save/Undo hay retry.
+- **Regression trước sửa.** Mock đỏ tại `No-delay must complete every loop
+  stage in one host call, except marker owners`; trace panel đỏ false/true.
+  Log `_local/remove-batch-limits/red-executor.log`, `red-panel.log`.
+  So native set/call rows làm thay đổi timeline, đủ tham số/thứ tự và actions
+  theo clip giữa no-delay/baseline trên fixture merge, gap, speed voice và
+  6/65/130 đoạn; giữ report/checkpoints và digest measured/unmeasured trong
+  cùng Node runtime, không khóa sha256. Clock cố định kiểm iteration cap,
+  clock nhảy kiểm time budget; speed kiểm4 cặp baseline/fast, hết stage
+  no-delay. Stop yêu cầu trong speed call chờ hết stage, abort không thêm
+  mutation; marker lifecycle vẫn hủy giữa owner. Pause/cancel panel giữ kiểm
+  chờ call hiện tại và chặn stage kế tiếp.
+- **Kết quả.** Executor, trace panel, workflow pause/cancel, syntax main/security,
+  generator `--check`, Acorn ES3 host/executor/caption-input và `git diff --check`
+  đạt. So thêm digest toàn bộ native reads/writes/calls baseline/fast với
+  executor tại HEAD trên fixture merge/gap: không đổi. Standard suite đạt
+  **72 nhóm/132 script PowerShell parse**, exit0; log
+  `_local/remove-batch-limits/suite.log`, TEMP/TMP trong `temp` cùng chỗ.
+  Sáu Windows integration skipped: InstallerLifecycle, InstallRollback,
+  PanelRegistry, NotificationShortcut, NativeNotifications, IncidentNotifications.
+  Tự rà diff, không có review độc lập. **Native pending**; không chạy Premiere,
+  commit/push/build/install, không sửa runtime/dist/AppData.
+
 ## Issue #44 — Đo chi tiết staged timeline, không đổi hành vi (16/11/2026)
 
 - **Thiếu số đo.** `workMs` chưa tách quét/property/sort clip và transaction

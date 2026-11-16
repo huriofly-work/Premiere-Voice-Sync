@@ -7,7 +7,7 @@ $._PVS.beginDiagnosticEdit = function (planPath, token, profile) {
 if(session)return $._PVS._result({ok:false,error:"DIAGNOSTIC_SESSION_ACTIVE"});
 if(!token || String(token).length>100)return $._PVS._result({ok:false,error:"DIAGNOSTIC_TOKEN_INVALID"});
 if(profile!==undefined && profile!=="baseline" && profile!=="fast" && profile!=="no-delay")return $._PVS._result({ok:false,error:"DIAGNOSTIC_PROFILE_INVALID"});
-var diagnosticNoDelay=profile==="no-delay", diagnosticFast=profile==="fast" || diagnosticNoDelay, diagnosticBatchLimit=diagnosticNoDelay?20:diagnosticFast?100:20, diagnosticBatchBudgetMs=diagnosticNoDelay?250:diagnosticFast?600:200;
+var diagnosticNoDelay=profile==="no-delay", diagnosticFast=profile==="fast" || diagnosticNoDelay, diagnosticBatchLimit=diagnosticNoDelay?0:diagnosticFast?100:20, diagnosticBatchBudgetMs=diagnosticNoDelay?0:diagnosticFast?600:200;
 
     var original = null;
     var workingSequence = null;
@@ -562,7 +562,7 @@ return true;}},
 if (!loopInitialized1) {     cleanupOwnerIndex = 0; loopInitialized1 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; cleanupOwnerIndex < cleanupOwners.length; cleanupOwnerIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
             prepareClipMarkerGroup(cleanupOwners[cleanupOwnerIndex], clipMarkerGroups, fps);
@@ -647,7 +647,7 @@ return true;}},
 if (!loopInitialized3) {     cutIndex = 0; loopInitialized3 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; cutIndex < cuts.length; cutIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
             pendingNativeReview = {start:cuts[cutIndex]/fps,end:(cuts[cutIndex]+1)/fps,reason:"c\u1eaft V1/A1 l\u1ed7i \u2013 ki\u1ec3m tra tr\u01b0\u1edbc khi th\u1eed l\u1ea1i",severity:"error"};
@@ -698,7 +698,7 @@ return true;}},
 if (!loopInitialized5) {     omitIndex = omittedPieceFlags.length - 1; loopInitialized5 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; omitIndex >= 0; omitIndex--) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
             if (!omittedPieceFlags[omitIndex]) continue;
@@ -729,7 +729,7 @@ return true;}},
 if (!loopInitialized7) {     fastIndex = 0; loopInitialized7 = true; }
 var batchCount = 0, nativePairCount = 0, batchStarted = (new Date()).getTime();
 for (; fastIndex < sourceSegments.length; fastIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 fastPlan = sourceSegments[fastIndex];
@@ -739,7 +739,7 @@ batchCount++;
                 fastFrames = fastPlan.VisualDurationFrames === undefined ? Math.max(1, Math.round((Number(fastPlan.NewEnd) - Number(fastPlan.BorrowSeconds || 0)) * fps) - Math.round(Number(fastPlan.NewStart) * fps)) : Number(fastPlan.VisualDurationFrames);
                 fastSourceEndFrame = fastPlan.SourceEndFrame === undefined ? Math.round(Number(fastPlan.SourceEnd) * fps) : Number(fastPlan.SourceEndFrame);
                 fastTouchesSourceTail = fastSourceEndFrame === Math.round(mainEnd * fps);
-            if (nativePairCount >= 4) return false;
+            if (!diagnosticNoDelay && nativePairCount >= 4) return false;
             nativePairCount++;
             setClipSpeed(videoPieces[fastIndex], qeVideoTrack, fastFactor, fastFrames, fps, ticksPerFrame * 0.6, "V1 segment " + fastIndex, fastTouchesSourceTail, "V:0");
             setClipSpeed(audioPieces[fastIndex], qeAudioTrack, fastFactor, fastFrames, fps, ticksPerFrame * 0.6, "A1 segment " + fastIndex, fastTouchesSourceTail, "A:" + linkedTrackIndex);
@@ -757,7 +757,7 @@ return true;}},
 if (!loopInitialized9) {     moveIndex = sourceSegments.length - 1; loopInitialized9 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; moveIndex >= 0; moveIndex--) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 desiredStartFrame = sourceSegments[moveIndex].NewStartFrame === undefined ? Math.round(Number(sourceSegments[moveIndex].NewStart) * fps) : Number(sourceSegments[moveIndex].NewStartFrame);
@@ -779,7 +779,7 @@ return true;}},
 if (!loopInitialized11) {     slowIndex = 0; loopInitialized11 = true; }
 var batchCount = 0, nativePairCount = 0, batchStarted = (new Date()).getTime();
 for (; slowIndex < sourceSegments.length; slowIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 slowPlan = sourceSegments[slowIndex];
@@ -789,7 +789,7 @@ batchCount++;
                 slowFrames = slowPlan.VisualDurationFrames === undefined ? Math.max(1, Math.round((Number(slowPlan.NewEnd) - Number(slowPlan.BorrowSeconds || 0)) * fps) - Math.round(Number(slowPlan.NewStart) * fps)) : Number(slowPlan.VisualDurationFrames);
                 slowSourceEndFrame = slowPlan.SourceEndFrame === undefined ? Math.round(Number(slowPlan.SourceEnd) * fps) : Number(slowPlan.SourceEndFrame);
                 slowTouchesSourceTail = slowSourceEndFrame === Math.round(mainEnd * fps);
-            if (nativePairCount >= 4) return false;
+            if (!diagnosticNoDelay && nativePairCount >= 4) return false;
             nativePairCount++;
             setClipSpeed(videoPieces[slowIndex], qeVideoTrack, slowFactor, slowFrames, fps, ticksPerFrame * 0.6, "V1 segment " + slowIndex, slowTouchesSourceTail, "V:0");
             setClipSpeed(audioPieces[slowIndex], qeAudioTrack, slowFactor, slowFrames, fps, ticksPerFrame * 0.6, "A1 segment " + slowIndex, slowTouchesSourceTail, "A:" + linkedTrackIndex);
@@ -811,7 +811,7 @@ return true;}},
 if (!loopInitialized13) {     reconcileIndex = 1; loopInitialized13 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; reconcileIndex < sourceSegments.length; reconcileIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 plannedReconcileFrame = sourceSegments[reconcileIndex].NewStartFrame === undefined ? Math.round(Number(sourceSegments[reconcileIndex].NewStart) * fps) : Number(sourceSegments[reconcileIndex].NewStartFrame);
@@ -918,7 +918,7 @@ return true;}},
 if (!loopInitialized16) {     voiceCutIndex = 0; loopInitialized16 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; voiceCutIndex < voiceCuts.length; voiceCutIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
             pendingNativeReview = {start:voiceCuts[voiceCutIndex]/fps,end:(voiceCuts[voiceCutIndex]+1)/fps,reason:"c\u1eaft voice l\u1ed7i \u2013 ki\u1ec3m tra tr\u01b0\u1edbc khi th\u1eed l\u1ea1i",severity:"error"};
@@ -983,7 +983,7 @@ return true;}},
 if (!loopInitialized18) {     removeVoice = allVoicePieces.length - 1; loopInitialized18 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; removeVoice >= 0; removeVoice--) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
             if (!usedVoiceIds[String(allVoicePieces[removeVoice].nodeId)]) { timelineMutated = true; allVoicePieces[removeVoice].remove(false, false); removedSilenceCount++; }
@@ -995,7 +995,7 @@ return true;}},
 if (!loopInitialized19) {     voiceMove = speechPieces.length - 1; loopInitialized19 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; voiceMove >= 0; voiceMove--) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 newVoiceStartFrame = speechPlans[voiceMove].NewVoiceStartFrame === undefined ? Math.round(Number(speechPlans[voiceMove].NewVoiceStart) * fps) : Number(speechPlans[voiceMove].NewVoiceStartFrame);
@@ -1079,7 +1079,7 @@ return true;}},
 if (!loopInitialized22) {     markerIndex = 0; loopInitialized22 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; markerIndex < plannedClipMarkers.length; markerIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 plannedMarkerSpec = plannedClipMarkers[markerIndex];
@@ -1108,7 +1108,7 @@ return true;}},
 if (!loopInitialized23) {     speedMarkerIndex = 0; loopInitialized23 = true; }
 var batchCount = 0, batchStarted = (new Date()).getTime();
 for (; speedMarkerIndex < actualSpeedWarningMarkers.length; speedMarkerIndex++) {
-if ((batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
+if (!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))) return false;
 batchCount++;
 
                 speedMarkerSpec = actualSpeedWarningMarkers[speedMarkerIndex];
