@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.92",
+  "tag": "v2.20.92",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "877EB8B7837F75AC82BE8CEA2466CED441C373322F8D9406F860DDA8D650BF64",
+    "bytes": 1535369790,
+    "filename": "Premiere-Voice-Sync-2.20.92-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 72,
+    "powershellScriptsParsed": 132,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "offlineReplayOfReportedRun": {
+      "note": "Sentence-plan stage of the user's failing Auto edit job of 2026-11-16 rerun offline on a copy of the job with the audio cache disabled; not native.",
+      "beforeFix": "ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED",
+      "afterFix": "SENTENCE_PLAN_READY",
+      "safeSentenceGroups": 101,
+      "manualReviewBlocks": 14,
+      "plannerFramesChanged": false
+    }
+  },
+  "changes": [
+    "Auto edit no longer stops at the sentence-plan stage with ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED: the partition and manual-review checks now use the planner's double arithmetic instead of mixing ConvertFrom-Json decimals into frame math. Planner output, thresholds and checks are unchanged (#43).",
+    "The timeline Performance trace records per-stage detail: marker commit counters and prepare-stage clip enumeration, property-read and sort counters. Measurement only; native calls are unchanged (#45)."
+  ],
+  "pullRequests": [
+    43,
+    45
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "Not verified in Premiere: the fixed job and the new trace fields are pending the user's rerun.",
+    "This build adds measurements only; the timeline batching rhythm and the 9.4 s voice-clip marker update are unchanged.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}

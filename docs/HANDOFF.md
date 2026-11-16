@@ -1,14 +1,14 @@
 # Bàn giao kỹ thuật Premiere Voice Sync
 
-Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
+Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo và 16/11/2026 khi chuẩn bị 2.20.92. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
 
 ## Git, bản phát hành và bản cài
 
 | Hạng mục | Trạng thái đã đối chiếu |
 | --- | --- |
-| Checkout | `F:\Tools\Premiere Voice Sync`, nhánh mặc định `main`. Ngày 13/11 (repo cũ): PR #98 (gỡ Qwen), #99 (dữ liệu dev có thể xóa), #100 (Whisper large-v3-turbo là model duy nhất), #101 (release 2.20.90), #102 (ghi bản cài) đã merge; sau đó là đợt dọn cue-first/nghiên cứu ASR. Repo mới 14/11: #2 (Dependabot, template issue/PR) và #3 (Dependabot nâng `actions/checkout`) đã merge. Đợt 15/11: PR #21–#39 merge, phát hành v2.20.91 (bản public đầu tiên). |
-| Nhánh cũ | Các nhánh/PR Codex cũ (repo cũ) có tip trong [inventory](maintenance/BRANCH_INVENTORY_2026-11-04.json). Nhánh mới dùng tiền tố `claude/`. |
-| Release trên GitHub | Repo được khởi tạo lại ngày 14/11/2026 bằng một commit snapshot ([lý do](maintenance/REPO_RESTART_2026-11-14.md)) Release đầu tiên: **v2.20.91 stable/Latest** (công bố 15/11 dạng prerelease, user nâng stable cùng ngày sau khi chạy thật không thấy lỗi), tag tại `8df2aca2c27b76913898daf54461841a78e38dc1`, ZIP 1.535.368.451 byte, SHA-256 `2C9F66FBFAB9864BA6757A53C254387C13B396CD7006279495BA0F80FA71CEDE`. Trong lịch sử cũ (đã lưu trữ ngoài GitHub, SHA dưới đây không có trong repo này): stable Latest v2.20.25; prerelease v2.20.90 công bố 13/11, tag tại `3e2faff06332ac7ee78c9bb2d7b033689020e049`, ZIP 1.535.356.630 byte, SHA-256 `CE627B55113CAE2B815E37C0EE90E85C6D4F0DA68EAE1B1C45BE650F0E7C86F5` (Whisper large-v3-turbo); trước đó v2.20.89 tại `7e682ae4ce9a281f36bf1bb95f22ef4c76ba6837` (Small) và v2.20.88 tại `0802eb62b39522084cf22ae6c686e7f95139151d`. Mã không kèm license mã nguồn mở (bảo lưu mọi quyền), thành phần bên thứ ba liệt kê ở [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md). |
+| Checkout | `F:\Tools\Premiere Voice Sync`, nhánh mặc định `main`. Ngày 13/11 (repo cũ): PR #98 (gỡ Qwen), #99 (dữ liệu dev có thể xóa), #100 (Whisper large-v3-turbo là model duy nhất), #101 (release 2.20.90), #102 (ghi bản cài) đã merge; sau đó là đợt dọn cue-first/nghiên cứu ASR. Repo mới 14/11: #2 (Dependabot, template issue/PR) và #3 (Dependabot nâng `actions/checkout`) đã merge. Đợt 15/11: PR #21–#39 merge, phát hành v2.20.91 (bản public đầu tiên). Đợt 16/11: #43 (sửa lỗi lập kế hoạch), #45 (số đo timeline) merge; PR chuẩn bị 2.20.92. |
+| Nhánh cũ | Các nhánh/PR Codex cũ (repo cũ) có tip trong [inventory](maintenance/BRANCH_INVENTORY_2026-11-04.json). Từ 16/11/2026 nhánh mới đặt tiền tố theo loại việc (`fix/`, `perf/`, `release/`). |
+| Release trên GitHub | Repo được khởi tạo lại ngày 14/11/2026 bằng một commit snapshot ([lý do](maintenance/REPO_RESTART_2026-11-14.md)) Release đầu tiên: **v2.20.91 stable/Latest** (công bố 15/11 dạng prerelease, user nâng stable cùng ngày sau khi chạy thật không thấy lỗi), tag tại `8df2aca2c27b76913898daf54461841a78e38dc1`, ZIP 1.535.368.451 byte, SHA-256 `2C9F66FBFAB9864BA6757A53C254387C13B396CD7006279495BA0F80FA71CEDE`. **v2.20.92** đang chuẩn bị dạng prerelease (`--prerelease --latest=false`), chưa build, chưa có tag. Trong lịch sử cũ (đã lưu trữ ngoài GitHub, SHA dưới đây không có trong repo này): stable Latest v2.20.25; prerelease v2.20.90 công bố 13/11, tag tại `3e2faff06332ac7ee78c9bb2d7b033689020e049`, ZIP 1.535.356.630 byte, SHA-256 `CE627B55113CAE2B815E37C0EE90E85C6D4F0DA68EAE1B1C45BE650F0E7C86F5` (Whisper large-v3-turbo); trước đó v2.20.89 tại `7e682ae4ce9a281f36bf1bb95f22ef4c76ba6837` (Small) và v2.20.88 tại `0802eb62b39522084cf22ae6c686e7f95139151d`. Mã không kèm license mã nguồn mở (bảo lưu mọi quyền), thành phần bên thứ ba liệt kê ở [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md). |
 | Bản trên máy | 15/11 user duyệt cài 2.20.91 bằng `dist/Install-Verified-2.20.91-20261115.ps1`; panel 2.20.90 sao lưu ở `dist/_install-2.20.91-20261115T152003Z/previous-panel`. `verified.json`: 66 file panel đúng hash, 6.252 file dữ liệu người dùng, registry CEP và source không đổi, không ghi registry. User chạy lại project Ếch trên Premiere 26.2.2: chưa phát hiện lỗi; job giữ lại cho thấy 6 marker review đều trên clip voice (0 fallback), 20 marker tốc độ V1, 0 lỗi marker. Trước đó: 13/11 user duyệt cài 2.20.90 bằng `dist/Install-Verified-2.20.90-20261113.ps1`; panel 2.20.89 sao lưu ở `dist/_install-2.20.90-20261113T092930Z/previous-panel`. Kết quả `verified.json`: 73 file panel đúng hash, 6.317 file dữ liệu người dùng, registry CEP và source không đổi; runtime chỉ có `ggml-large-v3-turbo.bin`, `Assert-PvsRuntimeLock` đạt. Chưa mở Premiere; nghiệm thu native pending. Các bản cài/rollback trước (2.20.89, 2.20.88, script `dist/Restore-Verified-2.20.0-20261103.ps1`) vẫn giữ trong `dist/`, chỉ chạy theo quyết định riêng của user. |
 
 Từ 13/11/2026 các cây `.tmp*` và `_local/` (kể cả `_local/archive`) là dữ liệu dev có thể xóa: chỉ xóa theo danh sách user xác nhận, sau khi kiểm không có tiến trình hay phiên nào đang dùng, và không đi xuyên junction/symlink. Giữ backup trong `dist/`, runtime đã cài và dữ liệu người dùng.
@@ -61,6 +61,26 @@ marker review 17 → 6.
   thấy lỗi và nâng 2.20.91 lên stable/Latest (15/11). Chưa đo: marker trên clip nest
   V1, tốc độ khác 110%, reverse/time remap; Setup/Remove trên tài khoản sạch và quét
   antivirus chưa ghi nhận.
+
+## Đợt sửa sau lượt chạy "Sông Congo" (16/11/2026)
+
+- Lượt Auto edit 16/11 16:42 (2.20.91, 135 câu SRT, 14 vùng sửa tay) dừng ở bước
+  lập kế hoạch với `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED`, trước khi sửa
+  timeline. Nguyên nhân: `ConvertFrom-Json` của PowerShell 5.1 trả số lẻ dạng
+  decimal, bước tự kiểm tính điểm cắt bằng decimal còn bộ lập kế hoạch dùng double,
+  lệch 1 frame ở điểm giữa đúng nửa frame. #43 (issue #42) sửa bước tự kiểm; replay
+  ngoại tuyến job thật ra `SENTENCE_PLAN_READY`. Native pending.
+- User thấy timeline "làm một khúc lại nghỉ". Đo log lượt 16/11 15:28 (100 s dựng):
+  không có timer chờ; việc dựng chia đợt (tối đa 4 cặp speed / 20 vòng / 250 ms, có
+  từ 2.20.87 sau sự cố treo 30 phút ở 2.20.86). Chi phí chuyển đợt ≈ 45 s (tự kiểm
+  17 s, chụp timeline 9,5 s, Premiere xử lý ngoài script 18 s). Lệnh đơn dài nhất:
+  cập nhật marker nguồn 9,4 s (2.20.90: 0,09 s). #45 (issue #44) chỉ thêm số đo vào
+  `Performance_*.jsonl`. Việc kế: user chạy 2.20.92 để lấy số đo, rồi tối ưu trong
+  issue riêng; nới giới hạn mỗi đợt hoặc chia ghi marker phải hỏi user trước vì
+  đổi cơ chế an toàn.
+- Bài học: CHANGELOG lại quên cập nhật trong #43/#45, bù ở PR chuẩn bị 2.20.92.
+  Test chuỗi lệnh native không được khóa hash cứng: proxy mock thấy cả lượt đọc nội
+  bộ của Node, Node 22 (CI) khác Node 26 (máy dev).
 
 ## Việc còn lại (14/11/2026)
 

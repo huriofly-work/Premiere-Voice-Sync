@@ -2,6 +2,13 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
+## 2.20.92 — 2026-11-16
+
+Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. [Ghi chú phát hành](docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md).
+
+- Dựng theo voice không còn dừng ở bước lập kế hoạch với lỗi `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED`. Bước tự kiểm tính lại điểm cắt bằng kiểu số khác bộ lập kế hoạch nên lệch 1 frame khi điểm giữa hai câu rơi đúng nửa frame; giờ tính giống hệt bộ lập kế hoạch, điểm cắt và ngưỡng an toàn không đổi (#43). Job thật bị lỗi chạy lại ngoại tuyến ra kế hoạch đầy đủ.
+- Log hiệu năng của bước dựng timeline ghi thêm chi tiết: số marker, số lần đọc/ghi marker, thời gian duyệt và sắp xếp clip ở các bước chuẩn bị. Chỉ để đo, không đổi lệnh gửi Premiere (#45).
+
 ## 2.20.91 — 2026-11-15
 
 Bản public đầu tiên sau khi khởi tạo lại repo (prerelease). Gồm các bản sửa sau lượt chạy thật ngày 15/11/2026 và phần dọn dẹp ngày 13–14/11 bên dưới. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.91.md).

@@ -5,6 +5,7 @@ Panel CEP cho Adobe Premiere Pro 26 trên Windows, gồm **Dựng theo voice** v
 | Luồng | Trạng thái và tài liệu |
 | --- | --- |
 | Bản phát hành | 2.20.91 là bản tải đầu tiên trên trang [Releases](https://github.com/huriofly-work/Premiere-Voice-Sync/releases) sau khi repository được khởi tạo lại ngày 14/11/2026 ([lý do](docs/maintenance/REPO_RESTART_2026-11-14.md)). Đây là bản stable: user chạy thật trên Premiere 26.2.2 ngày 15/11/2026 không thấy lỗi; xem [thay đổi và giới hạn](docs/releases/notes/REVIEW_MARKERS_2.20.91.md). |
+| Bản thử mới | 2.20.92 (prerelease) sửa lỗi Dựng theo voice dừng ở bước lập kế hoạch và thêm số đo cho bước dựng timeline; chưa nghiệm thu trên Premiere. Xem [thay đổi và giới hạn](docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md). |
 | Bản đã kiểm trước đây | 2.20.25 là stable trước 2.20.91; 2.20.90 (Whisper large-v3-turbo thay Small, ZIP khoảng 1,6 GB, CPU chậm hơn khoảng 2 lần) còn chờ nghiệm thu Premiere, xem [phạm vi và giới hạn](docs/releases/notes/ASR_TURBO_2.20.90.md). |
 | Hướng phát triển | Big update làm từng bước trên engine và panel 2.20.x, ra từng bản nhỏ. Nghiên cứu cue-first, chọn model ASR và Qwen đã đóng ngày 13/11/2026; [lý do và phần đã gỡ](docs/REGRESSION_MEMORY.md). |
 
