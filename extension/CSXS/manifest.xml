@@ -2,11 +2,11 @@
 <ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    Version="7.0"
                    ExtensionBundleId="com.premierevoicesync.local"
-                   ExtensionBundleVersion="2.20.93"
+                   ExtensionBundleVersion="2.20.94"
                    ExtensionBundleName="Premiere Voice Sync">
   <Author>Premiere Voice Sync</Author>
   <ExtensionList>
-    <Extension Id="com.premierevoicesync.local.panel" Version="2.20.93"/>
+    <Extension Id="com.premierevoicesync.local.panel" Version="2.20.94"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>
