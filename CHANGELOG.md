@@ -4,6 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
+- Trên cùng lát clip, các cảnh báo SRT chồng hoặc chạm nhau dùng một marker ở giữa đoạn gộp, giữ đủ ghi chú. Nếu trùng điểm với marker căn voice, marker SRT nằm ở frame trống gần nhất trong đoạn cue (#62).
 - Marker của tool trên clip và thước timeline là điểm ở giữa đoạn cảnh báo để không che sóng âm khi dựng (#59).
 - Chạy lại Auto edit hoặc Tạo phụ đề trên cùng nguồn voice sẽ thay bộ marker review của lần chạy trước cùng chức năng, kể cả khi dùng sequence mới (#58).
 

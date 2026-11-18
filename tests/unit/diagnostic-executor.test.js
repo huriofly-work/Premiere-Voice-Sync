@@ -162,6 +162,11 @@ function chapterFixture(distinct=false) {
   return f;
 }
 const markerCases=[()=>fixture(1),()=>fixture(6,false,false,1,true),()=>fixture(65,false,true,0.9),()=>fixture(6,false,true,1.1,false,true),()=>editedFixture(true,true),()=>cueFixture(6,true),chapterFixture];
+function collidingReviewPair(f) {
+  f.plan.reviewMarkers=[{start:1,end:1.8,reason:"first"},{start:1.5,end:70/30,reason:"second"}];
+  f.plan.markers.push({...f.plan.markers[0],Comments:"second voice reason"});
+  vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
+}
 if(process.argv.includes("--record-marker-reference")||process.argv.includes("--marker-precommit")||!process.argv.slice(2).length){
   const recording=process.argv.includes("--record-marker-reference"),goldenPath=path.join(__dirname,"fixtures/marker-before-cuts.json");
   markerCases.push(()=>chapterFixture(true),()=>fixture(6,false,true,1.1,false,false,false,true),()=>fixture(6,false,false,1,true,false,false,true));
@@ -187,11 +192,41 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
   for(const [size,gaps,speed] of [[1,false,1],[6,false,1],[65,false,1],[65,true,1],[65,true,1.1],[65,true,0.9],[130,true,1.1],[130,true,0.9]]) markerCases.push(()=>fixture(size,false,gaps,speed));
   const expected=JSON.parse(fs.readFileSync(goldenPath,"utf8"));
   for(const [index,make] of markerCases.entries())for(const profile of recording?["direct"]:["direct","baseline","fast","no-delay"]){
-    const f=issue55Fixture(make),result=profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
+    const f=issue55Fixture(make);
+    if(index===2) collidingReviewPair(f);
+    const result=profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
     assert(result.report.ok,JSON.stringify(result.report));
     const digest=value=>require("crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex");
     const timeline=f.actions.filter(a=>!["deleteMarker","marker","markerColor","markerStart","markerEnd"].includes(a[0]));
     const evidence={markers:digest(issue55State(f)),timeline:digest(timeline)};
+    if(f.plan.markers.some(m=>m.Comments==="Sentence cues 1-1 needs review")){
+      const voiceRows=markerRows(f.voice.getMarkers()).filter(r=>r[3]==="VOICE SYNC - Kiem tra can voice");
+      assert(voiceRows.some(r=>r[4].includes("Sentence cues 1-1 needs review\ncheck 0")));
+    }
+    if(index===2){
+      const rows=markerRows(f.voice.getMarkers()),review=rows.filter(r=>r[3]==="VOICE SYNC - Can kiem tra");
+      assert.equal(review.length,1);
+      assert(review[0][4].includes("First") && review[0][4].includes("Second"));
+      const voice=rows.find(r=>r[3]==="VOICE SYNC - Kiem tra can voice");
+      assert(voice[4].includes("check 0\nsecond voice reason"));
+      assert(Math.abs(voice[1]-50/30*0.9)<1e-8);
+      assert(Math.abs(review[0][1]-51/30*0.9)<1e-8);
+      if(profile==="no-delay"){
+        const repeat=issue55Fixture(make);
+        collidingReviewPair(repeat);
+        const bank=repeat.voice.getMarkers();
+        bank.items.length=0;
+        for(const [guid,start,end,name,comments,type,colorIndex] of rows)
+          Object.assign(bank.createMarker(start),{guid,end,name,comments,type,colorIndex});
+        const rerun=finishTrial(repeat,profile);
+        assert(rerun.report.ok);
+        assert.deepEqual(markerRows(bank),rows);
+        const commits=rerun.timings.flatMap(t=>[t.detail&&t.detail.markerCommit].concat(t.detail&&t.detail.reviewCommits||[]))
+          .filter(c=>c&&(c.kind==="voice"||c.kind==="review"));
+        assert(commits.length>=4);
+        for(const c of commits) for(const key of ["creates","deletes","moves","nameWrites","commentsWrites","endWrites","colorWrites"]) assert.equal(c[key],0,c.phase+" "+c.kind+" "+key);
+      }
+    }
     if(f.nativeMutations.length) {
       const edits=f.nativeMutations.filter(row=>row[0]==="call"?!["createMarker","deleteMarker","setColorByIndex"].includes(row[1]):row[1]!==null);
       evidence.nativeArguments=digest(edits);

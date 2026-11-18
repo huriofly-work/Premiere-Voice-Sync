@@ -403,3 +403,33 @@ console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-writ
 const main=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8");
 vm.runInContext(main.slice(main.indexOf("  function postcheckError(result)"),main.indexOf("  var hostReadyPromise =")),context);
 assert(context.postcheckError({clipMarkerFailureCount:1,clipMarkerFailures:["Marker restoration incomplete; inspect before retry."]}).includes("Marker restoration incomplete"),"Restoration details must reach the visible workflow error.");
+for (const workflow of ["edit", "captions"]) {
+  const source = fixture(), ruler = fixture();
+  ruler.seq.sequenceID = "merge";
+  const projectItem = {nodeId:"voice", getMarkers:()=>source.collection};
+  function piece(start, end) {
+    return {projectItem,getSpeed:()=>1,start:{seconds:start},end:{seconds:end},
+      inPoint:{seconds:start},outPoint:{seconds:end}};
+  }
+  const pieces = [piece(0, 3), piece(3, 5)];
+  const issues = [[20,30],[0,12],[10,20],[10,20],[31,40],[80,90],[90,100]]
+    .map(([start,end],i)=>({start:start/30,end:end/30,reason:"reason "+i,severity:i===2?"error":"warning"}));
+  const run = ()=>apply(ruler.seq,issues,[{start:0,end:5}],workflow,null,pieces);
+  assert.equal(run().reviewMarkerClipCount,4,workflow+" groups overlapping and touching spans per piece");
+  const rows = state(source);
+  assert.deepEqual(rows.map(m=>Math.round(m.seconds*30)),[15,36,85,95]);
+  for(let i=0;i<4;i++) assert(rows[0].comments.toLowerCase().includes("reason "+i));
+  assert.equal(rows[0].color,1);
+  source.events.length=0;
+  assert.equal(run().reviewMarkerClipCount,4);
+  assert.deepEqual(source.events,[]);
+  source.collection.deleteMarker(source.values.find(m=>m.start.seconds===15/30));
+  const manual=source.marker({seconds:15/30,name:"manual",comments:"keep"});
+  assert.equal(run().reviewMarkerClipCount,4);
+  assert(source.values.some(m=>m.start.seconds===16/30));
+  assert.equal(manual.comments,"keep");
+  // The same start can select different pieces when one warning crosses the cut.
+  const crossCut=[{start:2.8,end:3,reason:"left"},{start:2.8,end:4,reason:"right"}];
+  assert.equal(apply(ruler.seq,crossCut,[{start:0,end:5}],workflow,null,pieces).reviewMarkerClipCount,2);
+  assert.deepEqual(state(source).filter(m=>m.name!=="manual").map(m=>Math.round(m.seconds*30)),[87,105]);
+}
