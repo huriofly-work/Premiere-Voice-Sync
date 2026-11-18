@@ -1,5 +1,12 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #58 — Thay marker review cũ trên nguồn voice dùng chung (18/11/2026)
+
+- **Nguyên nhân.** Hai lượt Auto edit dùng sequence khác nhau nhưng cùng ProjectItem voice. Host chỉ nhận tag của sequence hiện tại nên số marker trên nguồn tăng từ 15 lên 37 rồi 59. Lượt cuối tạo 22 marker và xóa 0.
+- **Quy tắc.** Marker review trên ProjectItem thuộc tool bất kể sequence khi đúng loại Comment, đúng tên và có tag v2 hợp lệ của cùng workflow. Auto edit và Tạo phụ đề đều ghi review lên voice và quản lý hai bộ riêng. Lượt mới tái sử dụng marker phù hợp, ghi tag của sequence hiện tại và dọn marker dư, kể cả khi danh sách review rỗng. Marker trên thước vẫn theo sequence và vùng xử lý.
+- **Khôi phục.** Với kế hoạch rỗng, lượt hậu kiểm có thể là lần đầu sửa marker review trên nguồn. Mock tiêm lỗi tạo caption sau khi dọn đã tái hiện mất marker cũ. Executor lấy snapshot của nhóm review ở lượt hậu kiểm nếu nguồn chưa có giao dịch ghi trước, rồi dùng cùng nhật ký để hoàn tác khi lỗi hoặc Dừng.
+- **Hồi quy.** Trước sửa, mock hai sequence giữ hai bộ và executor bỏ qua GUID review cũ khi ghi trước. `marker-reconciliation.test.js` kiểm tra tái sử dụng, dọn khi chạy rỗng và giữ marker thủ công, tag sai, workflow khác, marker thước. `diagnostic-executor.test.js` kiểm tra dời, dọn và khôi phục cả tag cũ sau lỗi hoặc Dừng. Marker còn tồn tại giữ GUID, marker đã xóa được tạo lại với các trường gốc. Chờ nghiệm thu trên Premiere.
+
 ## Issue #55 — Ghi marker voice trước khi cắt, đối chiếu trên timeline cuối (18/11/2026)
 
 - **Bằng chứng.** Sông Congo 2.20.92 mất 25,2 giây để commit 19 marker voice sau cắt (18 tạo, 23 xóa), thêm khoảng 5 giây cho 22 marker review. Probe trên cùng ProjectItem đo 14,7/45,1 ms mỗi lần tạo và 14,6/35,4 ms mỗi lần xóa với 1/101 clip A2. [Số đo native](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
