@@ -1,5 +1,36 @@
 # Probe native marker
 
+## Kiểm tra thứ tự ghi start và end — issue #67
+
+`Probe-MarkerMoveEnd.jsx` đo hai biên sau từng phép ghi trên ProjectItem đã chọn. Nạp probe, lấy `documentId` và `nodeId` từ `move-list`, rồi thay hai giá trị mẫu trong lệnh dưới đây.
+
+```powershell
+node tools/probes/run-probe.js load (Resolve-Path tools/probes/Probe-MarkerMoveEnd.jsx).Path
+node tools/probes/run-probe.js move-list
+$probeDoc = '<documentId>'
+$probeItem = '<nodeId>'
+$probeTag = '[PremiereVoiceSync:marker-move-end:v1]'
+node tools/probes/run-probe.js move-run $probeDoc $probeItem $probeTag probe-tagged-only
+node tools/probes/run-probe.js move-cleanup $probeDoc $probeItem $probeTag probe-tagged-only
+```
+
+`move-run` yêu cầu đúng project, item, tag và scope. Nếu còn marker mang tag từ lượt trước, probe dừng. Sau khi thử, kể cả khi gặp lỗi, probe chỉ dọn marker mới có dòng đầu của comments trùng tag, rồi đối chiếu bộ marker còn lại với ảnh chụp ban đầu. Nếu tạo marker nhưng ghi tag thất bại, marker chưa có tag được giữ để kiểm tra thủ công. Lệnh `move-cleanup` dành cho tag còn sót trên item đã chọn và xác minh các marker ngoài tag sau khi dọn.
+
+**Kết quả ngày 18/11/2026.** Trên ProjectItem voice của Premiere 26.2.2, số marker trước và sau là 59, `cleanup.verified` bằng `true`. Bảng dùng giây tính từ vị trí tạo marker. Đổi start giữ nguyên độ dài, đổi end chỉ dời biên cuối. Premiere cho phép thu marker về điểm.
+
+| Trạng thái đầu | Phép ghi theo thứ tự | [start, end] sau từng phép ghi |
+| --- | --- | --- |
+| Mới tạo | Tạo tại 0 | [0, 0] |
+| [0, 1] | start = 0.5 | [0.5, 1.5] |
+| [0, 1] | end = 0.5, start = 0.5 | [0, 0.5] → [0.5, 1.0] |
+| [0, 1] | start = 0.5, end = 0.5 | [0.5, 1.5] → [0.5, 0.5] |
+| [0, 1] | start = 2 | [2, 3] |
+| [0, 1] | start = -0.5, end = -0.5 | [-0.5, 0.5] → [-0.5, -0.5] |
+| [0, 1] | end = 0 | [0, 0] |
+| [0, 0] | start = 0.5 | [0.5, 0.5] |
+| [0, 0] | start = -0.5 | [-0.5, -0.5] |
+| [0, 0] | end = 0.5 | [0, 0.5] |
+
 ## Đo chi phí ghi marker — issue #49
 
 `Probe-MarkerWriteCost.jsx` là phép đo riêng, **chưa chạy native**. Không dùng

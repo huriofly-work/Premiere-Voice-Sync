@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert = require("assert"), fs = require("fs"), path = require("path"), vm = require("vm");
 const root = path.join(__dirname, "../..");
 const host = fs.readFileSync(path.join(root,"extension/jsx/host.jsx"),"utf8");
@@ -29,7 +30,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   const actions=[],nativeRows=[];let qeReads=0;
   function markers(){
     const values=[];
-    return {items:values,getFirstMarker(){return values[0]||null;},getNextMarker(m){return values[values.indexOf(m)+1]||null;},deleteMarker(m){values.splice(values.indexOf(m),1);actions.push(["deleteMarker"]);},createMarker(seconds){let position={seconds};const m={get start(){return position;},set start(v){position=typeof v==='number'?{seconds:v}:v;},end:seconds,setColorByIndex(c){this.colorIndex=c;actions.push(["markerColor",c]);},getColorByIndex(){return this.colorIndex;}};values.push(m);actions.push(["marker",seconds]);return m;}};
+    return {items:values,getFirstMarker(){return values[0]||null;},getNextMarker(m){return values[values.indexOf(m)+1]||null;},deleteMarker(m){values.splice(values.indexOf(m),1);actions.push(["deleteMarker"]);},createMarker(seconds){const m=markerBounds({setColorByIndex(c){this.colorIndex=c;actions.push(["markerColor",c]);},getColorByIndex(){return this.colorIndex;}},seconds);values.push(m);actions.push(["marker",seconds]);return m;}};
   }
   const nested={nodeId:"nested",getMarkers:markers,clearInPoint(){actions.push(["clearIn"]);},clearOutPoint(){actions.push(["clearOut"]);}};
   const voice={nodeId:"voice",getMarkers:markers};
@@ -37,9 +38,9 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   voice.getMarkers=(()=>{const m=markers();return ()=>m;})();
   if(oldMarkers){
     for(const item of [nested,voice])item.getMarkers().items.push(
-      {name:"VOICE SYNC - Kiem tra toc do",comments:"Sentence cues 1-1: actual speed=140.000%, warning range=70-130%",start:{seconds:1}},
-      {name:"VOICE SYNC - Kiem tra toc do",comments:"My manual note",start:{seconds:2}},
-      {name:"VOICE SYNC - Da gop hinh",comments:"old merge\n[PremiereVoiceSync:owned-marker:v1]",start:{seconds:count*120/30+100}}
+      markerBounds({name:"VOICE SYNC - Kiem tra toc do",comments:"Sentence cues 1-1: actual speed=140.000%, warning range=70-130%"},1),
+      markerBounds({name:"VOICE SYNC - Kiem tra toc do",comments:"My manual note"},2),
+      markerBounds({name:"VOICE SYNC - Da gop hinh",comments:"old merge\n[PremiereVoiceSync:owned-marker:v1]"},count*120/30+100)
     );
   }
   const seq={sequenceID:"seq",timebase:TPF,markers:markers(),videoTracks:tracks([{clips:collection([])}]),audioTracks:tracks([{clips:collection([])},{clips:collection([])}])};
@@ -293,9 +294,9 @@ function issue55Failures() {
       const m = bank.createMarker(seconds);
       Object.assign(m,{guid,name:review?"VOICE SYNC - Can kiem tra":"VOICE SYNC - Kiem tra can voice",
         comments:review?"x\n[PremiereVoiceSync:review-marker:v2:edit:previous]":"old\n[PremiereVoiceSync:owned-marker:v1]",colorIndex:2});
-      let start=seconds,end=seconds+0.25;
-      Object.defineProperty(m,"start",{get:()=>({seconds:start}),set(v){if(bank.failMove)throw Error("restore move failed");assert(v<=end);start=v;}});
-      Object.defineProperty(m,"end",{get:()=>end,set(v){assert(v>=start);end=v;}});
+      const bounds=markerBounds({},seconds,seconds+0.25);
+      Object.defineProperty(m,"start",{get:()=>bounds.start,set(v){if(bank.failMove)throw Error("restore move failed");bounds.start=v;}});
+      Object.defineProperty(m,"end",{get:()=>bounds.end,set(v){bounds.end=v;}});
     }
     stale(1.5,"moved-review",true);
     stale(4,"surplus-review",true);
@@ -503,11 +504,11 @@ for(const profile of ["baseline","fast","no-delay"]){
     if(mode==="nest-readback"){
       f.nested.isSequence=()=>true;
       const bank=f.nested.getMarkers(),create=bank.createMarker;
-      bank.createMarker=seconds=>{const m=create(seconds);m.start.seconds+=100;return m;};
+      bank.createMarker=seconds=>{const m=create(seconds);m.start=m.start.seconds+100;return m;};
     }
     if(mode==="voice-readback"){
       const bank=f.voice.getMarkers(),create=bank.createMarker;
-      bank.createMarker=seconds=>{const m=create(seconds);m.start.seconds+=100;return m;};
+      bank.createMarker=seconds=>{const m=create(seconds);m.start=m.start.seconds+100;return m;};
     }
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
     const result=profile==="stable"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
@@ -905,10 +906,10 @@ console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-
     f.plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"Sentence cues 1-1 needs review",ColorIndex:1});
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
     for(const item of [f.nested,f.voice]){
-      const m=item.getMarkers().createMarker(1);let start=1,end=1.25;
+      const m=item.getMarkers().createMarker(1);const bounds=markerBounds({},1,1.25);
       m.name="VOICE SYNC - Kiem tra toc do";m.comments="old\n[PremiereVoiceSync:owned-marker:v1]";m.setColorByIndex(4);
-      Object.defineProperty(m,"start",{get:()=>({seconds:start}),set(v){assert.equal(typeof v,"number");start=v;assert(start<=end);f.actions.push(["markerStart",v]);}});
-      Object.defineProperty(m,"end",{get:()=>end,set(v){end=v;assert(start<=end);f.actions.push(["markerEnd",v]);}});
+      Object.defineProperty(m,"start",{get:()=>bounds.start,set(v){bounds.start=v;f.actions.push(["markerStart",v]);}});
+      Object.defineProperty(m,"end",{get:()=>bounds.end,set(v){bounds.end=v;f.actions.push(["markerEnd",v]);}});
     }
     return f;
   }

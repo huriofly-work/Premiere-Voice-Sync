@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -101,7 +102,7 @@ writeJob();const timedNative=seq.exportAsMediaDirect;seq.exportAsMediaDirect=(..
 writeJob();failExport=true;result=parse(exportAudio());assert(!result.ok);assert.equal(result.audioExportTiming.nativeMilliseconds,8000,"Thrown native errors must retain measured time");failExport=false;seq.exportAsMediaDirect=timedNative;
 console.log("CAPTION_EXPORT_TIMING_OK:native-clock,host-clock,finalize-clock,throw-preserves-timing");
 const reviewValues=[];
-seq.markers={getFirstMarker:()=>reviewValues[0]||null,getNextMarker:m=>reviewValues[reviewValues.indexOf(m)+1]||null,deleteMarker:m=>reviewValues.splice(reviewValues.indexOf(m),1),createMarker:seconds=>{const m={start:{seconds},setColorByIndex:c=>{m.color=c;},getColorByIndex:()=>m.color};reviewValues.push(m);return m;}};
+seq.markers={getFirstMarker:()=>reviewValues[0]||null,getNextMarker:m=>reviewValues[reviewValues.indexOf(m)+1]||null,deleteMarker:m=>reviewValues.splice(reviewValues.indexOf(m),1),createMarker:seconds=>{const m=markerBounds({setColorByIndex:c=>{m.color=c;},getColorByIndex:()=>m.color}, seconds);reviewValues.push(m);return m;}};
 seq.createCaptionTrack=()=>true;
 const reviewResult={ok:true,workflow:"caption-only",schemaVersion:1,sequenceId:"seq1",snapshot:api._captionOnlySnapshot(seq),captionSrtPath:"captions.srt",captionCueCount:5,reviewMarkers:[{start:10,end:11,reason:"timing chưa xác minh – kiểm mép",captionIndices:[4]}],reviewMarkerRanges:[{start:10,end:12}]};
 files["result.json"].text=JSON.stringify(reviewResult);
@@ -116,7 +117,7 @@ assert.equal(result.unattachedMarkerCount,1);
 for(const mode of ["tracks","clips"])for(const compact of [false,true]){
   const voiceValues=[],otherValues=[];
   function markers(values){return {getFirstMarker:()=>values[0]||null,getNextMarker:m=>values[values.indexOf(m)+1]||null,
-    deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker:seconds=>{const m={start:{seconds},getColorByIndex:()=>m.color,setColorByIndex:c=>{m.color=c;}};values.push(m);return m;}};}
+    deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker:seconds=>{const m=markerBounds({getColorByIndex:()=>m.color,setColorByIndex:c=>{m.color=c;}}, seconds);values.push(m);return m;}};}
   const voiceCollection=markers(voiceValues),otherCollection=markers(otherValues);
   audios[1].clips[0].projectItem={nodeId:"voice-source",getMarkers:()=>voiceCollection};
   audios[0].clips[0].projectItem={nodeId:"other-source",getMarkers:()=>otherCollection};
@@ -132,7 +133,7 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
   const failures=[];let passed=0;
   for(const mode of ["mix","tracks"])for(const compact of [false,true]){try{
     const sourceValues=[];
-    const bank={getFirstMarker:()=>sourceValues[0]||null,getNextMarker:m=>sourceValues[sourceValues.indexOf(m)+1]||null,deleteMarker:m=>sourceValues.splice(sourceValues.indexOf(m),1),createMarker:seconds=>{const m={start:{seconds},setColorByIndex:c=>{m.color=c;},getColorByIndex:()=>m.color};sourceValues.push(m);return m;}};
+    const bank={getFirstMarker:()=>sourceValues[0]||null,getNextMarker:m=>sourceValues[sourceValues.indexOf(m)+1]||null,deleteMarker:m=>sourceValues.splice(sourceValues.indexOf(m),1),createMarker:seconds=>{const m=markerBounds({setColorByIndex:c=>{m.color=c;},getColorByIndex:()=>m.color}, seconds);sourceValues.push(m);return m;}};
     audios[2].clips[0].projectItem={nodeId:"music-source",getMarkers:()=>bank};
     const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),reviewMarkers:[{start:1,end:2,reason:"only music covers this issue"}],reviewMarkerRanges:[{start:0,end:22}],reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:[1,2],selectedClips:[]}});
     files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
@@ -155,7 +156,7 @@ for(const [mode,muted,start,chosen,expected] of [
     const rows=markers[i];
     const bank={getFirstMarker:()=>rows[0],getNextMarker:m=>rows[rows.indexOf(m)+1],
       deleteMarker:m=>rows.splice(rows.indexOf(m),1),createMarker(seconds){
-        const marker={start:{seconds},setColorByIndex(c){this.color=c;},getColorByIndex(){return this.color;}};
+        const marker=markerBounds({setColorByIndex(c){this.color=c;},getColorByIndex(){return this.color;}}, seconds);
         rows.push(marker);return marker;
       }};
     track.clips[0].projectItem={nodeId:"source"+i,getMarkers:()=>bank};

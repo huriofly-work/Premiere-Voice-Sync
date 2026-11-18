@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert=require("assert"),fs=require("fs"),vm=require("vm"),path=require("path");
 const host=fs.readFileSync(path.join(__dirname,"../../extension/jsx/host.jsx"),"utf8");
 let clock=0;
@@ -10,14 +11,15 @@ function fixture(positions,foreign=[]){
   const items=[],events=[],faults={};let id=0;
   function marker(data){
     let start=data.seconds,end=data.end===undefined?start+0.25:data.end,color=data.color===undefined?4:data.color;
+    const bounds=markerBounds({},start,end,true);
     const m={guid:String(id++),type:"Comment",name:data.name===undefined?"owned":data.name,comments:data.comments===undefined?"old":data.comments,
-      get start(){return {seconds:start};},set start(v){
+      get start(){return bounds.start;},set start(v){
         events.push(["start",m.guid,v]);clock+=19;assert.equal(typeof v,"number");
         if(faults.move){delete faults.move;throw Error("MOVE_FAILED");}
-        start=v+(faults.offset||0);delete faults.offset;assert(start<=end,"start <= end after start write");
+        bounds.start=v+(faults.offset||0);delete faults.offset;
         if(faults.moveAfter){delete faults.moveAfter;throw Error("MOVE_AFTER_MUTATION");}
       },
-      get end(){return {seconds:end};},set end(v){events.push(["end",m.guid,v]);clock+=7;if(faults.end){delete faults.end;throw Error("END_FAILED");}end=v;assert(start<=end,"start <= end after end write");if(faults.endAfter){delete faults.endAfter;throw Error("END_AFTER_MUTATION");}},
+      get end(){return bounds.end;},set end(v){events.push(["end",m.guid,v]);clock+=7;if(faults.end){delete faults.end;throw Error("END_FAILED");}bounds.end=v;assert(bounds.start.seconds<=v);if(faults.endAfter){delete faults.endAfter;throw Error("END_AFTER_MUTATION");}},
       getColorByIndex(){return color;},setColorByIndex(v){events.push(["color",m.guid,v]);color=v;}};
     for(const field of ["name","comments"]){let value=m[field];Object.defineProperty(m,field,{get:()=>value,set(v){events.push([field,m.guid,v]);value=v;if(faults[field]){delete faults[field];throw Error("FIELD_AFTER_MUTATION");}}});}
     items.push(m);return m;
@@ -46,12 +48,19 @@ for(const [old,wanted,moves,creates,deletes] of [[[1],[4,6,8],1,2,0],[[1,2,3],[6
   const r=run(f,specs);run(b,specs,false);assert.equal(r.failures.length,0);
   assert.equal(r.timings.moves,moves);assert.equal(r.timings.creates,creates);assert.equal(r.timings.deletes,deletes);assert.deepStrictEqual(state(f),state(b));
 });
+for (const [start,end,target] of [[1,2,1.5],[2,3,1.5],[1,1,2],[2,2,1],[1,2,4]]) test("point target "+[start,end,target],()=>{
+  const f=fixture([{seconds:start,end}]), r=run(f,[spec(target,target)]);
+  assert.deepStrictEqual(Array.from(r.failures),[]);
+  assert.equal(f.items[0].start.seconds,target);
+  assert.equal(f.items[0].end.seconds,target);
+  assert.equal(r.timings.endWrites,Number(start!==end));
+});
 test("duration ordering both directions and default point end",()=>{
   for(const [old,s] of [[1,spec(8)],[8,spec(1)],[8,{...spec(1),end:undefined}]]){
     const f=fixture([old]),r=run(f,[s]);assert.equal(r.failures.length,0);
     assert.equal(f.items[0].end.seconds,s.end===undefined?s.seconds:s.end);
     const fields=f.events.filter(e=>["start","end"].includes(e[0])).map(e=>e[0]);
-    assert.deepStrictEqual(fields,old<s.seconds?["end","start"]:["start","end"]);
+    assert.deepStrictEqual(fields,["start","end"]);
   }
 });
 for(const mode of ["move","moveAfter","end","endAfter","name","comments","verify","deleteAfter","offset"])test("compensate "+mode,()=>{
@@ -70,7 +79,7 @@ test("created replacements removed and deleted originals recreated on failure",(
 });
 test("unchanged fields and rerun write nothing",()=>{
   const f=fixture([{...spec(1),comments:"new"}]),r=run(f,[spec(6)]);
-  assert.equal(r.failures.length,0);assert.deepStrictEqual(f.events.map(e=>e[0]),["end","start"]);
+  assert.equal(r.failures.length,0);assert.deepStrictEqual(f.events.map(e=>e[0]),["start"]);
   f.events.length=0;assert.equal(run(f,[spec(6)]).failures.length,0);assert.deepStrictEqual(f.events,[]);
 });
 test("foreign collision, reserved positions and preparation guard",()=>{

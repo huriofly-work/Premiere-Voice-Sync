@@ -10,6 +10,11 @@ function literal(value) {
 function scriptFor(args) {
     const [command, ...rest] = args;
     if (command === "cost-list" && rest.length === 0) return "$._PVSMarkerWriteCostProbe.list()";
+    if (command === "move-list" && rest.length === 0) return "$._PVSMarkerMoveEndProbe.list()";
+    if (["move-run", "move-cleanup"].includes(command)) {
+        if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: move-run|move-cleanup <documentId> <nodeId> <tag> <scope>");
+        return `$._PVSMarkerMoveEndProbe.${command === "move-run" ? "run" : "cleanup"}(${rest.map(literal).join(",")})`;
+    }
     if (["cost-run", "cost-cleanup"].includes(command)) {
         const max = command === "cost-run" ? 5 : 4;
         if (rest.length < 4 || rest.length > max || rest.slice(0, 4).some(v => typeof v !== "string" || !v)) throw Error("Usage: cost-run|cost-cleanup <documentId> <nodeId> <tag> <scope> [N for cost-run only]");

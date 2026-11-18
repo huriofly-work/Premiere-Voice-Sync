@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert=require("assert"),fs=require("fs"),path=require("path"),vm=require("vm");
 const host=fs.readFileSync(path.join(__dirname,"../../extension/jsx/host.jsx"),"utf8");
 const start=host.indexOf("    function readSpeedPercent(item)");
@@ -16,7 +17,7 @@ function item(id,sourceStart,sourceEnd,values){
   const markers={getFirstMarker:()=>values[0]||null,getNextMarker:m=>values[values.indexOf(m)+1]||null,deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker:()=>{throw Error("NO_NEW_MARKER_EXPECTED");}};
   return {getSpeed:()=>1,name:id,projectItem:{nodeId:id,getMarkers:()=>markers},start:{seconds:0},end:{seconds:sourceEnd-sourceStart},inPoint:{seconds:sourceStart},outPoint:{seconds:sourceEnd}};
 }
-function marker(spec,seconds){return Object.assign({},spec,{start:{seconds}});}
+function marker(spec,seconds){return markerBounds(Object.assign({},spec),seconds,spec.end);}
 const manual=marker({name:speed.name,comments:"My note"},4),unknown=marker({name:"VOICE SYNC - unknown",comments:""},5);
 const values=[marker(speed,0),marker(speed,2),manual,unknown,marker(voice,7),marker(speed,10),marker(speed,20)];
 const owner=item("source",2,10,values),groups={},entry={Item:owner,Ranges:[{start:2,end:6},{start:7,end:10}]};

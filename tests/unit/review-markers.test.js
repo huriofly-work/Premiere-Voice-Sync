@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert = require("assert"), fs = require("fs"), path = require("path"), vm = require("vm");
 const root = path.join(__dirname, "../..");
 const main = fs.readFileSync(path.join(root, "extension/js/main.js"), "utf8");
@@ -13,10 +14,10 @@ const build = (report, plan) => JSON.parse(JSON.stringify(ui.buildReviewMarkers(
   vm.runInContext(fs.readFileSync(path.join(root, "extension/jsx/host.jsx"), "utf8"), context);
   const tag = "[PremiereVoiceSync:review-marker:v2:edit:s]", failures = [];
   function comments(issues, initial = []) {
-    const values = initial.slice();
+    const values = initial.map(m => markerBounds(m, m.start.seconds, m.end));
     const markers = { getFirstMarker: () => values[0] || null, getNextMarker: m => values[values.indexOf(m) + 1] || null,
       deleteMarker: m => values.splice(values.indexOf(m), 1), createMarker: seconds => {
-        const m = { name: "", comments: "", start: { seconds }, setColorByIndex(c) { this.color = c; }, getColorByIndex() { return this.color; } };
+        const m=markerBounds({ name: "", comments: "",  setColorByIndex(c) { this.color = c; }, getColorByIndex() { return this.color; } }, seconds);
         values.push(m); return m;
       } };
     const clip={start:{seconds:0},end:{seconds:30},inPoint:{seconds:0},outPoint:{seconds:30},getSpeed:()=>1,projectItem:{nodeId:"voice",getMarkers:()=>markers}};
@@ -192,11 +193,11 @@ vm.runInContext(fs.readFileSync(path.join(root,"extension/jsx/host.jsx"),"utf8")
 const apply = host.$._PVS._applyReviewMarkers;
 const tag = w => "[PremiereVoiceSync:review-marker:v1:"+w+"]";
 function fixture(initial=[]) {
-  const values=initial.slice(); let colorFault=false, positionFault=false, creationFault=false;
+  const values=initial.map(m=>markerBounds(m,m.start.seconds,m.end)); let colorFault=false, positionFault=false, creationFault=false;
   const markers={getFirstMarker:()=>values[0]||null,getNextMarker:m=>values[values.indexOf(m)+1]||null,
     deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker(seconds){
       if(creationFault)throw Error("CREATE_FAILED");
-      const marker={name:"",comments:"",start:{seconds:seconds+(positionFault?1:0)},setColorByIndex(c){if(colorFault)throw Error("COLOR_FAILED");this.color=c;},getColorByIndex(){return this.color;}};
+      const marker=markerBounds({name:"",comments:"",setColorByIndex(c){if(colorFault)throw Error("COLOR_FAILED");this.color=c;},getColorByIndex(){return this.color;}}, seconds+(positionFault?1:0));
       values.push(marker);return marker;
     }};
   return {seq:{timebase:254016000000/30,markers},values,set colorFault(v){colorFault=v;},set positionFault(v){positionFault=v;},set creationFault(v){creationFault=v;}};

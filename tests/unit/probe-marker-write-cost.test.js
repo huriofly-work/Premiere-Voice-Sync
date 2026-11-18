@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
 const root = path.resolve(__dirname, "../.."), file = path.join(root, "tools/probes/Probe-MarkerWriteCost.jsx");
 const source = fs.readFileSync(file, "utf8"), parser = {};
@@ -11,17 +12,18 @@ function fixture(mode = "both", fault = null) {
     function operation(key) { clock += costs[key]; events.push(key); if (key !== "getColorByIndex") writes++; }
     function fail(key) { if (fault === key && !faultUsed) { faultUsed = true; throw Error(key); } }
     function marker(start, comments = "", name = "") {
-        let position = start, end = start, color = 0;
+        const bounds = markerBounds({}, start, start, true);
+        let color = 0;
         const m = { guid: "m" + id++, type: "Comment", get name() { return name; }, set name(v) { operation("name"); name = v; fail("name"); },
             get comments() { return comments; }, set comments(v) { operation("comments"); comments = v; fail("comments"); },
-            get start() { return { seconds: position }; }, set start(v) {
+            get start() { return bounds.start; }, set start(v) {
                 const kind = typeof v === "number" ? "seconds" : "Time";
                 if (mode === "ignore") return;
                 if (mode === "throw" || (!["both", "throw-after"].includes(mode) && mode !== kind)) throw Error("read-only " + kind);
-                position = typeof v === "number" ? v : v.seconds;
+                bounds.start = v;
                 if (mode === "throw-after") throw Error("mutated then threw");
             },
-            get end() { return { seconds: end }; }, set end(v) { operation("end"); if (fault !== "end-noop") end = v; fail("end"); },
+            get end() { return bounds.end; }, set end(v) { operation("end"); if (fault !== "end-noop") bounds.end = v; fail("end"); },
             getColorByIndex() { operation("getColorByIndex"); return color; },
             setColorByIndex(v) { operation("setColorByIndex"); color = v; fail("setColorByIndex"); } };
         values.push(m); return m;
@@ -105,6 +107,15 @@ for (const fault of ["comments", "name", "end", "end-noop", "setColorByIndex", "
 }
 const { scriptFor } = require(path.join(root, "tools/probes/run-probe.js"));
 assert.equal(scriptFor(["cost-list"]), "$._PVSMarkerWriteCostProbe.list()");
+assert.equal(scriptFor(["move-list"]), "$._PVSMarkerMoveEndProbe.list()");
+const moveArgs = ['project"1', "media-1", "[PremiereVoiceSync:marker-move-end:v1]", "probe-tagged-only"];
+for (const method of ["run", "cleanup"]) {
+    const command = "move-" + method;
+    assert.equal(scriptFor([command, ...moveArgs]), "$._PVSMarkerMoveEndProbe." + method + "(" + moveArgs.map(JSON.stringify).join(",") + ")");
+    assert.throws(() => scriptFor([command, ...moveArgs.slice(1)]));
+    assert.throws(() => scriptFor([command, ...moveArgs, "extra"]));
+}
+assert.throws(() => scriptFor(["move-list", "extra"]));
 const args = ["project-1", "media-1", TAG, SCOPE];
 assert.equal(scriptFor(["cost-run", ...args]), `$._PVSMarkerWriteCostProbe.run(${args.map(JSON.stringify).join(",")})`);
 assert.equal(scriptFor(["cost-run", ...args, "10"]), `$._PVSMarkerWriteCostProbe.run(${args.map(JSON.stringify).join(",")},10)`);

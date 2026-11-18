@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert=require("assert"),fs=require("fs"),path=require("path"),vm=require("vm");
 const source=fs.readFileSync(path.join(__dirname,"../../extension/jsx/host.jsx"),"utf8");
 const context=vm.createContext({$:{_PVS:{}}});vm.runInContext(source,context);
@@ -8,8 +9,8 @@ const owned=(seconds,note="old")=>({seconds,name:"VOICE SYNC - Can kiem tra",com
 function fixture(initial=[],onMarker=m=>m){
   let id=0;const values=[],events=[],faults={},reads={first:0,next:0};
   function marker(data){
-    let name=data.name||"",comments=data.comments||"",color=data.color===undefined?4:data.color,start={seconds:data.seconds};
-    const m={guid:"marker-"+(id++),type:data.type||"Comment",get start(){return start;},set start(v){events.push(["start",this.guid,v]);start={seconds:v+(faults.positionOffset||0)};delete faults.positionOffset;},end:{seconds:data.end===undefined?data.seconds:data.end},
+    let name=data.name||"",comments=data.comments||"",color=data.color===undefined?4:data.color,bounds=markerBounds({},data.seconds,data.end,true);
+    const m={guid:"marker-"+(id++),type:data.type||"Comment",get start(){return bounds.start;},set start(v){events.push(["start",this.guid,v]);bounds.start=v+(faults.positionOffset||0);delete faults.positionOffset;},get end(){return bounds.end;},set end(v){bounds.end=v;},
       get name(){return name;},set name(v){events.push(["name",this.guid,v]);name=v;if(faults.name){const f=faults.name;delete faults.name;throw Error(f);}},
       get comments(){return comments;},set comments(v){events.push(["comments",this.guid,v]);comments=v;if(faults.comments){const f=faults.comments;delete faults.comments;throw Error(f);}},
       getColorByIndex(){return color;},setColorByIndex(v){events.push(["color",this.guid,v]);if(faults.color)throw Error("COLOR_FAILED");color=v;}};
@@ -54,8 +55,9 @@ for (const [length, occupied, frame] of [
 for (const defaultDuration of [0,0.25]) {
   const f=fixture(), create=f.collection.createMarker;let writes=0;
   f.collection.createMarker=seconds=>{
-    const m=create(seconds);let end=seconds+defaultDuration;
-    Object.defineProperty(m,"end",{get:()=>({seconds:end}),set:value=>{writes++;end=value;}});
+    const m=create(seconds), end=Object.getOwnPropertyDescriptor(m,"end");
+    m.end=seconds+defaultDuration;
+    Object.defineProperty(m,"end",{get:end.get,set(value){writes++;end.set(value); }});
     return m;
   };
   const issues=[{start:1,end:3,reason:"review"}];
@@ -139,7 +141,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   assert(r.failures.some(x=>x.includes("COMMENT_WRITE_FAILED")));
   assert.equal(t.readPasses,2);assert.equal(t.collectionBefore,2);assert.equal(t.collectionAfter,2);
   assert.equal(t.creates,0);assert.equal(t.deletes,0);
-  assert.equal(t.nameWrites,1);assert.equal(t.commentsWrites,2);assert.equal(t.endWrites,1);
+  assert.equal(t.nameWrites,1);assert.equal(t.commentsWrites,2);assert.equal(t.endWrites,0);
   assert.equal(t.colorReads,5);assert.equal(t.colorWrites,0);
   assert.equal(f.values[0].comments,owned(1).comments,"Count compensation without changing restoration");
 }
@@ -376,8 +378,8 @@ r=api.commit(f.owner.Group);assert(r.failures.length);assert.deepEqual(state(f),
 f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
 assert.equal(f.owner.Group.desired.length,1,"Identical warnings on a repeated source do not duplicate.");
 // The host rounds both Time fields of the point to the same source instant.
-const rounded=f.values[0];let roundedEnd=rounded.end;
-Object.defineProperty(rounded,"end",{get:()=>roundedEnd,set:value=>{roundedEnd=value+0.01;}});
+const rounded=f.values[0], roundedEnd=Object.getOwnPropertyDescriptor(rounded,"end");
+Object.defineProperty(rounded,"end",{get:roundedEnd.get,set:value=>roundedEnd.set(value+0.01)});
 f.faults.positionOffset=0.01;r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.failures.length,0);
 f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
 r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[],"Quantized source positions stay stable across reruns.");

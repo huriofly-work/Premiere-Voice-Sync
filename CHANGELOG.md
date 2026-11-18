@@ -2,6 +2,10 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
+## Chưa phát hành
+
+- Sửa lỗi Auto edit khi dời marker đến giữa đoạn cảnh báo và khi khôi phục vị trí marker cũ (#67).
+
 ## 2.20.94 — 2026-11-18
 
 Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. Marker gọn hơn: không chồng qua các lần chạy, là điểm ở giữa đoạn cảnh báo, gộp cảnh báo cùng loại, không còn marker dự phòng trên thước timeline. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.94.md).
