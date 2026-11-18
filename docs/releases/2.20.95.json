@@ -3,7 +3,7 @@
   "version": "2.20.95",
   "tag": "v2.20.95",
   "channel": "prerelease",
-  "nativeAcceptance": "pending-user-test",
+  "nativeAcceptance": "accepted",
   "package": {
     "sha256": "77C1557766C1B15D57B4D7B1E56E8C7401845C111DB872F8CA86D37E7DB0DA32",
     "bytes": 1535382608,
@@ -47,15 +47,51 @@
   ],
   "supersedes": "2.20.94",
   "installation": {
-    "status": "pending-manual-close-of-Premiere",
+    "status": "installed-and-verified",
+    "installedFiles": 66,
+    "userDataUnchanged": true,
+    "cepRegistryUnchanged": true,
     "projectActionsPerformed": false,
     "forcedApplicationClose": false
   },
   "knownLimitations": [
-    "Not verified in Premiere: the Auto edit rerun with moved markers, point marker display, cleanup of the duplicate review sets and old ruler fallbacks, caption-only mixed-track attachment.",
+    "Not verified in Premiere: a second steady-state rerun and caption-only mixed-track attachment. Accepted natively on one project only.",
     "2.20.94 and 2.20.93 contain the faulty move order and should not be used for Auto edit.",
     "Caption-only mixed mode attaches to the first audible track with a clip, which can be a music or SFX track.",
     "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
     "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
-  ]
+  ],
+  "nativeAcceptanceEvidence": {
+    "date": "2026-11-18",
+    "by": "user",
+    "premiere": "26.2.2",
+    "basis": "User installed 2.20.95, reopened the saved copy of the project that failed with 2.20.94, reran Auto edit on a new sequence and checked the timeline: markers are points in the middle of the warned span and no duplicate sets remain. One project only.",
+    "runEvidence": {
+      "timelineMilliseconds": 74992,
+      "hostCalls": 34,
+      "captionCueCount": 299,
+      "voiceCueCount": 100,
+      "pictureCueCount": 130,
+      "clipMarkerCount": 40,
+      "reviewMarkerClipCount": 21,
+      "unattachedMarkerCount": 0,
+      "clipMarkerFailureCount": 0,
+      "reviewMarkerFailureCount": 0,
+      "markerRestorationFailures": 0,
+      "voiceSourceMarkersBefore": 59,
+      "voiceSourceMarkersAfter": 21,
+      "reviewMarkersMovedToPoints": 21,
+      "earlierReviewMarkersRemoved": 38,
+      "pictureMarkersMovedToPoints": 19,
+      "oneTimeMarkerMigrationMilliseconds": {
+        "picture": 7604,
+        "review": 8780
+      }
+    },
+    "notMeasured": [
+      "A second, steady-state rerun (expected close to zero marker writes).",
+      "Caption-only mixed or multi-track marker attachment.",
+      "Projects other than this one; pre-commit before cuts still wrote nothing."
+    ]
+  }
 }
