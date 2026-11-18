@@ -35,6 +35,35 @@ function group(f){return api.group(f.collection,[{start:0,end:10}],m=>m.comments
 const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:comments+"\n"+tag,color:4});
 function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");}
 
+// Half-open spans, half-frame ties and collision search on the timeline grid.
+for (const [length, occupied, frame] of [
+  [6, [], 3], [5, [], 3], [1, [], 0], [6, [3], 4], [6, [3,4], 2],
+  [6, [1,2,3,4,5], 0], [3, [0,1,2], null]
+]) {
+  const f=fixture(occupied.map(i=>({seconds:1+i/30,name:"manual"})));
+  const r=run(f,[{start:1,end:1+length/30,reason:"review"}]);
+  assert.equal(r.reviewMarkerFailureCount,frame===null?1:0);
+  const point=state(f).find(m=>m.name!=="manual");
+  if(frame===null) assert.equal(point,undefined);
+  else {assert(Math.abs(point.seconds-(1+frame/30))<1e-10);assert.equal(point.end,point.seconds);}
+}
+// Measure Out writes through a full create, range migration and steady rerun.
+for (const defaultDuration of [0,0.25]) {
+  const f=fixture(), create=f.collection.createMarker;let writes=0;
+  f.collection.createMarker=seconds=>{
+    const m=create(seconds);let end=seconds+defaultDuration;
+    Object.defineProperty(m,"end",{get:()=>({seconds:end}),set:value=>{writes++;end=value;}});
+    return m;
+  };
+  const issues=[{start:1,end:3,reason:"review"}];
+  assert.equal(run(f,issues).reviewMarkerCount,1);assert.equal(writes,defaultDuration?1:0);
+  const prior=f.values[0];prior.end=3;writes=0;
+  assert.equal(run(f,issues).reviewMarkerCount,1);assert.equal(writes,1);assert.equal(prior.end.seconds,2);
+  prior.end=2+1e-9;writes=0;f.events.length=0;
+  assert.equal(run(f,issues).reviewMarkerCount,1);assert.equal(f.values[0],prior);
+  assert.equal(writes,0);assert.deepEqual(f.events,[]);
+}
+
 // Commit counters cover the existing passes, including unchanged/manual rows.
 {
   const f=fixture([owned(1),owned(2),{seconds:9,name:"manual"}]),g=group(f);
@@ -127,7 +156,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const v=setup([[0,previousEnd],[2,4]]),r=v.invoke();
     assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerSequenceFallbackCount,0);
     assert.equal(v.sources[0].values.length,0,"Previous tail must not own the issue");
-    assert.equal(v.sources[1].values[0].start.seconds,10);assert.equal(Number(v.sources[1].values[0].end),11.5);
+    const point=state(v.sources[1])[0];assert(Math.abs(point.seconds-(10+23/30))<1e-8);assert.equal(point.end,point.seconds);
   });
   test("#3 equal overlaps use ruler",()=>{const v=setup([[0,2],[3,5]]);const r=v.invoke([{start:1,end:4,reason:"tie"}]);assert.equal(r.reviewMarkerSequenceFallbackCount,1);});
   test("#3 overlapping tracks use ruler despite unique largest",()=>{
@@ -172,9 +201,9 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   for(const speed of [1,1.1,110])test("voice range speed "+speed,()=>{
     const v=voice(speed),r=invoke(v),factor=speed>10?speed/100:speed;
     assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerSequenceFallbackCount,0);
-    const m=v.source.values[0];assert(Math.abs(m.start.seconds-(issue.start-12.5667+12.3667)*factor)<1e-7);
-    assert(Math.abs(Number(m.end.seconds===undefined?m.end:m.end.seconds)-(issue.end-12.5667+12.3667)*factor)<1e-7);
-    if(factor===1.1)assert(Math.abs(m.start.seconds-16.3667)<0.001);
+    const m=v.source.values[0];assert(Math.abs(m.start.seconds-(467/30-12.5667+12.3667)*factor)<1e-7);
+    assert(Math.abs(Number(m.end.seconds===undefined?m.end:m.end.seconds)-(467/30-12.5667+12.3667)*factor)<1e-7);
+    assert.equal(state(v.source)[0].end,m.start.seconds);
     assert.equal(v.timeline.values.length,0);
     const before=state(v.source);v.source.events.length=0;invoke(v);assert.deepEqual(state(v.source),before);assert.deepEqual(v.source.events,[]);
   });
@@ -195,7 +224,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   });
   test("clamp at covering clip end, never span gap",()=>{
     const v=voice();v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
-    const r=invoke(v);assert.equal(r.reviewMarkerClipCount,1);assert(Math.abs(Number(v.source.values[0].end)-15.3)<1e-7);
+    const r=invoke(v);assert.equal(r.reviewMarkerClipCount,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2))<1e-7);
   });
   test("shared voice replaces the previous sequence review set",()=>{
     const v=voice(), name="VOICE SYNC - Can kiem tra";
@@ -234,7 +263,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const v=voice(1.1);v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
     const next=Object.assign({},v.clip,{start:{seconds:15.8},end:{seconds:20},inPoint:{seconds:17},outPoint:{seconds:21.2}});
     const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],"captions",null,[v.clip,next]);
-    assert.equal(r.reviewMarkerClipCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(Number(v.source.values[0].end)-16.83)<1e-7);
+    assert.equal(r.reviewMarkerClipCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2)*1.1)<1e-7);
   });
   test("unsupported rerun cleans scoped v2 only",()=>{
     const v=voice();invoke(v);v.clip.isSpeedReversed=()=>true;
@@ -311,7 +340,7 @@ f=fixture([owned(1)]);g=group(f);g.blocked=true;r=api.commit(g);assert(r.failure
 f=fixture([owned(1),{seconds:2,name:"manual",comments:"mine"}]);const beforeCollision=state(f);
 r=run(f,[{start:1,end:1.5,reason:"new notes"},{start:2,end:2+1/30,reason:"blocked"}]);
 assert(r.reviewMarkerFailureCount);assert.deepEqual(state(f),beforeCollision);assert.equal(f.events.length,0);
-f=fixture([owned(1)]);f.faults.createAt=2;const beforeSequence=state(f);
+f=fixture([owned(1)]);f.faults.createAt=68/30;const beforeSequence=state(f);
 r=run(f,[{start:1,end:1.5,reason:"new notes"},{start:2,end:2.5,reason:"new"}]);assert(r.reviewMarkerFailureCount);assert.deepEqual(state(f),beforeSequence);
 
 // Native collection enumerations are bounded per owner, not per desired marker.
@@ -335,8 +364,8 @@ function clipFixture(){
 const clipSpec={Owner:"A2",Name:"VOICE SYNC - Kiem tra can voice",Comments:"review"};
 f=clipFixture();const oldClipState=state(f);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
 assert.deepEqual(state(f),oldClipState);assert.equal(f.events.length,0);
-r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,0);assert.equal(r.timings.moves,1);assert.equal(r.timings.creates,0);assert.equal(f.values[0].start.seconds,4);assert.equal(f.values[0].getColorByIndex(),4);
-// Reprepare simulates another run on the same input. Marker remains at 6s.
+r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,0);assert.equal(r.timings.moves,1);assert.equal(r.timings.creates,0);assert.equal(f.values[0].start.seconds,8);assert.equal(state(f)[0].end,8);assert.equal(f.values[0].getColorByIndex(),4);
+// Reprepare simulates another run on the same input. Marker remains at 8s.
 f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
 r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[]);
 f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.faults.positionOffset=10;
@@ -345,23 +374,30 @@ f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);context
 r=api.commit(f.owner.Group);assert(r.failures.length);assert.deepEqual(state(f),oldClipState);assert.equal(f.events.length,0);
 f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
 assert.equal(f.owner.Group.desired.length,1,"Identical warnings on a repeated source do not duplicate.");
+// The host rounds both Time fields of the point to the same source instant.
+const rounded=f.values[0];let roundedEnd=rounded.end;
+Object.defineProperty(rounded,"end",{get:()=>roundedEnd,set:value=>{roundedEnd=value+0.01;}});
 f.faults.positionOffset=0.01;r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.failures.length,0);
 f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
 r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[],"Quantized source positions stay stable across reruns.");
 console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-write-rerun;wrong-native-position;blocked-group-retains-old;shared-source-dedup;quantized-source-rerun");
 // Owned V1/A2 ruler fallbacks reconcile only their tagged sequence/range.
 {
-  const timeline=fixture([{seconds:0,name:"manual",comments:"keep"}]);timeline.seq.sequenceID="owned-rerun";
+  const timeline=fixture([{seconds:1,name:"manual",comments:"keep"}]);timeline.seq.sequenceID="owned-rerun";
   const clip={start:{seconds:0},end:{seconds:2}};
   context.ownedMarkerFallbacks=[];context.timelineMutated=false;
   context.queueOwnedMarkerFallback(clip,{Owner:"A2",Name:"VOICE SYNC - Kiem tra can voice",Comments:"listen"},30,{},null,"unreadable");
   r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,1);assert.equal(r.failures.length,0);
-  const marker=timeline.values.find(m=>m.name===clipSpec.Name);assert(Math.abs(marker.start.seconds-1/30)<1e-8);assert.equal(Number(marker.end),2);
+  const marker=timeline.values.find(m=>m.name===clipSpec.Name);assert(Math.abs(marker.start.seconds-31/30)<1e-8);assert.equal(state(timeline).find(m=>m.name===clipSpec.Name).end,31/30);
   timeline.events.length=0;r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,1);assert.deepEqual(timeline.events,[],"Fallback reruns reuse the same marker");
   timeline.marker({seconds:4,name:clipSpec.Name,comments:"foreign\n[PremiereVoiceSync:owned-marker:sequence:v1:other]"});
   timeline.marker({seconds:8,name:clipSpec.Name,comments:marker.comments});
   context.ownedMarkerFallbacks=[];r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,0);assert.equal(timeline.values.length,3);assert(!timeline.values.includes(marker));
   assert(timeline.values.some(m=>m.name==="manual"));assert(timeline.values.some(m=>m.start.seconds===8));
+  const combined="VOICE SYNC - Gop hinh / Kiem tra toc do";
+  context.queueOwnedMarkerFallback(clip,{Owner:"V1",Name:combined,Comments:"merged speed"},30,{},null,"unreadable");
+  r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,1);
+  const point=state(timeline).find(m=>m.name===combined);assert.equal(point.seconds,31/30);assert.equal(point.end,point.seconds);
   console.log("OWNED_RULER_FALLBACK_LIFECYCLE_OK:collision-stays-in-segment;duration;no-write-rerun;empty-cleanup;manual-foreign-outside-preserved");
 }
 const main=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8");

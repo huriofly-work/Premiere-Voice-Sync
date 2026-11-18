@@ -200,7 +200,7 @@ function fixture(initial=[]) {
     }};
   return {seq:{timebase:254016000000/30,markers},values,set colorFault(v){colorFault=v;},set positionFault(v){positionFault=v;},set creationFault(v){creationFault=v;}};
 }
-const owned=(seconds,w="captions")=>({name:"VOICE SYNC - Can kiem tra",comments:"old\n"+tag(w),start:{seconds}});
+const owned=(seconds,w="captions")=>({name:"VOICE SYNC - Can kiem tra",comments:"old\n"+tag(w),start:{seconds},end:seconds,color:4,getColorByIndex(){return this.color;},setColorByIndex(c){this.color=c;}});
 const manual={name:"VOICE SYNC - Can kiem tra",comments:"my note",start:{seconds:1}}, other=owned(1.5,"edit"), outside=owned(8);
 let f=fixture([manual,other,outside,owned(2)]);
 let stats=apply(f.seq,[{start:1,end:3,reason:"number",cueIndex:2,captionIndex:12,referenceCueIndex:9},{start:1,end:2,reason:"DTW",severity:"error"}], [{start:1,end:4}],"captions");
@@ -208,7 +208,7 @@ assert.equal(stats.reviewMarkerCount,1);assert.equal(stats.reviewMarkerFailureCo
 assert(f.values.includes(manual)&&f.values.includes(other)&&f.values.includes(outside));
 assert.equal(manual.comments,"my note");
 let warning=f.values.find(m=>m!==outside&&m.comments.includes(tag("captions")));
-assert(Math.abs(warning.start.seconds-(1+1/30))<1e-8);assert(warning.comments.includes("number")&&warning.comments.includes("DTW"));assert.equal(warning.color,1);
+assert(Math.abs(warning.start.seconds-2)<1e-8);assert.equal(warning.end,2);assert(warning.comments.includes("number")&&warning.comments.includes("DTW"));assert.equal(warning.color,1);
 assert(warning.comments.startsWith("Cue 12: number"));assert(!warning.comments.includes("Cue 2:"));
 stats=apply(f.seq,[{start:1,end:3,reason:"number"}], [{start:1,end:4}],"captions");assert.equal(stats.reviewMarkerCount,1);assert.equal(f.values.length,4,"Reruns upsert and do not duplicate.");
 stats=apply(f.seq,[],[{start:1,end:4}],"captions");assert.equal(stats.reviewMarkerFailureCount,0);assert.deepEqual(f.values,[manual,other,outside]);

@@ -67,7 +67,9 @@ TrackItem trên Premiere 26.2.2 không có `getMarkers`/`markers`; marker chỉ 
 media, hiện trên clip nào có vùng nguồn chứa nó. Marker có thời gian vào/ra
 (`start`/`end`), nên có thể phủ đúng đoạn cần cảnh báo (ý của user).
 
-## Kết luận và hệ quả
+**Cập nhật 18/11 (#59).** Probe trên ghi lại phép thử marker có độ dài ngày 15/11. Theo quyết định mới, tool đặt marker điểm ở giữa phần cảnh báo nằm trong clip. Nghiệm thu vị trí mới trên Premiere đang chờ.
+
+## Kết luận và hệ quả tại thời điểm thử
 
 - Khả thi: gắn marker review lên voice qua ProjectItem, giờ nguồn tính theo công
   thức trên, `start`/`end` phủ đúng đoạn cần cảnh báo. Marker đi theo clip khi kéo/trim.

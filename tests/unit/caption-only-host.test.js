@@ -105,7 +105,7 @@ seq.markers={getFirstMarker:()=>reviewValues[0]||null,getNextMarker:m=>reviewVal
 seq.createCaptionTrack=()=>true;
 const reviewResult={ok:true,workflow:"caption-only",schemaVersion:1,sequenceId:"seq1",snapshot:api._captionOnlySnapshot(seq),captionSrtPath:"captions.srt",captionCueCount:5,reviewMarkers:[{start:10,end:11,reason:"timing chưa xác minh – kiểm mép",captionIndices:[4]}],reviewMarkerRanges:[{start:10,end:12}]};
 files["result.json"].text=JSON.stringify(reviewResult);
-result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerCount,1);assert.equal(reviewValues[0].start.seconds,10);assert.equal(reviewValues[0].comments,"Cue 4: timing chưa xác minh – kiểm mép\n[PremiereVoiceSync:review-marker:v2:captions:seq1]");assert.equal(api._captionOnlySnapshot(seq),reviewResult.snapshot);
+result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerCount,1);assert.equal(reviewValues[0].start.seconds,10.5);assert.equal(reviewValues[0].end,10.5);assert.equal(reviewValues[0].comments,"Cue 4: timing chưa xác minh – kiểm mép\n[PremiereVoiceSync:review-marker:v2:captions:seq1]");assert.equal(api._captionOnlySnapshot(seq),reviewResult.snapshot);
 const panel=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8"),projection=panel.slice(panel.indexOf("  function projectHostInput("),panel.indexOf("  function writeHostInput("));
 const compactResult=vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:reviewResult});
 const fullImport=result;reviewValues.length=0;files["result.json"].text=JSON.stringify(compactResult);
@@ -124,7 +124,7 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
   selected=[audios[0].clips[0]];
   files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
   result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerClipCount,1);assert.equal(result.reviewMarkerSequenceFallbackCount,0);
-  assert.equal(voiceValues.length,1);assert.equal(voiceValues[0].start.seconds,0);assert.equal(Number(voiceValues[0].end),1);assert.equal(otherValues.length,0);assert.equal(reviewValues.length,0);
+  assert.equal(voiceValues.length,1);assert.equal(voiceValues[0].start.seconds,0.5);assert.equal(Number(voiceValues[0].end),0.5);assert.equal(otherValues.length,0);assert.equal(reviewValues.length,0);
   assert.equal(api._captionOnlySnapshot(seq),bound.snapshot);assert.equal(children.length,0);
 }
 // #2: unique coverage does not identify voice in a mix or several tracks.

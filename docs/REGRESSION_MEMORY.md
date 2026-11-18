@@ -1,5 +1,12 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #59 — Marker điểm ở giữa đoạn cảnh báo (18/11/2026)
+
+- **Quyết định.** Marker có độ dài che sóng âm và các lớp khi dựng. Theo quyết định ngày 18/11, marker của tool là điểm ở giữa đoạn cảnh báo (In = Out), thay quy tắc hiển thị bằng độ dài của #36.
+- **Vị trí.** Trên clip, lấy giữa phần giao với đoạn clip thực tế rồi làm tròn theo frame timeline (nửa frame chọn phía sau) trước khi đổi sang giây nguồn. Trên thước, dùng toàn đoạn cảnh báo. Khi vướng marker, thử từng khoảng cách một frame, phía sau trước rồi phía trước, luôn ở trong đoạn. Khi hết chỗ, giữ luồng dự phòng/báo lỗi hiện có.
+- **Ghi và khôi phục.** Dùng cùng bộ lập vị trí khi ghi trước lúc cắt và khi đối chiếu sau dựng. Đọc Out của marker mới và chỉ ghi khi sai quá nửa dung sai nhóm hoặc thiếu Out. Marker cũ được thu về điểm khi chạy lại. Nhật ký vẫn giữ chính xác hai mép gốc để trả lại khi lỗi hoặc Dừng.
+- **Kiểm chứng.** Mock review và reconciliation kiểm tra va chạm, mép clip, đổi tốc độ và chạy lại. Mock executor kiểm tra thứ tự ghi của fixture 65 lát, khôi phục marker cũ, parity của các profile và số lần ghi Out. Standard suite đạt 73 nhóm, parse 133 file PowerShell, bỏ qua 6 nhóm tích hợp Windows. Log ở `_local/point-markers/suite.log`. Chờ chạy trên Premiere để xác nhận Out mặc định, hiển thị trên timeline và chi phí ghi thật.
+
 ## Issue #58 — Thay marker review cũ trên nguồn voice dùng chung (18/11/2026)
 
 - **Nguyên nhân.** Hai lượt Auto edit dùng sequence khác nhau nhưng cùng ProjectItem voice. Host chỉ nhận tag của sequence hiện tại nên số marker trên nguồn tăng từ 15 lên 37 rồi 59. Lượt cuối tạo 22 marker và xóa 0.

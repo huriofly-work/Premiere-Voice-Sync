@@ -18,7 +18,7 @@ const TPF = 8467200000;
   f.context.item=clip;
   vm.runInContext('var groups={};prepareClipMarkerGroup({Item:item,Ranges:[{start:29,end:31.9}]},groups,30);planOwnedClipMarker(item,{Name:"VOICE SYNC - Kiem tra toc do",Comments:"145%",ColorIndex:1},30,groups);var committed=$._PVS._markerTools.commit(groups[projectItemKey(item)]);',f.context);
   assert.equal(f.context.committed.count,1,"145% marker must land inside real source range");
-  const m=f.nested.getMarkers().items[0];assert(Math.abs(m.start.seconds-29)<1e-7);assert(Math.abs(Number(m.end)-31.9)<1e-7);
+  const m=f.nested.getMarkers().items[0];assert(Math.abs(m.start.seconds-30.45)<1e-7);assert(Math.abs(Number(m.end)-30.45)<1e-7);
   console.log("SPEED_REAL_SOURCE_RANGE_OK:145%");if(process.argv.includes("--voice-marker-regression"))process.exit(0);
 }
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
@@ -29,7 +29,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   const actions=[],nativeRows=[];let qeReads=0;
   function markers(){
     const values=[];
-    return {items:values,getFirstMarker(){return values[0]||null;},getNextMarker(m){return values[values.indexOf(m)+1]||null;},deleteMarker(m){values.splice(values.indexOf(m),1);actions.push(["deleteMarker"]);},createMarker(seconds){const m={start:{seconds},setColorByIndex(c){this.colorIndex=c;actions.push(["markerColor",c]);},getColorByIndex(){return this.colorIndex;}};values.push(m);actions.push(["marker",seconds]);return m;}};
+    return {items:values,getFirstMarker(){return values[0]||null;},getNextMarker(m){return values[values.indexOf(m)+1]||null;},deleteMarker(m){values.splice(values.indexOf(m),1);actions.push(["deleteMarker"]);},createMarker(seconds){let position={seconds};const m={get start(){return position;},set start(v){position=typeof v==='number'?{seconds:v}:v;},end:seconds,setColorByIndex(c){this.colorIndex=c;actions.push(["markerColor",c]);},getColorByIndex(){return this.colorIndex;}};values.push(m);actions.push(["marker",seconds]);return m;}};
   }
   const nested={nodeId:"nested",getMarkers:markers,clearInPoint(){actions.push(["clearIn"]);},clearOutPoint(){actions.push(["clearOut"]);}};
   const voice={nodeId:"voice",getMarkers:markers};
@@ -126,7 +126,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
   return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,nativeMutations,api:context.$._PVS,get qeReads(){return qeReads;}};
 }
-// Frozen against the direct host at 9dc6534. Include original identities so a
+// Timeline evidence is frozen at 9dc6534. Include original identities so a
 // nearby reusable marker cannot silently become a replacement.
 function issue55Fixture(make) {
   const f = make(), markers = f.voice.getMarkers();
@@ -164,7 +164,6 @@ function chapterFixture(distinct=false) {
 const markerCases=[()=>fixture(1),()=>fixture(6,false,false,1,true),()=>fixture(65,false,true,0.9),()=>fixture(6,false,true,1.1,false,true),()=>editedFixture(true,true),()=>cueFixture(6,true),chapterFixture];
 if(process.argv.includes("--record-marker-reference")||process.argv.includes("--marker-precommit")||!process.argv.slice(2).length){
   const recording=process.argv.includes("--record-marker-reference"),goldenPath=path.join(__dirname,"fixtures/marker-before-cuts.json");
-  if (recording) fixtureHost = require("child_process").execFileSync("git",["show","9dc65342339ffa300158555a0204d32630bb8f3d:extension/jsx/host.jsx"],{cwd:root,encoding:"utf8"});
   markerCases.push(()=>chapterFixture(true),()=>fixture(6,false,true,1.1,false,false,false,true),()=>fixture(6,false,false,1,true,false,false,true));
   markerCases.push(()=>{
     const f=fixture(6,false,true),push=f.actions.push;
@@ -186,7 +185,7 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
   for(const size of [1,6,65]) for(const gaps of [true,false]) markerCases.push(()=>cueFixture(size,gaps));
   for(const one of [true,false]) for(const outside of [true,false]) markerCases.push(()=>editedFixture(one,outside));
   for(const [size,gaps,speed] of [[1,false,1],[6,false,1],[65,false,1],[65,true,1],[65,true,1.1],[65,true,0.9],[130,true,1.1],[130,true,0.9]]) markerCases.push(()=>fixture(size,false,gaps,speed));
-  const expected=recording?[]:JSON.parse(fs.readFileSync(goldenPath,"utf8"));
+  const expected=JSON.parse(fs.readFileSync(goldenPath,"utf8"));
   for(const [index,make] of markerCases.entries())for(const profile of recording?["direct"]:["direct","baseline","fast","no-delay"]){
     const f=issue55Fixture(make),result=profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
     assert(result.report.ok,JSON.stringify(result.report));
@@ -197,8 +196,12 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
       const edits=f.nativeMutations.filter(row=>row[0]==="call"?!["createMarker","deleteMarker","setColorByIndex"].includes(row[1]):row[1]!==null);
       evidence.nativeArguments=digest(edits);
     }
-    if(recording)expected.push(evidence);else {
-      assert.deepStrictEqual(evidence,expected[index],"9dc6534 parity "+index+" "+profile);
+    if(recording){
+      assert.equal(evidence.timeline,expected[index].timeline);
+      assert.equal(evidence.nativeArguments,expected[index].nativeArguments);
+      expected[index].markers=evidence.markers;
+    }else {
+      assert.deepStrictEqual(evidence,expected[index],"marker and timeline parity "+index+" "+profile);
       if(index===2){
         assert(f.actions.findIndex(a=>a[0]==="marker")<f.actions.findIndex(a=>a[0]==="razor"),"Voice writes must precede the first cut");
         if(result.timings){
@@ -242,7 +245,7 @@ function issue55Failures() {
   const snapshot=markerRows(bank);
   rerun.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
   const failed=finishTrial(rerun,"no-delay").report;
-  assert(!failed.ok && failed.linkMismatchCount===1);
+  assert(!failed.ok && failed.linkMismatchCount===1,JSON.stringify(failed));
   assert.deepStrictEqual(markerRows(bank),snapshot,"Postcheck restores an owner whose pre-commit was already up to date");
   for (const fault of ["razor","speed","move","captionTrack","postcheck","stop","late-stop","manual-edit","restore-failure","reappeared"]) {
     const f = issue55Fixture(()=>fixture(6,false,true)), bank = f.voice.getMarkers();
@@ -429,7 +432,7 @@ for(const profile of ["baseline","fast","no-delay"]){
     const m=t.detail.markerCommit;assert.equal(m.readPasses,3);
     assert.equal(m.collectionAfter,m.collectionBefore+m.creates-m.deletes);
     assert.equal(m.creates,t.detail.markersPerGroup[0]);
-    assert.equal(m.nameWrites,m.creates);assert.equal(m.commentsWrites,m.creates);assert.equal(m.endWrites,m.creates);
+    assert.equal(m.nameWrites,m.creates);assert.equal(m.commentsWrites,m.creates);assert.equal(m.endWrites,0);
     assert.equal(m.colorWrites,m.creates);assert.equal(m.colorReads,3*m.creates);
     for(const field of ["createMs","nameWriteMs","commentsWriteMs","endWriteMs","colorWriteMs","colorReadMs","deleteMs"])assert(m[field]>=0,field);
     assert(m.readMs>=0&&m.verificationMs>=0&&m.commitMs>=m.readMs&&m.commitMs>=m.verificationMs);
@@ -471,7 +474,7 @@ for(const profile of ["baseline","fast","no-delay"]){
     assert(result.ok,JSON.stringify(result));
     assert.equal(result.ownedMarkerSequenceFallbackCount,1,"#1 "+mode+" fallback counted");
     const marker=f.seq.markers.items.find(m=>m.name===(mode.indexOf("voice-")===0?"VOICE SYNC - Kiem tra can voice":"VOICE SYNC - Kiem tra toc do"));
-    assert(marker,"Warning must survive on ruler");assert.equal(marker.start.seconds,0);assert.equal(Number(marker.end),100/30);
+    assert(marker,"Warning must survive on ruler");assert.equal(marker.start.seconds,50/30);assert.equal(Number(marker.end),50/30);
     assert.equal(result.sequenceMarkerCount,result.reviewMarkerSequenceFallbackCount+1);assert.equal(result.clipMarkerCount,result.markerCount-result.sequenceMarkerCount);
     assert.equal(result.ownedMarkerSequenceFallbacks.length,1);assert(result.ownedMarkerSequenceFallbacks[0].reason);
     passed++;
@@ -497,6 +500,9 @@ for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65,1
   for(const visual of trial.plan.visualSegments.filter(v=>v.MemberSegmentIndices.length===2)){
     const found=markers.filter(m=>m.start.seconds>=visual.SourceStart-1e-6&&m.start.seconds<visual.SourceEnd-1e-6&&/đã gộp hình/i.test(m.comments));
     assert.strictEqual(found.length,1,"Every merged group owns exactly one marker, even within thresholds.");
+    const middleFrame=Math.round((visual.NewStartFrame+visual.NewEndFrame)/2);
+    const expectedSource=visual.SourceStart+(middleFrame-visual.NewStartFrame)/30*visual.AppliedSpeedPercent/100;
+    assert(Math.abs(found[0].start.seconds-expectedSource)<1e-6);assert.equal(found[0].end,found[0].start.seconds);
     assert(found[0].comments.includes("[PremiereVoiceSync:owned-marker:v1]"));
     assert.strictEqual(found[0].colorIndex,visual.AppliedSpeedPercent<90?3:visual.AppliedSpeedPercent>110?1:6);
   }
@@ -603,7 +609,7 @@ const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);asser
 for(const profile of ["baseline","fast","no-delay"]){
   f=fixture(1);f.seq.failSpeed=true;
   const nativeFailure=finishTrial(f,profile).report;
-  assert(!nativeFailure.ok);assert.equal(nativeFailure.error,"NATIVE_SPEED_FAILED");assert.equal(nativeFailure.reviewMarkerCount,1);assert.equal(f.seq.markers.items[0].start.seconds,0);assert.equal(f.seq.markers.items[0].colorIndex,1);assert(f.seq.markers.items[0].comments.includes("Đổi speed lỗi (V1 0) – kiểm tra trước khi thử lại"));
+  assert(!nativeFailure.ok);assert.equal(nativeFailure.error,"NATIVE_SPEED_FAILED");assert.equal(nativeFailure.reviewMarkerCount,1);assert.equal(f.seq.markers.items[0].start.seconds,2);assert.equal(f.seq.markers.items[0].colorIndex,1);assert(f.seq.markers.items[0].comments.includes("Đổi speed lỗi (V1 0) – kiểm tra trước khi thử lại"));
   assert(!f.seq.markers.items[0].comments.includes("NATIVE_SPEED_FAILED"), "Raw native errors remain in the report, not the short marker.");
 }
 function editedFixture(oneVoiceGroup=false, outside=false) {

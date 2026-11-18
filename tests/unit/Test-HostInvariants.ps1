@@ -22,7 +22,7 @@ if ($hostSource -match 'sourceBoundaryFailureCount|maxSourceOutErrorFrames|origi
 # Host VM tests exercise 100/110/145%, duration read-back and compensation.
 Assert-Contains $hostSource 'return (t - start + input) * speed;' 'marker-real-source-map'
 Assert-Contains $hostSource 'return start + m / speed - input;' 'marker-timeline-projection'
-Assert-Contains $hostSource 'seconds: candidate, end: sourceEnd' 'marker-segment-duration'
+Assert-Contains $hostSource 'seconds: seconds, end: seconds' 'marker-midpoint-point'
 Assert-Contains $hostSource 'target.verify(actual.seconds, actual.end)' 'marker-range-readback'
 Assert-Contains $hostSource 'app.project.importFiles([plan.captionSrtPath], true, captionBin, false)' 'caption-temp-bin-import'
 Assert-Contains $hostSource 'var deleteResult = captionBin.deleteBin();' 'caption-temp-bin-delete'
