@@ -992,15 +992,14 @@ $._PVS._markerTools = (function () {
                     prior = entry.before[j]; current = lookup(rows, prior);
                     if (current) {
                         marker = current.ref;
-                        if (prior.seconds > current.seconds && prior.end !== current.end) marker.end = prior.end;
                         if (prior.seconds !== current.seconds) marker.start = prior.seconds;
-                        if (prior.seconds <= current.seconds && prior.end !== current.end) marker.end = prior.end;
+                        if (markerEnd(marker) !== prior.end) marker.end = prior.end;
                     } else {
                         var existing = read(collection);
                         marker = collection.createMarker(prior.seconds);
                         if (!marker || find(existing, { ref: marker, guid: String(marker.guid || "") }) || marker.name || marker.comments) throw new Error("Cannot recreate deleted marker safely.");
                         replacements.push({ old: prior, fresh: { ref: marker, guid: String(marker.guid || "") } });
-                        marker.end = prior.end;
+                        if (markerEnd(marker) !== prior.end) marker.end = prior.end;
                     }
                     if (!current || prior.name !== current.name) marker.name = prior.name;
                     if (!current || prior.comments !== current.comments) marker.comments = prior.comments;
@@ -1094,13 +1093,14 @@ $._PVS._markerTools = (function () {
             try { marker.setColorByIndex(color); }
             finally { timings.colorWriteMs += (new Date()).getTime() - started; }
         }
-        function writePosition(marker, currentStart, currentEnd, seconds, end, exact) {
-            // Expanding the right edge first also handles starts beyond the old end.
-            // On the way back, read the actual bounds: a throwing call may mutate.
-            var updateEnd = Math.abs(end - currentEnd) > (exact ? 0 : g.tolerance / 2);
-            if (seconds > currentStart && (updateEnd || seconds > currentEnd)) writeField(marker, "end", end, "endWrites", "endWriteMs");
+        function writePosition(marker, currentStart, seconds, end, exact) {
             if (seconds !== currentStart) writeField(marker, "start", seconds, "moves", "moveMs");
-            if (seconds <= currentStart && updateEnd) writeField(marker, "end", end, "endWrites", "endWriteMs");
+            // Moving start translates the whole range, including its end.
+            var actualEnd = markerEnd(marker);
+            if (actualEnd === null || !isFinite(actualEnd)) throw new Error("Unreadable moved marker end.");
+            if (Math.abs(end - actualEnd) > (exact ? 0 : g.tolerance / 2)) {
+                writeField(marker, "end", end, "endWrites", "endWriteMs");
+            }
         }
         function removeMarker(marker) {
             var started = (new Date()).getTime();
@@ -1180,7 +1180,7 @@ $._PVS._markerTools = (function () {
                 if (old && (markerPlan.move || old.name !== spec.name || old.comments !== spec.comments || old.color !== spec.color || updateEnd)) { changed.push(old); mutate(); }
                 if (markerPlan.move) {
                     moved.push(old);
-                    writePosition(marker, old.seconds, old.end, spec.seconds, spec.end === undefined ? spec.seconds : spec.end);
+                    writePosition(marker, old.seconds, spec.seconds, spec.end === undefined ? spec.seconds : spec.end);
                 }
                 if (!old || old.name !== spec.name) writeField(marker, "name", spec.name, "nameWrites", "nameWriteMs");
                 if (!old || old.comments !== spec.comments) writeField(marker, "comments", spec.comments, "commentsWrites", "commentsWriteMs");
@@ -1241,13 +1241,13 @@ $._PVS._markerTools = (function () {
                 try {
                     var saved = changed[u];
                     if (find(moved, saved)) {
-                        var currentStart = Number(saved.ref.start.seconds), currentEnd = Number(typeof saved.ref.end === "number" ? saved.ref.end : saved.ref.end.seconds);
-                        if (!isFinite(currentStart) || !isFinite(currentEnd)) throw new Error("Cannot read moved marker bounds for restoration.");
-                        writePosition(saved.ref, currentStart, currentEnd, saved.seconds, saved.end, true);
+                        var currentStart = Number(saved.ref.start.seconds), currentEnd = markerEnd(saved.ref);
+                        if (!isFinite(currentStart) || currentEnd === null || !isFinite(currentEnd)) throw new Error("Cannot read moved marker bounds for restoration.");
+                        writePosition(saved.ref, currentStart, saved.seconds, saved.end, true);
                     }
                     writeField(saved.ref, "name", saved.name, "nameWrites", "nameWriteMs");
                     writeField(saved.ref, "comments", saved.comments, "commentsWrites", "commentsWriteMs");
-                    if (!find(moved, saved) && saved.end !== null) writeField(saved.ref, "end", saved.end, "endWrites", "endWriteMs");
+                    if (!find(moved, saved) && saved.end !== null && markerEnd(saved.ref) !== saved.end) writeField(saved.ref, "end", saved.end, "endWrites", "endWriteMs");
                     if (saved.color !== null && Number(readColor(saved.ref, timings)) !== saved.color) setColor(saved.ref, saved.color);
                 } catch (updateError) { result.failures.push("Marker restoration: " + updateError.message); }
             }
@@ -1258,7 +1258,7 @@ $._PVS._markerTools = (function () {
                     var restored = create(prior.seconds, currentRows, []);
                     writeField(restored, "name", prior.name, "nameWrites", "nameWriteMs");
                     writeField(restored, "comments", prior.comments, "commentsWrites", "commentsWriteMs");
-                    if (prior.end !== null) writeField(restored, "end", prior.end, "endWrites", "endWriteMs");
+                    if (prior.end !== null && markerEnd(restored) !== prior.end) writeField(restored, "end", prior.end, "endWrites", "endWriteMs");
                     if (prior.color !== null) setColor(restored, prior.color);
                 } catch (restoreError) { result.failures.push("Marker restoration: " + restoreError.message); }
             }

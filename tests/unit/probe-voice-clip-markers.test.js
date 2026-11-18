@@ -1,4 +1,5 @@
 "use strict";
+const markerBounds=require("./marker-bounds");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
 const root = path.resolve(__dirname, "../..");
 const source = fs.readFileSync(path.join(root, "tools/probes/Probe-VoiceClipMarkers.jsx"), "utf8");
@@ -12,7 +13,7 @@ const time = seconds => ({ seconds });
 // Run with native JSON, missing JSON and a broken JSON implementation.
 for (const json of [JSON, undefined, { stringify() { throw Error("no JSON"); } }]) {
     let creates = 0, deletes = 0, falseDelete = false;
-    const marker = (start, comments) => ({ guid: `m${start}`, start: time(start), end: time(start), name: "manual", comments, type: "Comment" });
+    const marker = (start, comments) => markerBounds({ guid: `m${start}`, name: "manual", comments, type: "Comment" }, start, start, true);
     const manual = marker(11, 'manual "note"\n\\\t\u0001\u2028'), almost = marker(13, "[PremiereVoiceSync:probe:v10]");
     const rows = [manual, almost];
     const markers = {

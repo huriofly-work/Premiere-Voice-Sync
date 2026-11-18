@@ -1,5 +1,27 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #67 — Giữ đúng vị trí khi dời marker (18/11/2026)
+
+- **Lỗi native ở 2.20.94.** Auto edit báo `Marker position/notes verification failed` sau khi dựng. Nhóm hình có 19 marker, trace ghi nhận 38 lần dời, 34 lần ghi end, 19 lần ghi name và 19 lần ghi comments qua hai lượt ghi và bù. Nhóm review có 21 marker, 42 lần dời. Khi khôi phục, host báo `Marker restoration: source snapshot differs`.
+- **Nguyên nhân.** Khi dời sang phải, host ghi end trước. Premiere giữ độ dài khi đổi start nên end vừa ghi lại dịch theo. Mock cũ coi hai biên độc lập.
+- **Quy tắc.** Ghi start trước, đọc lại rồi mới ghi end; mock marker phải giữ độ dài khi đổi start. Khi dời, chỉ ghi end nếu độ lệch vượt ngưỡng hiện hành. Khi khôi phục, so đúng từng biên với ảnh chụp gốc. Marker mới là điểm.
+- **Phép đo.** Probe trên ProjectItem voice trong Premiere 26.2.2, ngày 18/11/2026. Các giá trị bên dưới tính bằng giây so với vị trí tạo marker. Trước và sau đều có 59 marker, đã đối chiếu sau dọn. JSON gốc ở `_local/probe-move/move-run.json`.
+
+| Trạng thái đầu | Phép ghi theo thứ tự | [start, end] sau từng phép ghi |
+| --- | --- | --- |
+| Mới tạo | Tạo tại 0 | [0, 0] |
+| [0, 1] | start = 0.5 | [0.5, 1.5] |
+| [0, 1] | end = 0.5, start = 0.5 | [0, 0.5] → [0.5, 1.0] |
+| [0, 1] | start = 0.5, end = 0.5 | [0.5, 1.5] → [0.5, 0.5] |
+| [0, 1] | start = 2 | [2, 3] |
+| [0, 1] | start = -0.5, end = -0.5 | [-0.5, 0.5] → [-0.5, -0.5] |
+| [0, 1] | end = 0 | [0, 0] |
+| [0, 0] | start = 0.5 | [0.5, 0.5] |
+| [0, 0] | start = -0.5 | [-0.5, -0.5] |
+| [0, 0] | end = 0.5 | [0, 0.5] |
+
+- **Hồi quy.** Với mock đã sửa và host cũ, thu [1, 2] về điểm 1.5 tái hiện lỗi xác minh. `marker-moves.test.js` kiểm tra dời hai chiều, vượt end cũ, giữ khoảng, khôi phục đúng hai biên sau lỗi và chạy lại không ghi. `diagnostic-executor.test.js` đối chiếu 42 fixture qua bốn chế độ và kiểm tra khôi phục bằng nhật ký. Sau sửa, 28 ca dời marker đạt, toàn bộ hash timeline giữ nguyên. Hash marker của fixture số 3 và 12–23 (đếm từ 0) đổi do marker điểm có sẵn trong mock nay có end bằng start. Bộ chuẩn đạt 73 nhóm, bỏ qua sáu nhóm tích hợp Windows. Log ở `_local/marker-move-order/suite.log`. Chờ chạy lại Auto edit trên Premiere.
+
 ## Issue #63 — Cảnh báo trên clip hoặc trong panel (18/11/2026)
 
 - **Quyết định.** Lượt Auto edit native 2.20.93 gắn được 22/22 marker review lên clip. Trước đây các lỗi mapping/ghi/đọc lại và chế độ mix hoặc nhiều track có thể tạo marker trên thước. Quy tắc mới: không ghi marker lên thước timeline; cảnh báo không gắn được clip thì báo trong panel.
