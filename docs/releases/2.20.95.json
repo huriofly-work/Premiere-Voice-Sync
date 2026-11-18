@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.95",
+  "tag": "v2.20.95",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "77C1557766C1B15D57B4D7B1E56E8C7401845C111DB872F8CA86D37E7DB0DA32",
+    "bytes": 1535382608,
+    "filename": "Premiere-Voice-Sync-2.20.95-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 73,
+    "powershellScriptsParsed": 133,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "baselineNativeRun": {
+      "note": "2.20.94 Auto edit on the user's Sông Congo project, 2026-11-18; failed in the timeline stage. The reason for this release, not a measurement of it.",
+      "timelineMilliseconds": 87782,
+      "outcome": "failed",
+      "pictureOwnerMovedMarkers": 19,
+      "reviewMovedMarkers": 21,
+      "unattachedMarkerCount": 43,
+      "failure": "Marker position/notes verification failed; Marker restoration: source snapshot differs."
+    },
+    "nativeProbes": [
+      "Premiere 26.2.2, 2026-11-18, voice ProjectItem, tagged probe markers only (59 -> 59 markers, cleanup verified): a new marker is a point; assigning start moves the whole marker and keeps its duration ([0,1] -> start 0.5 -> [0.5,1.5]); assigning end changes only the end; end = start is accepted."
+    ],
+    "mockEvidence": [
+      "Marker mocks share a model where start keeps the duration and end changes only the end; with it the move tests are red on 2.20.94 and green after the fix.",
+      "Range-to-point and point moves in both directions, moves past the old end, exact restore after an injected verification failure and zero-write reruns pass; timeline hashes unchanged on 42 fixtures across four executor modes."
+    ]
+  },
+  "changes": [
+    "Marker moves and every restore path write start first, read back the end and write it only when it differs (#68)."
+  ],
+  "pullRequests": [
+    68
+  ],
+  "supersedes": "2.20.94",
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "Not verified in Premiere: the Auto edit rerun with moved markers, point marker display, cleanup of the duplicate review sets and old ruler fallbacks, caption-only mixed-track attachment.",
+    "2.20.94 and 2.20.93 contain the faulty move order and should not be used for Auto edit.",
+    "Caption-only mixed mode attaches to the first audible track with a clip, which can be a music or SFX track.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}
