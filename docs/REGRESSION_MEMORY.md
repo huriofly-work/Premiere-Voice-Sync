@@ -1,5 +1,15 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #55 — Ghi marker voice trước khi cắt, đối chiếu trên timeline cuối (18/11/2026)
+
+- **Bằng chứng.** Sông Congo 2.20.92 mất 25,2 giây để commit 19 marker voice sau cắt (18 tạo, 23 xóa), thêm khoảng 5 giây cho 22 marker review. Probe trên cùng ProjectItem đo 14,7/45,1 ms mỗi lần tạo và 14,6/35,4 ms mỗi lần xóa với 1/101 clip A2. [Số đo native](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+- **Ánh xạ.** Sau khi đọc snapshot, trước razor đầu tiên, lấy đoạn lời ở frame voice gốc, in point và speed của chapter, rồi chiếu sang đoạn lời ở vị trí đích. Marker căn voice và review trong kế hoạch dùng lại quy tắc chọn vị trí, màu, duration, nhãn cue và tránh va chạm của lượt cuối. Mỗi call chỉ ghi một owner. Ánh xạ thiếu bằng chứng được để lại cho hậu kiểm. Cảnh báo V1 dùng speed V1/A1 đọc lại sau hội tụ. Fallback ruler chỉ chạy sau dựng.
+- **Đối chiếu.** Post-pass tính lại theo TrackItem thật. Nếu ánh xạ voice đổi, trả lại marker ghi trước rồi lập yêu cầu theo timeline. Khi có thêm issue native, trả các marker review ghi trước về vị trí cũ trước khi phân bổ lại. Dời marker review trên ProjectItem dùng kiểm chứng của #53. Giữ marker dư tới lần đối chiếu cuối để Premiere còn GUID cũ cho yêu cầu mới.
+- **Lỗi và Dừng.** Mỗi nguồn có snapshot đầy đủ trước khi ghi. Nhật ký theo dõi các marker thực sự sửa, tạo và xóa. Khôi phục ngược thứ tự transaction, đọc lại GUID/ref và các trường trước khi ghi, bảo vệ marker thủ công, dời lại marker còn tồn tại và tạo lại marker owned đã xóa. Marker tạo lại nhận GUID do Premiere cấp. Sai khác hoặc lệnh khôi phục lỗi được đưa vào báo cáo. Panel giữ token recovery trước call ghi đầu tiên và chỉ chấp nhận kết quả sau khi kiểm Dừng. Mở lại panel có thể dùng phiên host còn sống để khôi phục. Nếu mất cả phiên host, panel giữ cảnh báo để đối chiếu marker nguồn với project đã lưu.
+- **Hồi quy.** Test đỏ trên host `9dc6534` vì marker voice đầu tiên được tạo sau razor. Bộ mock đối chiếu trường marker, GUID cũ và lệnh sửa timeline với host gốc trên direct/baseline/fast/no-delay. Tiêm lỗi razor, speed, move, caption, hậu kiểm, Dừng giữa hai chapter và Dừng ở call cuối. Kiểm tra cả sửa tay khi pause, lỗi khôi phục và thử lại. Log ở `_local/markers-before-cuts/`. Nghiệm thu di chuyển/khôi phục marker, độ chính xác source time và thời gian thực trên Premiere vẫn pending.
+
+Kết quả ngoại tuyến: 42 fixture × 4 executor khớp host gốc, kể cả khi source time đổi sau razor và phát sinh issue native. Fixture 65 lát có 0 lần ghi lại marker voice/review sau dựng. Ca chạy lại đã khớp toàn bộ marker từ đầu vẫn khôi phục đúng snapshot khi issue native làm đổi review rồi hậu kiểm thất bại (đỏ trước sửa trong `rerun-red.log`). Standard suite với `-NoWindowsIntegration` đạt 73 nhóm, parse 133 file PowerShell. Sáu nhóm bỏ qua gồm InstallerLifecycle, InstallRollback, PanelRegistry, NotificationShortcut, NativeNotifications và IncidentNotifications.
+
 ## Issue #53 — Đổi vị trí marker clip thuộc phạm vi thay vì xóa/tạo (17/11/2026)
 
 - **Nguyên nhân/bằng chứng.** Matching chỉ giữ marker gần vị trí mong muốn;

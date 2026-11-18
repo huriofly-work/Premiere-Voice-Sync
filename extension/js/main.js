@@ -756,16 +756,21 @@
   function saveRecoveryJournal() {
     try {
       var context = recoveryContext || runContext;
-      if (context) localStorage.setItem("pvs.recovery.v1", JSON.stringify({ workflow: context.workflow, at: Date.now(), audioRecoveryPath: context.audioRecoveryPath || null }));
+      if (context) localStorage.setItem("pvs.recovery.v1", JSON.stringify({ workflow: context.workflow, at: Date.now(), audioRecoveryPath: context.audioRecoveryPath || null, markerSession: context.markerSession || null, markerManualReview: !!context.markerManualReview }));
       else if (localStorage.removeItem) localStorage.removeItem("pvs.recovery.v1");
-    } catch (ignoreRecoveryStorage) { runWarning("Không lưu được trạng thái kiểm tra sau lỗi; hãy kiểm tra timeline trước khi mở lại panel.", true, "RECOVERY_STORAGE"); }
+      return true;
+    } catch (ignoreRecoveryStorage) {
+      runWarning("Không lưu được trạng thái kiểm tra sau lỗi; hãy kiểm tra timeline trước khi mở lại panel.", true, "RECOVERY_STORAGE");
+      return false;
+    }
   }
   async function checkIncidentInputs() {
     if (state.workflowBusy || hostPending || enginePending) return;
     var recovery = recoveryContext;
     var manualCaptionReview = recovery && recovery.workflow === "captions" && recovery.captionCount && JSON.parse(recovery.captionCount).count === null;
-    if (recovery && (recovery.restored || manualCaptionReview)) {
+    if (recovery && (recovery.restored || recovery.markerManualReview || manualCaptionReview)) {
       var recoveryMessage = recovery.restored ? "Lần chạy trước chưa được xác nhận an toàn." : "Chương trình không tự xác minh được phụ đề sau lỗi.";
+      if (recovery.markerManualReview) recoveryMessage = "Không xác minh được khôi phục marker nguồn. Hãy đối chiếu marker trên từng ProjectItem voice với bản project trước khi dựng.";
       var approved = await confirmWorkflowNotice("Đã kiểm tra hoặc khôi phục timeline?", recoveryMessage + " Chỉ tiếp tục sau khi thao tác cũ kết thúc và bạn đã kiểm tra timeline, phụ đề cùng trạng thái audio.", "Đã kiểm tra — Xác minh", "Để sau");
       if (!approved) return;
     }
@@ -773,6 +778,14 @@
     try {
       if (recovery) {
         if (recovery.workflow === "edit") {
+          if (recovery.markerSession && !recovery.markerManualReview) {
+            var interrupted = await evalHost('typeof $._PVS.abortDiagnosticEdit === "function" ? $._PVS.abortDiagnosticEdit(' + jsxString(recovery.markerSession) + ') : $._PVS._result({ok:false,error:"DIAGNOSTIC_SESSION_NOT_FOUND"})');
+            if (!interrupted.result || (interrupted.result.markerRestorationFailures || []).length) {
+              recovery.markerManualReview = true; saveRecoveryJournal();
+              throw new Error("Chưa xác minh được marker nguồn sau gián đoạn. " + (interrupted.result ? interrupted.result.markerRestorationFailures.join("; ") : interrupted.error));
+            }
+            recovery.markerSession = null; saveRecoveryJournal();
+          }
           var sequence = await scanSequence();
           if (!recovery.restored && JSON.stringify(sequence) !== recovery.baseline) throw new Error("Template chưa trở lại trạng thái trước lần dựng lỗi. Hãy Undo hoặc mở lại template đã lưu và kiểm tra lại.");
         } else {
@@ -1661,6 +1674,20 @@
       log("Nhật ký hiệu năng chỉ lưu tên bước/thời gian, không có lời nói hay đường dẫn media: " + tracePath, "muted");
     } catch (ignoreTraceCreate) { disableTrace(); }
     var began = false, finished = false;
+    function finishMarkerSession(result, returningReport) {
+      if (!runContext) return;
+      if (!result) {
+        runContext.impact = "unknown";
+        throw new Error("Chưa xác minh được khôi phục marker nguồn sau khi dừng.");
+      }
+      if ((result.markerRestorationFailures || []).length) {
+        runContext.impact = "unknown";
+        saveRecoveryJournal();
+        if (returningReport) return;
+        throw new Error("Khôi phục marker nguồn chưa đầy đủ. " + result.markerRestorationFailures.join("; "));
+      }
+      runContext.markerSession = null; saveRecoveryJournal();
+    }
     function record(value) {
       if (traceDisabled) return;
       try {
@@ -1670,9 +1697,13 @@
     }
     try {
       if (runContext) runContext.impact = "unknown";
-      var begun = await evalHost("$._PVS.beginDiagnosticEdit(" + jsxString(planPath) + "," + jsxString(token) + "," + jsxString(profile) + ")");
+      var begun = await evalHost("$._PVS.beginDiagnosticEdit(" + jsxString(planPath) + "," + jsxString(token) + "," + jsxString(profile) + ",true)");
       if (!begun.ok) throw new Error(begun.error || "Không khởi tạo được phiên chẩn đoán.");
       began = true;
+      if (runContext) {
+        runContext.markerSession = token;
+        if (!saveRecoveryJournal()) throw new Error("Chưa lưu được nhật ký khôi phục marker nguồn.");
+      }
       var nextCall = begun.nextCall;
       var nextStage = begun.nextStage;
       var lastLoggedStage = "";
@@ -1694,10 +1725,15 @@
         }
         record({ type: "response", call: nextCall, wallMilliseconds: Date.now() - requestedAt, ok: response.ok, done: response.done, stage: response.stage || "", hostMilliseconds: response.milliseconds, checkpoint: response.checkpoint || "" });
         if (response.done) {
-          finished = true;
           record({ type: "finish", ok: !!(response.result && response.result.ok), timings: response.timings || [] });
           if (!response.result) throw new Error("Chẩn đoán không trả về hậu kiểm.");
-          if (response.result.ok) throwIfStopRequested();
+          if (response.result.ok) {
+            throwIfStopRequested();
+            var accepted = await evalHost("$._PVS.acceptDiagnosticEdit(" + jsxString(token) + ")");
+            if (!accepted.ok) throw new Error("Chưa xác nhận được kết quả dựng.");
+          }
+          finished = true;
+          finishMarkerSession(response.result, true);
           return response.result;
         }
         if (!response.ok) throw new Error(response.error || "Chẩn đoán dừng trước khi hoàn tất.");
@@ -1715,6 +1751,7 @@
           if (!healthy) {
             var aborted = await evalHost("$._PVS.abortDiagnosticEdit(" + jsxString(token) + ")");
             finished = true;
+            finishMarkerSession(aborted.result);
             record({ type: "stopped", timings: aborted.timings || [] });
             throw new Error("Đã dừng tại bước " + response.checkpoint + " do Preview/Play bị đơ. Timeline mới dựng một phần; không lưu kết quả này. Hãy Undo hoặc mở lại bản đã lưu.");
           }
@@ -1727,7 +1764,11 @@
         try {
           var abortResult = await evalHost("$._PVS.abortDiagnosticEdit(" + jsxString(token) + ")");
           if (runContext && abortResult.result && typeof abortResult.result.timelineMutated === "boolean") runContext.impact = abortResult.result.timelineMutated ? "changed" : "unchanged";
-        } catch (ignoreAbort) { if (runContext) runContext.impact = "unknown"; }
+        } catch (abortError) {
+          if (runContext) runContext.impact = "unknown";
+          throw new Error("Chưa xác minh được khôi phục marker nguồn. " + abortError.message);
+        }
+        finishMarkerSession(abortResult.result);
       }
     }
   }
@@ -2395,12 +2436,15 @@
       localFeedback("supportFeedback", "Chưa xuất được log; kiểm tra thư mục lưu và xem nhật ký.", true);
     }
   }
-  function wire() {
-    loadNoticeHistory();
+  function loadRecoveryJournal() {
     try {
       var recovery = JSON.parse(localStorage.getItem("pvs.recovery.v1") || "null");
-      if (recovery && /^(edit|captions)$/.test(recovery.workflow)) recoveryContext = { workflow: recovery.workflow, restored: true, impact: "unknown", audioRecoveryPath: recovery.audioRecoveryPath || null };
+      if (recovery && /^(edit|captions)$/.test(recovery.workflow)) recoveryContext = { workflow: recovery.workflow, restored: true, impact: "unknown", audioRecoveryPath: recovery.audioRecoveryPath || null, markerSession: recovery.markerSession || null, markerManualReview: !!recovery.markerManualReview };
     } catch (ignoreRecoveryJournal) {}
+  }
+  function wire() {
+    loadNoticeHistory();
+    loadRecoveryJournal();
     byId("externalNotifications").checked = externalPreference;
     byId("notificationSound").checked=soundPreference;
     byId("notificationSound").disabled=!externalPreference;
