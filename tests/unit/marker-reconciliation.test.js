@@ -33,7 +33,10 @@ function fixture(initial=[],onMarker=m=>m){
 function state(f){return f.values.map(m=>({seconds:m.start.seconds,end:typeof m.end==="number"?m.end:m.end.seconds,name:m.name,comments:m.comments,color:m.getColorByIndex(),type:m.type})).sort((a,b)=>a.seconds-b.seconds);}
 function group(f){return api.group(f.collection,[{start:0,end:10}],m=>m.comments.includes(tag),0.5/30);}
 const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:comments+"\n"+tag,color:4});
-function run(f,issues){return apply(f.seq,issues,[{start:0,end:10}],"captions");}
+function run(f,issues,captions){
+  const clip={start:{seconds:0},end:{seconds:10},inPoint:{seconds:0},outPoint:{seconds:10},getSpeed:()=>1,projectItem:{nodeId:"voice",getMarkers:()=>f.collection}};
+  return apply({timebase:f.seq.timebase,sequenceID:"s"},issues,[{start:0,end:10}],"captions",captions,[clip]);
+}
 
 // Half-open spans, half-frame ties and collision search on the timeline grid.
 for (const [length, occupied, frame] of [
@@ -42,7 +45,7 @@ for (const [length, occupied, frame] of [
 ]) {
   const f=fixture(occupied.map(i=>({seconds:1+i/30,name:"manual"})));
   const r=run(f,[{start:1,end:1+length/30,reason:"review"}]);
-  assert.equal(r.reviewMarkerFailureCount,frame===null?1:0);
+  assert.equal(r.unattachedMarkerCount,frame===null?1:0);
   const point=state(f).find(m=>m.name!=="manual");
   if(frame===null) assert.equal(point,undefined);
   else {assert(Math.abs(point.seconds-(1+frame/30))<1e-10);assert.equal(point.end,point.seconds);}
@@ -154,14 +157,14 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   }
   for(const previousEnd of [1.8,2])test("#3 padding selects largest overlap, previous end="+previousEnd,()=>{
     const v=setup([[0,previousEnd],[2,4]]),r=v.invoke();
-    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerSequenceFallbackCount,0);
+    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.unattachedMarkerCount,0);
     assert.equal(v.sources[0].values.length,0,"Previous tail must not own the issue");
     const point=state(v.sources[1])[0];assert(Math.abs(point.seconds-(10+23/30))<1e-8);assert.equal(point.end,point.seconds);
   });
-  test("#3 equal overlaps use ruler",()=>{const v=setup([[0,2],[3,5]]);const r=v.invoke([{start:1,end:4,reason:"tie"}]);assert.equal(r.reviewMarkerSequenceFallbackCount,1);});
-  test("#3 overlapping tracks use ruler despite unique largest",()=>{
+  test("#3 equal overlaps are reported",()=>{const v=setup([[0,2],[3,5]]);const r=v.invoke([{start:1,end:4,reason:"tie"}]);assert.equal(r.unattachedMarkerCount,1);});
+  test("#3 overlapping tracks are reported despite unique largest",()=>{
     const v=setup([[1,2.5],[2,5]]);v.timeline.seq.audioTracks=[{clips:[v.clips[0]]},{clips:[v.clips[1]]}];
-    assert.equal(v.invoke().reviewMarkerSequenceFallbackCount,1);
+    assert.equal(v.invoke().unattachedMarkerCount,1);
   });
   for(const missing of [undefined,{}]){
     test("#4 unavailable ruler commits clip "+String(missing),()=>{const v=setup([[1,4]]);v.timeline.seq.markers=missing;const r=v.invoke();assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerFailureCount,0);});
@@ -169,7 +172,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     test("#4 only fallback failures counted "+String(missing),()=>{
       const v=setup([[1,4]]);v.timeline.seq.markers=missing;
       const r=v.invoke([{start:1.9,end:3.5,reason:"clip"},{start:5,end:6,reason:"gap one"},{start:7,end:8,reason:"gap two"}]);
-      assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerCount,1);assert.equal(r.reviewMarkerFailureCount,2);
+      assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerCount,1);assert.equal(r.unattachedMarkerCount,2);
     });
   }
   test("#6 v1 belongs to ruler only",()=>{
@@ -200,7 +203,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   const invoke=(v,issues=[issue])=>apply(v.timeline.seq,issues,[{start:0,end:30}],"captions",null,[v.clip]);
   for(const speed of [1,1.1,110])test("voice range speed "+speed,()=>{
     const v=voice(speed),r=invoke(v),factor=speed>10?speed/100:speed;
-    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerSequenceFallbackCount,0);
+    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.unattachedMarkerCount,0);
     const m=v.source.values[0];assert(Math.abs(m.start.seconds-(467/30-12.5667+12.3667)*factor)<1e-7);
     assert(Math.abs(Number(m.end.seconds===undefined?m.end:m.end.seconds)-(467/30-12.5667+12.3667)*factor)<1e-7);
     assert.equal(state(v.source)[0].end,m.start.seconds);
@@ -220,7 +223,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     if(mode==="end-readback"){
       const create=v.source.collection.createMarker;v.source.collection.createMarker=s=>{const m=create(s);Object.defineProperty(m,"end",{get:()=>({seconds:s+50}),set:()=>{}});return m;};
     }
-    const r=invoke(v);assert.equal(r.reviewMarkerSequenceFallbackCount,1);assert.equal(r.reviewMarkerCount,1);assert.equal(r.reviewMarkerFailureCount,0);assert.equal(v.timeline.values.length,1);
+    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(r.reviewMarkerCount,0);assert.equal(r.reviewMarkerFailureCount,0);assert.equal(v.timeline.values.length,0);assert(r.unattachedMarkers[0].reason);
   });
   test("clamp at covering clip end, never span gap",()=>{
     const v=voice();v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
@@ -267,12 +270,12 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   });
   test("unsupported rerun cleans scoped v2 only",()=>{
     const v=voice();invoke(v);v.clip.isSpeedReversed=()=>true;
-    const r=invoke(v);assert.equal(r.reviewMarkerSequenceFallbackCount,1);assert.equal(v.source.values.length,0);
+    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,0);
   });
-  test("mixed supported and unsupported sources use ruler",()=>{
+  test("mixed supported and unsupported sources are reported",()=>{
     const v=voice(),other=Object.assign({},v.clip,{getSpeed:()=>NaN});
     const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],"captions",null,[v.clip,other]);
-    assert.equal(r.reviewMarkerSequenceFallbackCount,1);assert.equal(v.source.values.length,0);
+    assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,0);
   });
   console.log("VOICE_CLIP_REVIEW_CASES:passed="+checks+";failed="+failures.length);
   if(failures.length)throw Error("VOICE_CLIP_REVIEW_REGRESSION_FAILED\n"+failures.join("\n"));
@@ -282,9 +285,9 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
 for (const [captions, expected] of [[[{Index:20,Start:1,End:1.5},{Index:21,Start:1.5,End:2}], "Cue 20–21: hở hình 3 frame – kiểm tra"],
   [[{Index:20,Start:3,End:4}], "Hở hình 3 frame – kiểm tra"]]) {
   const native = fixture();
-  const result = apply(native.seq, [{start:1,end:2,reason:"hở hình 3 frame – kiểm tra"}], [{start:0,end:10}], "captions", captions);
+  const result = run(native, [{start:1,end:2,reason:"hở hình 3 frame – kiểm tra"}], captions);
   assert.equal(result.reviewMarkerCount, 1); assert.equal(result.reviewMarkerFailureCount, 0);
-  assert.equal(native.values[0].comments, expected + "\n" + tag);
+  assert.equal(native.values[0].comments, expected + "\n[PremiereVoiceSync:review-marker:v2:captions:s]");
 }
 
 // Reuse the same native marker, including duration/GUID; identical reruns write nothing.
@@ -336,12 +339,10 @@ f=fixture([{seconds:8,name:"manual",comments:"mine"}]);g=group(f);api.add(g,desi
 r=api.commit(g);assert(r.failures.length);assert.deepEqual(state(f),beforeManual);assert(!f.events.some(e=>e[0]==="delete"));
 f=fixture([owned(1)]);g=group(f);g.blocked=true;r=api.commit(g);assert(r.failures.length);assert.equal(f.events.length,0);
 
-// A collision later in a sequence plan cannot partially update its first marker.
-f=fixture([owned(1),{seconds:2,name:"manual",comments:"mine"}]);const beforeCollision=state(f);
-r=run(f,[{start:1,end:1.5,reason:"new notes"},{start:2,end:2+1/30,reason:"blocked"}]);
-assert(r.reviewMarkerFailureCount);assert.deepEqual(state(f),beforeCollision);assert.equal(f.events.length,0);
-f=fixture([owned(1)]);f.faults.createAt=68/30;const beforeSequence=state(f);
-r=run(f,[{start:1,end:1.5,reason:"new notes"},{start:2,end:2.5,reason:"new"}]);assert(r.reviewMarkerFailureCount);assert.deepEqual(state(f),beforeSequence);
+// A full clip interval reports the blocked warning and preserves the manual row.
+f=fixture([{seconds:2,name:"manual",comments:"mine"}]);
+r=run(f,[{start:2,end:2+1/30,reason:"blocked"}]);
+assert.equal(r.unattachedMarkerCount,1);assert.deepEqual(f.events,[]);
 
 // Native collection enumerations are bounded per owner, not per desired marker.
 f=fixture(Array.from({length:150},(_,i)=>owned(i/30)));g=group(f);
@@ -384,21 +385,16 @@ console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-writ
 // Owned V1/A2 ruler fallbacks reconcile only their tagged sequence/range.
 {
   const timeline=fixture([{seconds:1,name:"manual",comments:"keep"}]);timeline.seq.sequenceID="owned-rerun";
-  const clip={start:{seconds:0},end:{seconds:2}};
-  context.ownedMarkerFallbacks=[];context.timelineMutated=false;
-  context.queueOwnedMarkerFallback(clip,{Owner:"A2",Name:"VOICE SYNC - Kiem tra can voice",Comments:"listen"},30,{},null,"unreadable");
-  r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,1);assert.equal(r.failures.length,0);
-  const marker=timeline.values.find(m=>m.name===clipSpec.Name);assert(Math.abs(marker.start.seconds-31/30)<1e-8);assert.equal(state(timeline).find(m=>m.name===clipSpec.Name).end,31/30);
-  timeline.events.length=0;r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,1);assert.deepEqual(timeline.events,[],"Fallback reruns reuse the same marker");
+  context.rulerJournal=[];
+  const marker=timeline.marker({seconds:2,end:3,name:clipSpec.Name,comments:"[PremiereVoiceSync:owned-marker:sequence:v1:owned-rerun]"});
   timeline.marker({seconds:4,name:clipSpec.Name,comments:"foreign\n[PremiereVoiceSync:owned-marker:sequence:v1:other]"});
   timeline.marker({seconds:8,name:clipSpec.Name,comments:marker.comments});
-  context.ownedMarkerFallbacks=[];r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,0);assert.equal(timeline.values.length,3);assert(!timeline.values.includes(marker));
+  const initial=state(timeline);r=context.cleanLegacyOwnedRulerMarkers(timeline.seq,6,30);assert.equal(r.count,0);assert.equal(timeline.values.length,3);assert(!timeline.values.includes(marker));
   assert(timeline.values.some(m=>m.name==="manual"));assert(timeline.values.some(m=>m.start.seconds===8));
-  const combined="VOICE SYNC - Gop hinh / Kiem tra toc do";
-  context.queueOwnedMarkerFallback(clip,{Owner:"V1",Name:combined,Comments:"merged speed"},30,{},null,"unreadable");
-  r=context.commitOwnedMarkerFallbacks(timeline.seq,6,30);assert.equal(r.count,1);
-  const point=state(timeline).find(m=>m.name===combined);assert.equal(point.seconds,31/30);assert.equal(point.end,point.seconds);
-  console.log("OWNED_RULER_FALLBACK_LIFECYCLE_OK:collision-stays-in-segment;duration;no-write-rerun;empty-cleanup;manual-foreign-outside-preserved");
+  assert.deepEqual(api.restore(context.rulerJournal),[]);
+  assert.deepEqual(state(timeline),initial);
+  console.log("LEGACY_RULER_CLEANUP_OK");
+
 }
 const main=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8");
 vm.runInContext(main.slice(main.indexOf("  function postcheckError(result)"),main.indexOf("  var hostReadyPromise =")),context);

@@ -105,12 +105,12 @@ seq.markers={getFirstMarker:()=>reviewValues[0]||null,getNextMarker:m=>reviewVal
 seq.createCaptionTrack=()=>true;
 const reviewResult={ok:true,workflow:"caption-only",schemaVersion:1,sequenceId:"seq1",snapshot:api._captionOnlySnapshot(seq),captionSrtPath:"captions.srt",captionCueCount:5,reviewMarkers:[{start:10,end:11,reason:"timing chưa xác minh – kiểm mép",captionIndices:[4]}],reviewMarkerRanges:[{start:10,end:12}]};
 files["result.json"].text=JSON.stringify(reviewResult);
-result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerCount,1);assert.equal(reviewValues[0].start.seconds,10.5);assert.equal(reviewValues[0].end,10.5);assert.equal(reviewValues[0].comments,"Cue 4: timing chưa xác minh – kiểm mép\n[PremiereVoiceSync:review-marker:v2:captions:seq1]");assert.equal(api._captionOnlySnapshot(seq),reviewResult.snapshot);
+result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(reviewValues.length,0,"Unbound review must never create a ruler marker");assert.equal(result.unattachedMarkers[0].cueLabel,"Cue 4");assert.equal(api._captionOnlySnapshot(seq),reviewResult.snapshot);
 const panel=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8"),projection=panel.slice(panel.indexOf("  function projectHostInput("),panel.indexOf("  function writeHostInput("));
 const compactResult=vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:reviewResult});
 const fullImport=result;reviewValues.length=0;files["result.json"].text=JSON.stringify(compactResult);
 result=parse(api.applyCaptionOnly("result.json"));assert.deepStrictEqual(result,fullImport,"Caption snapshot, import, cleanup and markers are identical with compact input.");
-assert.equal(result.reviewMarkerSequenceFallbackCount,1,"Older results without source binding remain visible on the ruler.");
+assert.equal(result.unattachedMarkerCount,1);
 // Frozen source selection survives compact transport; current UI selection is
 // irrelevant. Caption-only may use another audio track, not necessarily A2.
 for(const mode of ["tracks","clips"])for(const compact of [false,true]){
@@ -123,11 +123,11 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
   const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:mode==="tracks"?[1]:[0,1],selectedClips:[{trackIndex:1,nodeId:"voice"}]}});
   selected=[audios[0].clips[0]];
   files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
-  result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerClipCount,1);assert.equal(result.reviewMarkerSequenceFallbackCount,0);
+  result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerClipCount,1);assert.equal(result.unattachedMarkerCount,0);
   assert.equal(voiceValues.length,1);assert.equal(voiceValues[0].start.seconds,0.5);assert.equal(Number(voiceValues[0].end),0.5);assert.equal(otherValues.length,0);assert.equal(reviewValues.length,0);
   assert.equal(api._captionOnlySnapshot(seq),bound.snapshot);assert.equal(children.length,0);
 }
-// #2: unique coverage does not identify voice in a mix or several tracks.
+// A later audible track owns the warning when earlier tracks have a gap.
 {
   const failures=[];let passed=0;
   for(const mode of ["mix","tracks"])for(const compact of [false,true]){try{
@@ -136,11 +136,47 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
     audios[2].clips[0].projectItem={nodeId:"music-source",getMarkers:()=>bank};
     const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),reviewMarkers:[{start:1,end:2,reason:"only music covers this issue"}],reviewMarkerRanges:[{start:0,end:22}],reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:[1,2],selectedClips:[]}});
     files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
-    result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerSequenceFallbackCount,1,"#2 "+mode+" compact="+compact);assert.equal(result.reviewMarkerClipCount,0);assert.equal(sourceValues.length,0,"Music ProjectItem must remain untouched");passed++;
+    result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerClipCount,1);assert.equal(sourceValues.length,1);assert.equal(reviewValues.length,0);passed++;
   }catch(e){failures.push(mode+" compact="+compact+": "+e.message);}}
   console.log("PR37_CAPTION_BINDING_CASES:passed="+passed+";failed="+failures.length);
   if(failures.length)throw Error(failures.join("\n"));
 }
+// Exercise the resolver and the compact host contract together. A1 carries music.
+const resolver=require("../../extension/js/caption-input.js");
+for(const [mode,muted,start,chosen,expected] of [
+  ["mix",false,10,null,0], ["mix",false,14,null,1], ["mix",true,10,null,1],
+  ["tracks",false,10,[2,1],1], ["tracks",false,10,[1,0],0]
+]){
+  audios[0].muted=muted;audios[1].muted=false;
+  const scan=parse(api.scanCaptionRange());
+  const input=resolver.resolve(scan,{sourceMode:mode,trackIndices:chosen,topology:resolver.topology(scan)});
+  const markers=[[],[],[]];
+  audios.forEach((track,i)=>{
+    const rows=markers[i];
+    const bank={getFirstMarker:()=>rows[0],getNextMarker:m=>rows[rows.indexOf(m)+1],
+      deleteMarker:m=>rows.splice(rows.indexOf(m),1),createMarker(seconds){
+        const marker={start:{seconds},setColorByIndex(c){this.color=c;},getColorByIndex(){return this.color;}};
+        rows.push(marker);return marker;
+      }};
+    track.clips[0].projectItem={nodeId:"source"+i,getMarkers:()=>bank};
+  });
+  const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),
+    reviewMarkerRanges:[{start,end:start+1}],reviewMarkers:[{start,end:start+1,reason:"check"}],
+    reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:input.trackIndices,selectedClips:input.selectedClips}});
+  files["result.json"].text=JSON.stringify(vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}));
+  result=parse(api.applyCaptionOnly("result.json"));
+  assert(result.ok,JSON.stringify(result));assert.equal(result.unattachedMarkerCount,0);
+  assert.deepEqual(markers.map(rows=>rows.length),markers.map((_,i)=>Number(i===expected)));
+  assert.equal(reviewValues.length,0);
+}
 files["result.json"].text=JSON.stringify(Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq)}));
-delete seq.markers;result=parse(api.applyCaptionOnly("result.json"));assert(!result.ok);assert(result.captionCreated);assert.equal(result.reviewMarkerFailureCount,1);assert.equal(children.length,0);
-console.log("CAPTION_REVIEW_MARKERS_OK:4-source-binding-cases;full-compact;frozen-clips-and-tracks;timeline-fallback;media-preserved;cleanup;marker-failure-preserves-captionCreated");
+const legacy=seq.markers.createMarker(10.25);
+Object.assign(legacy,{name:"VOICE SYNC - Can kiem tra",comments:"old\n[PremiereVoiceSync:review-marker:v1:captions]",end:10.75,color:4});
+result=parse(api.applyCaptionOnly("result.json",true));
+assert(result.ok && result.rulerCleanupPending);
+assert.deepEqual(reviewValues,[legacy],"Stop during caption import leaves the ruler intact");
+assert(!parse(api.finishCaptionMarkerCleanup("other-job.json")).ok);
+assert.deepEqual(reviewValues,[legacy]);
+assert(parse(api.finishCaptionMarkerCleanup("result.json")).ok);assert.equal(reviewValues.length,0);
+delete seq.markers;result=parse(api.applyCaptionOnly("result.json"));assert(result.ok);assert(result.captionCreated);assert.equal(result.unattachedMarkerCount,1);assert.equal(children.length,0);
+console.log("CAPTION_REVIEW_MARKERS_OK:4-source-binding-cases;full-compact;frozen-clips-and-tracks;first-audible-track;media-preserved;cleanup;marker-failure-preserves-captionCreated");

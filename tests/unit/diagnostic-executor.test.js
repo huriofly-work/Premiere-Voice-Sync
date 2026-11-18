@@ -284,6 +284,11 @@ function issue55Failures() {
   assert.deepStrictEqual(markerRows(bank),snapshot,"Postcheck restores an owner whose pre-commit was already up to date");
   for (const fault of ["razor","speed","move","captionTrack","postcheck","stop","late-stop","manual-edit","restore-failure","reappeared"]) {
     const f = issue55Fixture(()=>fixture(6,false,true)), bank = f.voice.getMarkers();
+    const ruler=f.seq.markers;
+    for(const [i,name,tag] of [[0,"manual","note"],[1,"VOICE SYNC - Can kiem tra","review-marker:v2:edit:seq"],[2,"VOICE SYNC - Kiem tra toc do","owned-marker:sequence:v1:seq"]]){
+      Object.assign(ruler.createMarker(i),{name,comments:"[PremiereVoiceSync:"+tag+"]",end:i+0.25,colorIndex:2});
+    }
+    const rulerBefore=markerRows(ruler).map(row=>row.slice(1));
     function stale(seconds, guid, review) {
       const m = bank.createMarker(seconds);
       Object.assign(m,{guid,name:review?"VOICE SYNC - Can kiem tra":"VOICE SYNC - Kiem tra can voice",
@@ -319,7 +324,7 @@ function issue55Failures() {
     else {
       while(!progress.done)progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
       if(fault==="late-stop"){
-        assert(progress.result.ok);
+        assert(progress.result.ok);assert.equal(ruler.items.length,1);
         assert(moved.comments.endsWith("[PremiereVoiceSync:review-marker:v2:edit:seq]"));
         assert(bank.items.includes(moved));
         assert(!bank.items.some(m=>m.guid==="surplus-review"));
@@ -327,6 +332,7 @@ function issue55Failures() {
       }
     }
     assert(!progress.result.ok,fault);
+    assert.deepEqual(markerRows(ruler).map(row=>row.slice(1)),rulerBefore,fault+" ruler rollback");
     assert.strictEqual(bank.items.find(m=>m.guid==="manual"),manual);
     if(["manual-edit","restore-failure","reappeared"].includes(fault)) {
       if(fault==="reappeared")assert.equal(reappeared.comments,"manual note after undo");
@@ -507,11 +513,11 @@ for(const profile of ["baseline","fast","no-delay"]){
     const result=profile==="stable"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
     assert.equal(result.clipMarkerFailureCount,0,JSON.stringify(result.clipMarkerFailures || result.error));
     assert(result.ok,JSON.stringify(result));
-    assert.equal(result.ownedMarkerSequenceFallbackCount,1,"#1 "+mode+" fallback counted");
-    const marker=f.seq.markers.items.find(m=>m.name===(mode.indexOf("voice-")===0?"VOICE SYNC - Kiem tra can voice":"VOICE SYNC - Kiem tra toc do"));
-    assert(marker,"Warning must survive on ruler");assert.equal(marker.start.seconds,50/30);assert.equal(Number(marker.end),50/30);
-    assert.equal(result.sequenceMarkerCount,result.reviewMarkerSequenceFallbackCount+1);assert.equal(result.clipMarkerCount,result.markerCount-result.sequenceMarkerCount);
-    assert.equal(result.ownedMarkerSequenceFallbacks.length,1);assert(result.ownedMarkerSequenceFallbacks[0].reason);
+    assert.equal(f.seq.markers.items.length,0);
+    assert.equal(result.unattachedMarkerCount,result.unattachedMarkers.length);
+    const owned=result.unattachedMarkers.filter(row=>row.kind!=="VOICE SYNC - Can kiem tra");
+    assert.equal(owned.length,1);assert(owned[0].reason);assert(owned[0].end>owned[0].start);
+    assert.equal(result.clipMarkerCount,result.markerCount);
     passed++;
   }catch(e){failures.push(profile+" "+mode+": "+e.message);}}
   try{
@@ -632,20 +638,19 @@ for(const profile of ["baseline","fast","no-delay"]){
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(value.plan)+";};",value.context);
   }
   const report=JSON.parse(stable.api.executePlan("fixture")),trial=finishTrial(staged,profile);
-  assert(report.ok,JSON.stringify(report));assert.equal(report.reviewMarkerCount,1);assert.equal(report.sequenceMarkerCount,0);
+  assert(report.ok,JSON.stringify(report));assert.equal(report.reviewMarkerCount,1);assert.equal(report.unattachedMarkerCount,0);
   assert.deepStrictEqual(trial.report,report);assert.deepStrictEqual(staged.actions,stable.actions);
   assert(staged.voice.getMarkers().items[0].comments.startsWith("Timing chưa xác minh – kiểm mép\n"));
 }
 f=fixture(6);f.plan.reviewMarkers=[{start:0,end:1,reason:"review"}];delete f.seq.markers;f.voice.isSequence=()=>true;
 vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
-const markerFailure=finishTrial(f,"no-delay").report;assert(!markerFailure.ok);assert(markerFailure.captionCreated);assert.equal(markerFailure.reviewMarkerFailureCount,1);
+const markerFailure=finishTrial(f,"no-delay").report;assert(markerFailure.ok);assert(markerFailure.captionCreated);assert.equal(markerFailure.unattachedMarkerCount,1);
 f=fixture(1);f.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
 const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,1);assert(f.voice.getMarkers().items[0].comments.startsWith("Chưa xác minh liên kết V1/A1 – kiểm tra\n"));assert.equal(f.voice.getMarkers().items[0].colorIndex,1);
 for(const profile of ["baseline","fast","no-delay"]){
   f=fixture(1);f.seq.failSpeed=true;
   const nativeFailure=finishTrial(f,profile).report;
-  assert(!nativeFailure.ok);assert.equal(nativeFailure.error,"NATIVE_SPEED_FAILED");assert.equal(nativeFailure.reviewMarkerCount,1);assert.equal(f.seq.markers.items[0].start.seconds,2);assert.equal(f.seq.markers.items[0].colorIndex,1);assert(f.seq.markers.items[0].comments.includes("Đổi speed lỗi (V1 0) – kiểm tra trước khi thử lại"));
-  assert(!f.seq.markers.items[0].comments.includes("NATIVE_SPEED_FAILED"), "Raw native errors remain in the report, not the short marker.");
+  assert(!nativeFailure.ok);assert.equal(nativeFailure.error,"NATIVE_SPEED_FAILED");assert.equal(nativeFailure.unattachedMarkerCount,1);assert.equal(f.seq.markers.items.length,0);assert(nativeFailure.unattachedMarkers[0].warning.includes("đổi speed lỗi"));
 }
 function editedFixture(oneVoiceGroup=false, outside=false) {
   const f=fixture(3),p=f.plan;
@@ -698,7 +703,7 @@ for(const failAudio of [false,true]){
   removed.remove=function(){throw Error("NATIVE_OMISSION_REMOVE_FAILED");};
   response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));
   assert(response.done);assert(!response.result.ok);assert(response.result.timelineMutated);
-  assert.strictEqual(response.result.error,"NATIVE_OMISSION_REMOVE_FAILED");assert.strictEqual(response.result.reviewMarkerCount,1);
+  assert.strictEqual(response.result.error,"NATIVE_OMISSION_REMOVE_FAILED");assert.strictEqual(response.result.unattachedMarkerCount,1);
   assert(!f.actions.some(a=>a[0]==="speed"),"A failed removal must stop later editing");
 }
 console.log("EDITED_EXECUTOR_MOCK_OK:multi-cut;head,tail;linked-pair-removal;voice-preserved;all-profiles;bad-map-before-mutation;cancel-before-removal");

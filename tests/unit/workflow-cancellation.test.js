@@ -43,7 +43,8 @@ function fixture(options={}){
     else if(expression.includes("beginCaptionAudioExport")){stopAt("export-begin");result={ok:true,done:false,nextCall:0,rangeCount:2};}
     else if(expression.includes("advanceCaptionAudioExport")){advances++;stopAt("export-advance-"+advances);result={ok:true,done:advances===2,nextCall:advances,restored:advances===2};}
     else if(expression.includes("abortCaptionAudioExport"))result=options.restoreError?{ok:false,done:true,restored:false,exportFailurePhase:"restore",error:"RESTORE_FAILED"}:{ok:false,done:true,restored:true};
-    else if(expression.includes("applyCaptionOnly")){stopAt("caption-import");result={ok:true,captionCreated:true,captionCueCount:2};}
+    else if(expression.includes("applyCaptionOnly")){stopAt("caption-import");result={ok:true,captionCreated:true,captionCueCount:2,rulerCleanupPending:true};}
+    else if(expression.includes("finishCaptionMarkerCleanup"))result={ok:true};
     else throw Error("UNEXPECTED_HOST:"+expression);
     if(expression.includes("workflowPauseState")&&options.holdResumeRead&&api.context().resuming)resumeCallback=()=>callback(JSON.stringify(result));
     else Promise.resolve().then(()=>callback(JSON.stringify(result)));
@@ -83,6 +84,7 @@ if(require.main===module)(async()=>{
       const hosts=f.calls.filter(c=>c[0]==="host").map(c=>c[1]);
       if(["edit-begin","edit-advance-1","edit-advance-2"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
       if(["export-begin","export-yield","export-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortCaptionAudioExport")).length,1);
+      if(stopAt==="caption-import")assert(!hosts.some(c=>c.includes("finishCaptionMarkerCleanup")),"Stop keeps legacy ruler markers");
       if(stopAt.startsWith("export"))assert(!f.calls.some(c=>c[0]==="engine"));
       assert(!hosts.some(c=>/\.save\(|\.undo\(/i.test(c)));
     }
