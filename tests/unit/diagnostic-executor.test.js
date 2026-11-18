@@ -656,4 +656,32 @@ for(const profile of ["baseline","fast","no-delay"]){
   assert(!response.result.ok);assert(response.result.clipMarkerFailures.some(x=>x.includes("changed since preparation")));assert.deepStrictEqual(sourceMarkerState(f,f.nested),manualState);
 }
 console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-old;plan-without-write;cancel-between-owners;marker-change-guard");
+// Exercise actual moves in measured/unmeasured executors and every scheduler.
+{
+  const unmeasured=output({measure:false}).text;
+  function movedFixture(executor){
+    const previous=fixtureExecutor;fixtureExecutor=executor;
+    let f;try{f=fixture(6,false,false,1,true,false,false,true);}finally{fixtureExecutor=previous;}
+    f.plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"Sentence cues 1-1 needs review",ColorIndex:1});
+    vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
+    for(const item of [f.nested,f.voice]){
+      const m=item.getMarkers().createMarker(1);let start=1,end=1.25;
+      m.name="VOICE SYNC - Kiem tra toc do";m.comments="old\n[PremiereVoiceSync:owned-marker:v1]";m.setColorByIndex(4);
+      Object.defineProperty(m,"start",{get:()=>({seconds:start}),set(v){assert.equal(typeof v,"number");start=v;assert(start<=end);f.actions.push(["markerStart",v]);}});
+      Object.defineProperty(m,"end",{get:()=>end,set(v){end=v;assert(start<=end);f.actions.push(["markerEnd",v]);}});
+    }
+    return f;
+  }
+  const runs=[],readsByProfile={};
+  for(const executor of [diagnostic,unmeasured])for(const profile of ["direct","baseline","fast","no-delay"]){
+    const f=movedFixture(executor),r=profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
+    assert(r.report.ok,JSON.stringify(r.report));assert.equal(f.actions.filter(a=>a[0]==="markerStart").length,2,JSON.stringify(f.actions.filter(a=>/^marker|deleteMarker/.test(a[0]))));
+    if(profile!=="direct"&&executor===diagnostic)assert.equal(r.timings.filter(t=>t.detail&&t.detail.markerCommit).reduce((n,t)=>n+t.detail.markerCommit.moves,0),2);
+    const calls=JSON.stringify(f.nativeCalls);
+    if(readsByProfile[profile])assert.equal(calls,readsByProfile[profile]);else readsByProfile[profile]=calls;
+    runs.push(JSON.parse(JSON.stringify({report:r.report,mutations:f.nativeMutations,actions:f.actions})));
+    if(runs.length>1)assert.deepStrictEqual(runs[runs.length-1],runs[0]);
+  }
+  console.log("MARKER_MOVE_EXECUTOR_PARITY_OK:measured-unmeasured;direct-baseline-fast-no-delay;two-owner-moves");
+}
 console.log("DIAGNOSTIC_EXECUTOR_MOCK_OK:exact-native-call-parity;exact-report-parity;profile-batch-policy;four-checkpoints;duplicate-call-guard;timeline-and-sequence-guard;abort-no-new-edit;no-save-or-Undo-clear;generated-source-current;review-markers-all-profiles;marker-failure-reports-partial-result");

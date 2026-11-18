@@ -1,5 +1,55 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #53 — Đổi vị trí marker clip thuộc phạm vi thay vì xóa/tạo (17/11/2026)
+
+- **Nguyên nhân/bằng chứng.** Matching chỉ giữ marker gần vị trí mong muốn;
+  marker owned ở vị trí khác luôn tạo mới rồi xóa cũ. Lượt Sông Congo 2.20.92:
+  owner A2 before/after 24/19, creates 18/deletes 23, name/comments/end/color
+  writes 18/19/19/18, colorReads 103, commitMs 25192. Probe 17/11 Premiere 26.2.2
+  có 1 và 101 clip A2, ProjectItem 37 marker, cleanup 37 → 37 cả hai lượt.
+  Lượt 101 clip: ms/lệnh create 45,1; name 47,3; comments 34,7; end 44,2;
+  setColor 42,6; getColor 23,2; delete 35,4. Start số giây đọc lại 11 → 11,5;
+  Time ném `Illegal Parameter type`. Chưa probe chuyển start vượt end cũ.
+- **Invariant/sửa.** `allowMove` mặc định false, chỉ bật tại
+  `prepareClipMarkerGroup` (ProjectItem V1/A2). Ba caller còn lại giữ false:
+  `prepare` trong `_applyReviewMarkers` (ProjectItem review riêng),
+  `sequenceGroup` trong `_applyReviewMarkers` (ruler),
+  `commitOwnedMarkerFallbacks` (ruler). Caption-only không đổi. Ưu tiên match
+  tolerance trước; ghép unmatched với owned obsolete theo vị trí và thứ tự
+  ban đầu khi hòa. Không ghép marker thiếu snapshot end/màu. Snapshot đầy đủ
+  trước mọi ghi; start dùng số giây, sang phải ghi end trước, sang trái ghi
+  start trước để giữ start <= end. Chỉ ghi field khác; end mặc định là điểm
+  tại start khi spec không có end, giống tạo mới. `moves/moveMs` tính lần thử
+  ghi start, cả compensation; field timers #50 giữ nguyên. Không thay scope,
+  fingerprint, available/reserved, foreign/manual, một commit mỗi owner.
+  Mọi replacement phải qua target.verify/tolerance và move phải không va chạm
+  collection trước xóa obsolete còn lại. Lỗi đọc bounds thực tế (kể cả call
+  mutate rồi throw), bù start/end đúng thứ tự, khôi phục field, xóa created,
+  tạo lại deleted và đối chiếu toàn bộ collection như trước.
+- **Regression trước sửa.** `_local/reuse-clip-markers/red.log`: mock đỏ
+  đúng thiếu moves, N vị trí khác dùng N creates + N deletes. Test so toàn
+  state với đường allowMove=false, trừ GUID. Bao phủ phần dư hai phía, foreign
+  gần, hòa vị trí, matching trước pairing, reserved/conflict, move sớm/muộn
+  qua end/start cũ, point end mặc định, chỉ ghi field khác và rerun không ghi.
+  Lỗi start/end trước hoặc sau mutate, name/comments sau mutate, verify,
+  lệch read-back/va chạm, delete sau mutate đều khôi phục state. Giữ các ca
+  reconciliation/sequence fallback cũ. Executor thêm hai owner có move để so
+  measured/unmeasured native reads và direct/baseline/fast/no-delay mutations.
+- **Kiểm tra.** 23 ca move/compensation và reconciliation cũ đạt. Executor
+  sinh lại bằng generator; parity measured/unmeasured và các profile đạt,
+  không sửa vùng sort gần executePlan. Generator `--check`, syntax
+  main/security, Acorn ES3 host/executor/caption-input và `git diff --check`
+  đạt. Suite đầu phát hiện tên biến nội bộ `plan` trùng mẫu quét field input;
+  đổi thành `markerPlan`, không đổi projection/runtime để chiều test.
+  Standard suite trên mã cuối đạt **73 nhóm/133 script PowerShell parse**,
+  exit 0; log `_local/reuse-clip-markers/suite.log`, TEMP/TMP ở `temp` cùng
+  chỗ. Log lỗi đầu giữ tại `suite-first.log`. Sáu Windows integration skipped:
+  InstallerLifecycle, InstallRollback, PanelRegistry, NotificationShortcut,
+  NativeNotifications, IncidentNotifications.
+- **Nghiệm thu.** Native acceptance pending, kể cả thứ tự bounds khi vượt end
+  cũ và thời gian sau sửa. Không chạy Premiere/commit/push/build release/cài
+  đặt; không sửa runtime/dist/AppData. Tự rà diff, không review độc lập.
+
 ## Issue #51 — Đọc key bắt đầu clip một lần khi sort (17/11/2026)
 
 - **Bằng chứng/nguyên nhân.** Trace native 2.20.92 do user cung cấp: chuẩn bị

@@ -1,5 +1,30 @@
 # Đánh giá tăng tốc Premiere Voice Sync
 
+## Tái sử dụng marker clip nguồn, issue #53 (17/11/2026)
+
+Probe ngày 17/11 trên Premiere 26.2.2 có hai lượt: sequence `Final t` với 1 clip
+A2 và `Final` với 101 clip A2, cùng ProjectItem 37 marker. Cả hai giữ 37 → 37
+sau cleanup. Ở lượt 101 clip, trung bình ms/lệnh: create 45,1; name 47,3;
+comments 34,7; end 44,2; setColor 42,6; getColor 23,2; delete 35,4.
+Gán `start` bằng số giây được đọc lại 11 → 11,5; `Time` bị từ chối.
+[Kết quả đầy đủ](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+
+Sau matching tolerance, chỉ nhóm ProjectItem của `prepareClipMarkerGroup`
+bật `allowMove`: ghép desired chưa có match với owned obsolete theo vị trí,
+phá hòa bằng thứ tự snapshot/request. Nhóm review ProjectItem riêng của
+caption-only và hai nhóm ruler không bật. Chỉ tạo/xóa phần dư; marker có
+vị trí khớp tiếp tục được ưu tiên. Snapshot thiếu end/màu không được ghép move.
+
+Move ghi end trước nếu sang phải, start trước nếu sang trái, bằng số giây;
+chỉ ghi field khác giá trị đích. `moves/moveMs` đếm/đo lần ghi start, gồm cả
+compensation, tương tự timers #50. Read-back mọi replacement và kiểm va chạm
+trước khi xóa obsolete còn lại; lỗi đọc bounds thực tế để bù cả native mutate
+rồi throw. Một commit mỗi owner, fingerprint/scope/deletion verification giữ
+nguyên. Mock N marker chuyển chỗ cho N moves/0 creates/0 deletes, state bằng
+delete/create trừ GUID; executor measured/unmeasured và các profile cùng
+native mutations. **Nghiệm thu native và mức tăng tốc sau sửa pending**;
+probe chỉ dịch start khi end còn ở bên phải, chưa thử vượt end cũ trên host.
+
 ## Cache key sort clip, issue #51 (17/11/2026)
 
 Trace native 2.20.92 do user cung cấp: chuẩn bị sau Cắt V1–A1 có 260
@@ -44,7 +69,8 @@ của 2.20.90 trước chuyển marker review sang voice clip không phải A/B 
 đếm thời gian các lệnh hiện có, cả lỗi/compensation. Bảy timer này tách nhau;
 `readMs` và `verificationMs` có chứa colorReadMs, không cộng lại thành tổng.
 Không bỏ write/read nào khi chưa chứng minh được dư; reuse marker cũ vẫn bỏ
-qua giá trị không đổi. Chưa kết luận tăng tốc hoặc bật di chuyển marker.
+qua giá trị không đổi. Ở bước #49 chưa kết luận tăng tốc hoặc bật di chuyển
+marker; bước #53 phía trên bổ sung move sau probe.
 
 Ví dụ mock clock xác định (không phải Premiere): createMs 2, nameWriteMs 3,
 commentsWriteMs 10, endWriteMs 14, colorWriteMs 22, colorReadMs 156, deleteMs 17;
@@ -53,8 +79,8 @@ integration bỏ qua; log `_local/marker-write-cost/suite.log`.
 
 Probe riêng đo từng operation và thử gán start Time/seconds trên media thử
 trong project bỏ đi, không truy cập sequence. [Quy trình](../tools/probes/README.md),
-[mẫu kết quả pending](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
-Mock xác nhận phép tính và giới hạn/cleanup, chưa là native measurement.
+[kết quả native ngày 17/11](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+Mock xác nhận phép tính và giới hạn/cleanup; số đo native bổ sung ở #53 phía trên.
 
 ## Bỏ batch caps của no-delay, issue #47 (16/11/2026)
 

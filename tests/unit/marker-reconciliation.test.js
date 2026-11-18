@@ -8,8 +8,8 @@ const owned=(seconds,note="old")=>({seconds,name:"VOICE SYNC - Can kiem tra",com
 function fixture(initial=[],onMarker=m=>m){
   let id=0;const values=[],events=[],faults={},reads={first:0,next:0};
   function marker(data){
-    let name=data.name||"",comments=data.comments||"",color=data.color===undefined?4:data.color;
-    const m={guid:"marker-"+(id++),type:data.type||"Comment",start:{seconds:data.seconds},end:{seconds:data.end===undefined?data.seconds:data.end},
+    let name=data.name||"",comments=data.comments||"",color=data.color===undefined?4:data.color,start={seconds:data.seconds};
+    const m={guid:"marker-"+(id++),type:data.type||"Comment",get start(){return start;},set start(v){events.push(["start",this.guid,v]);start={seconds:v+(faults.positionOffset||0)};delete faults.positionOffset;},end:{seconds:data.end===undefined?data.seconds:data.end},
       get name(){return name;},set name(v){events.push(["name",this.guid,v]);name=v;if(faults.name){const f=faults.name;delete faults.name;throw Error(f);}},
       get comments(){return comments;},set comments(v){events.push(["comments",this.guid,v]);comments=v;if(faults.comments){const f=faults.comments;delete faults.comments;throw Error(f);}},
       getColorByIndex(){return color;},setColorByIndex(v){events.push(["color",this.guid,v]);if(faults.color)throw Error("COLOR_FAILED");color=v;}};
@@ -310,7 +310,7 @@ function clipFixture(){
 const clipSpec={Owner:"A2",Name:"VOICE SYNC - Kiem tra can voice",Comments:"review"};
 f=clipFixture();const oldClipState=state(f);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
 assert.deepEqual(state(f),oldClipState);assert.equal(f.events.length,0);
-r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,1);assert.equal(f.values[0].start.seconds,4);assert.equal(f.values[0].getColorByIndex(),4);
+r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,0);assert.equal(r.timings.moves,1);assert.equal(r.timings.creates,0);assert.equal(f.values[0].start.seconds,4);assert.equal(f.values[0].getColorByIndex(),4);
 // Reprepare simulates another run on the same input. Marker remains at 6s.
 f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
 r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[]);
