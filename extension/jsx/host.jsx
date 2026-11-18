@@ -821,18 +821,19 @@ $._PVS._markerTools = (function () {
         try { return marker.getColorByIndex(); }
         finally { timings.colorReadMs += (new Date()).getTime() - started; }
     }
+    function markerEnd(marker) {
+        var end = marker.end;
+        return end === undefined || end === null ? null : Number(typeof end === "number" ? end : end.seconds);
+    }
     function read(collection, timings) {
         var readStarted = timings ? (new Date()).getTime() : 0;
         if (timings) timings.readPasses++;
         try {
             var rows = [], marker = collection.getFirstMarker();
             while (marker) {
-                var seconds = Number(marker.start.seconds), end = null, color = null;
+                var seconds = Number(marker.start.seconds), end = markerEnd(marker), color = null;
                 if (!isFinite(seconds)) throw new Error("Unreadable marker position.");
-                if (marker.end !== undefined) {
-                    end = Number(typeof marker.end === "number" ? marker.end : marker.end.seconds);
-                    if (!isFinite(end)) throw new Error("Unreadable marker end.");
-                }
+                if (end !== null && !isFinite(end)) throw new Error("Unreadable marker end.");
                 try { if (typeof marker.getColorByIndex === "function") color = Number(readColor(marker, timings)); } catch (ignoreColor) {}
                 if (color === null || !isFinite(color)) color = null;
                 rows.push({ ref: marker, guid: String(marker.guid || ""), seconds: seconds, end: end,
@@ -866,11 +867,13 @@ $._PVS._markerTools = (function () {
         }
         return buckets;
     }
-    function near(buckets, seconds, tolerance) {
+    function near(buckets, seconds, tolerance, radius) {
         var result = [], base = Math.floor(seconds / tolerance);
-        for (var b = base - 1; b <= base + 1; b++) {
+        radius = radius || tolerance;
+        var reach = Math.ceil(radius / tolerance);
+        for (var b = base - reach; b <= base + reach; b++) {
             var values = buckets["p" + b] || [];
-            for (var i = 0; i < values.length; i++) if (Math.abs(values[i].seconds - seconds) < tolerance) result.push(values[i]);
+            for (var i = 0; i < values.length; i++) if (Math.abs(values[i].seconds - seconds) < radius) result.push(values[i]);
         }
         return result;
     }
@@ -888,14 +891,58 @@ $._PVS._markerTools = (function () {
         for (var i = 0; i < rows.length; i++) { if (!owned(g, rows[i])) return false; count++; }
         return count <= 1;
     }
+    // Choose on the timeline grid before mapping into ProjectItem seconds.
+    function point(g, start, end, fps, map, onBlocked) {
+        var first = Math.ceil(start * fps - 0.0000001), last = Math.ceil(end * fps - 0.0000001) - 1;
+        if (first > last) return null;
+        var middle = Math.max(first, Math.min(last, Math.round((start + end) * fps / 2 + 0.0000001)));
+        function inside(seconds) {
+            var t = map ? map.timeline(seconds) : seconds;
+            return t >= start - 0.0000001 / fps && t < end - 0.0000001 / fps;
+        }
+        function attempt(frame) {
+            var t = frame / fps, seconds = map ? map.source(t) : t;
+            if (!available(g, seconds)) {
+                if (onBlocked) onBlocked(seconds);
+                return null;
+            }
+            var halfFrame = (map ? map.speed : 1) / fps / 2;
+            return { seconds: seconds, end: seconds, positionTolerance: halfFrame, verify: function (actual, actualEnd) {
+                return actualEnd !== null && inside(actual) && inside(actualEnd) &&
+                    Math.abs(actualEnd - actual) <= g.tolerance / 2 &&
+                    Math.abs(actual - seconds) <= halfFrame;
+            } };
+        }
+        for (var d = 0; middle + d <= last || middle - d >= first; d++) {
+            var hit = middle + d <= last ? attempt(middle + d) : null;
+            if (!hit && d && middle - d >= first) hit = attempt(middle - d);
+            if (hit) return hit;
+        }
+        return null;
+    }
     function add(g, spec) {
         if (spec.end !== undefined && (!isFinite(spec.end) || spec.end < spec.seconds)) throw new Error("Invalid marker duration.");
         if (typeof spec.name !== "string" || typeof spec.comments !== "string" || !owned(g, { seconds: spec.seconds, name: spec.name, comments: spec.comments, type: "Comment" }) || !isFinite(spec.color) || Math.floor(spec.color) !== spec.color || spec.color < 0 || spec.color > 7) throw new Error("Invalid owned marker request.");
         if (!isFinite(spec.seconds) || !available(g, spec.seconds)) throw new Error("Marker position occupied or outside scope.");
+        function reserve(seconds) {
+            var key = "p" + Math.floor(seconds / g.tolerance);
+            if (!g.reserved[key]) g.reserved[key] = [];
+            g.reserved[key].push({ seconds: seconds });
+        }
+        // A host-rounded point can be farther from the grid than the collision tolerance.
+        if (g.allowMove && spec.positionTolerance && !near(g.positions, spec.seconds, g.tolerance).length) {
+            var candidates = near(g.positions, spec.seconds, g.tolerance, spec.positionTolerance);
+            for (var i = 0; i < candidates.length; i++) {
+                var row = candidates[i];
+                if (row.name === spec.name && row.comments === spec.comments && spec.verify(row.seconds, row.seconds) && available(g, row.seconds)) {
+                    reserve(spec.seconds);
+                    spec.seconds = row.seconds; spec.end = row.seconds;
+                    break;
+                }
+            }
+        }
         g.desired.push(spec);
-        var key = "p" + Math.floor(spec.seconds / g.tolerance);
-        if (!g.reserved[key]) g.reserved[key] = [];
-        g.reserved[key].push(spec);
+        reserve(spec.seconds);
     }
     function same(a, b) { return a.ref === b.ref || (a.guid && a.guid === b.guid); }
     function find(rows, row) {
@@ -1045,12 +1092,13 @@ $._PVS._markerTools = (function () {
             try { marker.setColorByIndex(color); }
             finally { timings.colorWriteMs += (new Date()).getTime() - started; }
         }
-        function writePosition(marker, currentStart, currentEnd, seconds, end) {
+        function writePosition(marker, currentStart, currentEnd, seconds, end, exact) {
             // Expanding the right edge first also handles starts beyond the old end.
             // On the way back, read the actual bounds: a throwing call may mutate.
-            if (seconds > currentStart && end !== currentEnd) writeField(marker, "end", end, "endWrites", "endWriteMs");
+            var updateEnd = Math.abs(end - currentEnd) > (exact ? 0 : g.tolerance / 2);
+            if (seconds > currentStart && (updateEnd || seconds > currentEnd)) writeField(marker, "end", end, "endWrites", "endWriteMs");
             if (seconds !== currentStart) writeField(marker, "start", seconds, "moves", "moveMs");
-            if (seconds <= currentStart && end !== currentEnd) writeField(marker, "end", end, "endWrites", "endWriteMs");
+            if (seconds <= currentStart && updateEnd) writeField(marker, "end", end, "endWrites", "endWriteMs");
         }
         function removeMarker(marker) {
             var started = (new Date()).getTime();
@@ -1100,7 +1148,8 @@ $._PVS._markerTools = (function () {
             for (var i = 0; i < g.desired.length; i++) {
                 var spec = g.desired[i], matches = near(positions, spec.seconds, g.tolerance), old = matches.length ? matches[0] : null;
                 if (old && (!owned(g, old) || matches.length !== 1)) throw new Error("Marker ownership changed.");
-                var markerPlan = { spec: spec, old: old, order: i, move: false };
+                var markerPlan = { spec: spec, old: old, order: i, move: !!(old && spec.positionTolerance && !spec.verify(old.seconds, old.seconds)) };
+                if (markerPlan.move && (old.end === null || old.color === null)) throw new Error("Cannot snapshot marker for move.");
                 plans.push(markerPlan);
                 if (old) matched.push(old); else unmatched.push(markerPlan);
             }
@@ -1120,14 +1169,20 @@ $._PVS._markerTools = (function () {
                 markerPlan = plans[p]; spec = markerPlan.spec; old = markerPlan.old;
                 var marker = old ? old.ref : null;
                 if (!marker) marker = create(spec.seconds, before, created);
-                else if (markerPlan.move || old.name !== spec.name || old.comments !== spec.comments || old.color !== spec.color || (spec.end !== undefined && old.end !== spec.end)) { changed.push(old); mutate(); }
+                var desiredEnd = spec.end;
+                if (!markerPlan.move && desiredEnd === spec.seconds) desiredEnd = old ? old.seconds : Number(marker.start.seconds);
+                if (desiredEnd !== undefined && !isFinite(desiredEnd)) throw new Error("Unreadable marker position.");
+                var currentEnd = old ? old.end : markerEnd(marker);
+                var updateEnd = desiredEnd !== undefined && (currentEnd === null || !isFinite(currentEnd) || Math.abs(currentEnd - desiredEnd) > g.tolerance / 2);
+                if (!updateEnd && !markerPlan.move && spec.positionTolerance && !spec.verify(desiredEnd, currentEnd) && spec.verify(desiredEnd, desiredEnd)) updateEnd = true;
+                if (old && (markerPlan.move || old.name !== spec.name || old.comments !== spec.comments || old.color !== spec.color || updateEnd)) { changed.push(old); mutate(); }
                 if (markerPlan.move) {
                     moved.push(old);
                     writePosition(marker, old.seconds, old.end, spec.seconds, spec.end === undefined ? spec.seconds : spec.end);
                 }
                 if (!old || old.name !== spec.name) writeField(marker, "name", spec.name, "nameWrites", "nameWriteMs");
                 if (!old || old.comments !== spec.comments) writeField(marker, "comments", spec.comments, "commentsWrites", "commentsWriteMs");
-                if (!markerPlan.move && spec.end !== undefined && (!old || old.end !== spec.end)) writeField(marker, "end", spec.end, "endWrites", "endWriteMs");
+                if (!markerPlan.move && updateEnd) writeField(marker, "end", desiredEnd, "endWrites", "endWriteMs");
                 writeColor(marker, spec.color, old);
                 kept.push({ ref: marker, guid: String(marker.guid || "") });
                 wanted.push(spec);
@@ -1138,7 +1193,7 @@ $._PVS._markerTools = (function () {
                 var after = read(g.collection, timings);
                 for (var v = 0; v < kept.length; v++) {
                     var actual = find(after, kept[v]), target = wanted[v];
-                    if (!actual || actual.name !== target.name || actual.comments !== target.comments || !owned(g, actual) || (target.end !== undefined && (actual.end === null || Math.abs(actual.end - target.end) > g.tolerance / 2)) || (target.verify ? !target.verify(actual.seconds, actual.end) : Math.abs(actual.seconds - target.seconds) > g.tolerance / 2)) throw new Error("Marker position/notes verification failed.");
+                    if (!actual || actual.name !== target.name || actual.comments !== target.comments || !owned(g, actual) || (target.end !== undefined && (actual.end === null || Math.abs(actual.end - (target.end === target.seconds ? actual.seconds : target.end)) > g.tolerance / 2)) || (target.verify ? !target.verify(actual.seconds, actual.end) : Math.abs(actual.seconds - target.seconds) > g.tolerance / 2)) throw new Error("Marker position/notes verification failed.");
                     if (find(moved, kept[v])) {
                         for (var collision = 0; collision < after.length; collision++) {
                             if (!same(actual, after[collision]) && Math.abs(actual.seconds - after[collision].seconds) < g.tolerance) throw new Error("Moved marker position occupied.");
@@ -1186,7 +1241,7 @@ $._PVS._markerTools = (function () {
                     if (find(moved, saved)) {
                         var currentStart = Number(saved.ref.start.seconds), currentEnd = Number(typeof saved.ref.end === "number" ? saved.ref.end : saved.ref.end.seconds);
                         if (!isFinite(currentStart) || !isFinite(currentEnd)) throw new Error("Cannot read moved marker bounds for restoration.");
-                        writePosition(saved.ref, currentStart, currentEnd, saved.seconds, saved.end);
+                        writePosition(saved.ref, currentStart, currentEnd, saved.seconds, saved.end, true);
                     }
                     writeField(saved.ref, "name", saved.name, "nameWrites", "nameWriteMs");
                     writeField(saved.ref, "comments", saved.comments, "commentsWrites", "commentsWriteMs");
@@ -1213,7 +1268,7 @@ $._PVS._markerTools = (function () {
         }
         return finishResult();
     }
-    return { sourceReviewOwner: sourceReviewOwner, group: group, available: available, add: add, commit: commit, restore: restore, reversible: reversible,
+    return { sourceReviewOwner: sourceReviewOwner, group: group, point: point, available: available, add: add, commit: commit, restore: restore, reversible: reversible,
         resetGroup: resetGroup, read: read, fingerprint: fingerprint, snapshotOwned: snapshotOwned, restoredRows: restoredRows };
 }());
 
@@ -1357,18 +1412,14 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         function planClip(target, selected) {
             var map = selected.mapping, owner = selected.owner, end = Math.min(target.end, map.end), candidate = Math.max(target.start, map.start);
             if (!owner.group || owner.error || end <= candidate) return false;
-            while (candidate < end && !tools.available(owner.group, map.source(candidate))) {
-                if (transaction && transaction.prepareOnly && transaction.pendingDeletion(owner.key, map.source(candidate))) owner.defer = true;
-                candidate += 1 / fps;
-            }
-            if (candidate >= end) return false;
-            tools.add(owner.group, { seconds: map.source(candidate), end: map.source(end), name: name,
-                comments: shortNotes(target.notes) + "\n" + tag, color: target.error ? 1 : 4,
-                verify: function (seconds, markerEnd) {
-                    var projected = map.timeline(seconds), projectedEnd = map.timeline(markerEnd), epsilon = 0.000001;
-                    return markerEnd !== null && projected >= target.start - epsilon && projected < end && projected >= map.start - epsilon &&
-                        projectedEnd >= projected && projectedEnd <= end + epsilon && projectedEnd <= map.end + epsilon;
-                } });
+            var spec = tools.point(owner.group, candidate, end, fps, map, function (seconds) {
+                if (transaction && transaction.prepareOnly && transaction.pendingDeletion(owner.key, seconds)) owner.defer = true;
+            });
+            if (!spec) return false;
+            spec.name = name;
+            spec.comments = shortNotes(target.notes) + "\n" + tag;
+            spec.color = target.error ? 1 : 4;
+            tools.add(owner.group, spec);
             owner.targets.push(target); return true;
         }
         for (var ti = 0; ti < groups.length; ti++) {
@@ -1420,12 +1471,12 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         }
         var group = sequenceGroup;
         for (var j = 0; j < fallback.length; j++) {
-            var target = fallback[j], candidate = target.frame, last = Math.ceil(target.end * fps - 0.0000001) - 1;
-            // Plan all collisions before changing the first marker.
-            for (; candidate <= last; candidate++) if ($._PVS._markerTools.available(group, candidate / fps)) break;
-            if (candidate > last) throw new Error("No free frame inside review interval.");
-            $._PVS._markerTools.add(group, { seconds: candidate / fps, name: name,
-                comments: shortNotes(target.notes) + "\n" + tag, color: target.error ? 1 : 4 });
+            var target = fallback[j], spec = tools.point(group, target.start, target.end, fps);
+            if (!spec) throw new Error("No free frame inside review interval.");
+            spec.name = name;
+            spec.comments = shortNotes(target.notes) + "\n" + tag;
+            spec.color = target.error ? 1 : 4;
+            tools.add(group, spec);
         }
         var result = $._PVS._markerTools.commit(group);
         stats.reviewMarkerSequenceFallbackCount = result.count;
@@ -1790,32 +1841,23 @@ $._PVS.executePlan = function (planPath) {
         var target = ownedMarkerTarget(trackItem, spec, fps, plannedRange), start = target.start, end = target.end;
         var sourceStart = map.source(start), sourceEnd = map.source(end);
         var markerColorIndex = target.color;
-        function verifyPosition(seconds, markerEnd) {
-            var projected = map.timeline(seconds), projectedEnd = markerEnd === undefined ? end : map.timeline(markerEnd);
-            return isFinite(projected) && projected >= start - 0.000001 && projected < end &&
-                markerEnd !== null && projectedEnd >= projected && projectedEnd <= end + 0.000001;
-        }
         var markerName = String(spec.Name), markerComments = String(spec.Comments || "") + "\n[PremiereVoiceSync:owned-marker:v1]";
         var requestKey = "r" + JSON.stringify([sourceStart, sourceEnd, markerName, markerComments, markerColorIndex, !!spec.Merged]);
         if (!group.requests) group.requests = {};
         if (group.requests[requestKey] !== undefined) {
-            if (!verifyPosition(group.requests[requestKey])) throw new Error("Shared source marker cannot map to this clip.");
+            var projected = map.timeline(group.requests[requestKey]);
+            if (!isFinite(projected) || projected < start - 0.000001 || projected >= end) throw new Error("Shared source marker cannot map to this clip.");
             group.fallbackTargets.push(target);
             return;
         }
-        // Prefer the first source sample so the duration covers the segment.
-        // Manual collisions retain ownership and move only the warning start.
-        var candidate = sourceStart;
-        for (var ei = 0; ei < group.before.length; ei++) {
-            var prior = group.before[ei];
-            if (prior.name === markerName && prior.comments === markerComments && verifyPosition(prior.seconds, prior.end) &&
-                Math.abs(prior.seconds - sourceStart) <= map.speed / fps / 2 && $._PVS._markerTools.available(group, prior.seconds)) { candidate = prior.seconds; break; }
-        }
-        while (candidate < sourceEnd && !$._PVS._markerTools.available(group, candidate)) candidate += map.speed / fps;
-        if (candidate >= sourceEnd) throw new Error("No free source position for clip marker on '" + trackItem.name + "'.");
-        $._PVS._markerTools.add(group, { seconds: candidate, end: sourceEnd, name: markerName,
-            comments: markerComments, color: markerColorIndex, verify: verifyPosition, merged: !!spec.Merged });
-        group.requests[requestKey] = candidate;
+        var point = $._PVS._markerTools.point(group, start, end, fps, map);
+        if (!point) throw new Error("No free source position for clip marker on '" + trackItem.name + "'.");
+        point.name = markerName;
+        point.comments = markerComments;
+        point.color = markerColorIndex;
+        point.merged = !!spec.Merged;
+        $._PVS._markerTools.add(group, point);
+        group.requests[requestKey] = point.seconds;
         if (!group.fallbackTargets) group.fallbackTargets = [];
         group.fallbackTargets.push(target);
     }
@@ -1929,18 +1971,19 @@ $._PVS.executePlan = function (planPath) {
         var tools = $._PVS._markerTools, group;
         try {
             group = tools.group(sequence.markers, [{ start: 0, end: end }], function (row) {
-                return (row.name === "VOICE SYNC - Kiem tra toc do" || row.name === "VOICE SYNC - Kiem tra can voice" || row.name === "VOICE SYNC - Da gop hinh") && String(row.comments || "").indexOf(tag) >= 0;
+                return (row.name === "VOICE SYNC - Kiem tra toc do" || row.name === "VOICE SYNC - Kiem tra can voice" || row.name === "VOICE SYNC - Da gop hinh" || row.name === "VOICE SYNC - Gop hinh / Kiem tra toc do") && String(row.comments || "").indexOf(tag) >= 0;
             }, 0.5 / fps);
         } catch (prepareError) {
             if (ownedMarkerFallbacks.length) throw prepareError;
             return { count: 0, failures: [], colorFailures: [] };
         }
         for (var i = 0; i < ownedMarkerFallbacks.length; i++) {
-            var target = ownedMarkerFallbacks[i], candidate = Math.ceil(target.start * fps - 0.0000001) / fps;
-            while (candidate < target.end && !tools.available(group, candidate)) candidate += 1 / fps;
-            if (candidate >= target.end) throw new Error("No free frame inside owned marker fallback interval.");
-            tools.add(group, { seconds: candidate, end: target.end, name: target.name,
-                comments: target.comments + "\n" + tag, color: target.color });
+            var target = ownedMarkerFallbacks[i], spec = tools.point(group, target.start, target.end, fps);
+            if (!spec) throw new Error("No free frame inside owned marker fallback interval.");
+            spec.name = target.name;
+            spec.comments = target.comments + "\n" + tag;
+            spec.color = target.color;
+            tools.add(group, spec);
         }
         return tools.commit(group, function () { timelineMutated = true; });
     }

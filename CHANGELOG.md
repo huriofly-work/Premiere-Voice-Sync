@@ -4,7 +4,8 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
-- Chạy lại Auto edit hoặc Tạo phụ đề trên cùng nguồn voice sẽ thay bộ marker review của lần chạy trước cùng chức năng, kể cả khi dùng sequence mới.
+- Marker của tool trên clip và thước timeline là điểm ở giữa đoạn cảnh báo để không che sóng âm khi dựng (#59).
+- Chạy lại Auto edit hoặc Tạo phụ đề trên cùng nguồn voice sẽ thay bộ marker review của lần chạy trước cùng chức năng, kể cả khi dùng sequence mới (#58).
 
 ## 2.20.93 — 2026-11-18
 
