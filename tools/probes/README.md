@@ -1,5 +1,33 @@
 # Probe native marker
 
+## TrackItem giữ qua hai lần gọi host — ghi trước marker không chạy
+
+`Probe-StaleTrackItem.jsx` **chỉ đọc**: không sửa clip, marker, sequence hay project, không Save/Undo. Probe kiểm tra một TrackItem lấy ở một lần `evalScript` có còn báo đúng nguồn (`projectItem.nodeId`) ở lần gọi sau hay không. Mỗi stage của executor là một lần gọi riêng. Theo trace của 2.20.93–2.20.95, khoá nguồn tính từ TrackItem cũ không khớp, nên marker review không được ghi trước khi cắt (hậu kiểm báo `ownerIndex = -1`).
+
+Mở sequence cần kiểm, chọn index track audio của voice (A1 là 0, A2 là 1). Mỗi lệnh dưới đây là một lần gọi host riêng:
+
+```powershell
+node tools/probes/run-probe.js load (Resolve-Path tools/probes/Probe-StaleTrackItem.jsx).Path
+node tools/probes/run-probe.js stale-capture 1
+node tools/probes/run-probe.js stale-compare
+node tools/probes/run-probe.js stale-release
+```
+
+- `stale-capture` giữ các TrackItem của track đó cùng ProjectItem của chúng. Lệnh đọc mỗi trường hai lần trong cùng lần gọi (`sameCallHeldDiff`, `sameCallRefetchDiff` phải rỗng).
+- `stale-compare` đọc lại TrackItem đã giữ và so với TrackItem mới tìm theo `nodeId`. `keyMatchesFresh: false` hoặc `keyMismatches > 0` xác nhận nguyên nhân. `heldVsFreshDiff` cho biết trường nào đổi. `keptProjectItemNodeId` cho biết ProjectItem giữ từ lần trước có còn dùng được không.
+- Nếu project hoặc sequence đang mở đổi giữa hai lệnh, probe dừng. Giữa hai lệnh không cần thao tác gì trên timeline.
+- `stale-release` bỏ các tham chiếu đã giữ.
+
+Mock (`tests/unit/probe-stale-trackitem.test.js`) chỉ chứng minh cách probe đọc và báo cáo, chưa chứng minh hành vi của Premiere.
+
+**Kết quả ngày 18/11/2026** trên sequence Sông Congo đã dựng, chạy Premiere 2026:
+
+- **A2:** 100 clip. Sau 0,7 giây, cả 100 TrackItem giữ từ lần gọi trước vẫn đọc đúng mọi trường, gồm `projectItem.nodeId`, `treePath` và `getMarkers`. `keyMismatches` bằng 0, `heldVsFreshDiff` rỗng. ProjectItem giữ lại cũng còn dùng được.
+- **Khác mock:** Premiere trả một object mới ở mỗi lần đọc `clips[i]`, kể cả trong cùng một lần gọi (`sameObject: false`). Mock thì trả cùng một object.
+- **A1:** 130 clip, `nodeId` không trùng với A2.
+
+Kết luận: TrackItem cũ **không** làm mất khoá nguồn, nên giả thuyết này bị loại. Nguyên nhân pre-commit không ghi vẫn chưa xác định.
+
 ## Kiểm tra thứ tự ghi start và end — issue #67
 
 `Probe-MarkerMoveEnd.jsx` đo hai biên sau từng phép ghi trên ProjectItem đã chọn. Nạp probe, lấy `documentId` và `nodeId` từ `move-list`, rồi thay hai giá trị mẫu trong lệnh dưới đây.

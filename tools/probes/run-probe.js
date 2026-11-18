@@ -11,6 +11,12 @@ function scriptFor(args) {
     const [command, ...rest] = args;
     if (command === "cost-list" && rest.length === 0) return "$._PVSMarkerWriteCostProbe.list()";
     if (command === "move-list" && rest.length === 0) return "$._PVSMarkerMoveEndProbe.list()";
+    if (command === "stale-capture") {
+        if (rest.length !== 1 || !/^\d+$/.test(rest[0])) throw Error("Usage: stale-capture <audioTrackIndex>");
+        return `$._PVSStaleTrackItemProbe.capture(${Number(rest[0])})`;
+    }
+    if (command === "stale-compare" && rest.length === 0) return "$._PVSStaleTrackItemProbe.compare()";
+    if (command === "stale-release" && rest.length === 0) return "$._PVSStaleTrackItemProbe.release()";
     if (["move-run", "move-cleanup"].includes(command)) {
         if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: move-run|move-cleanup <documentId> <nodeId> <tag> <scope>");
         return `$._PVSMarkerMoveEndProbe.${command === "move-run" ? "run" : "cleanup"}(${rest.map(literal).join(",")})`;
