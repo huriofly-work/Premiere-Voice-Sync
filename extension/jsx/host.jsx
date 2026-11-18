@@ -887,6 +887,7 @@ $._PVS._markerTools = (function () {
     }
     function available(g, seconds) {
         if (!inScope(g, seconds) || near(g.reserved, seconds, g.tolerance).length) return false;
+        if (g.peerReservations && near(g.peerReservations, seconds, g.tolerance).length) return false;
         var rows = near(g.positions, seconds, g.tolerance), count = 0;
         for (var i = 0; i < rows.length; i++) { if (!owned(g, rows[i])) return false; count++; }
         return count <= 1;
@@ -1066,6 +1067,7 @@ $._PVS._markerTools = (function () {
     }
     function resetGroup(g, rows) {
         g.before = rows; g.positions = index(rows, g.tolerance); g.reserved = {}; g.desired = [];
+        g.peerReservations = null;
         g.requests = {}; g.fallbackTargets = [];
     }
     function commit(g, touch, journal, keepSurplus) {
@@ -1379,13 +1381,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         for (var i = 0; i < issues.length; i++) {
             var issue = issues[i], start = Number(issue.start), end = Number(issue.end);
             if (issue.start === null || issue.end === null || !isFinite(start) || !isFinite(end) || start < 0 || end <= start || !inScope(start) || !inScope(Math.max(start, end - 0.000001))) throw new Error("Invalid review marker range: " + i);
-            var frame = Math.round(start * fps), group = null;
-            for (var g = 0; g < groups.length; g++) if (groups[g].frame === frame) { group = groups[g]; break; }
-            if (!group) { group = { frame: frame, start: start, end: end, notes: [], error: false }; groups.push(group); }
-            group.start = Math.min(group.start, start);
-            group.end = Math.max(group.end, end);
-            group.notes.push({ label: cueLabel(issue, start, end), reason: String(issue.reason || "cần kiểm tra") });
-            if (issue.severity === "error") group.error = true;
+            groups.push({ start: start, end: end, order: i, notes: [{ label: cueLabel(issue, start, end), reason: String(issue.reason || "cần kiểm tra") }], error: issue.severity === "error" });
         }
         var scope = [];
         for (var sr = 0; sr < ranges.length; sr++) scope.push({ start: Number(ranges[sr].start), end: Number(ranges[sr].end) });
@@ -1401,10 +1397,12 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
             if (!key) continue;
             for (var oi = 0; oi < owners.length; oi++) if (owners[oi].key === key) owner = owners[oi];
             if (!owner) { owner = { key: key, item: projectItem, targets: [] }; owners.push(owner); }
-            if (mapping) mappings.push({ item: item, mapping: mapping, owner: owner });
+            if (mapping) mappings.push({ item: item, mapping: mapping, owner: owner, intervals: [] });
         }
         function prepare(owner) {
-            return tools.group(owner.item.getMarkers(), [{ start: 0, end: Number.MAX_VALUE }], sourceOwned, 0.25 / fps, true);
+            var group = tools.group(owner.item.getMarkers(), [{ start: 0, end: Number.MAX_VALUE }], sourceOwned, 0.25 / fps, true);
+            if (transaction && transaction.voiceReservations) group.peerReservations = transaction.voiceReservations[owner.key];
+            return group;
         }
         for (var po = 0; po < owners.length; po++) {
             try { owners[po].group = prepare(owners[po]); } catch (prepareError) { owners[po].error = String(prepareError); }
@@ -1440,9 +1438,33 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
                 if (Math.min(overlaps[a].end, overlaps[b].end) > Math.max(overlaps[a].start, overlaps[b].start)) ambiguous = true;
             }
             if (!ambiguous && coveringItem) for (var mi = 0; mi < mappings.length; mi++) if (mappings[mi].item === coveringItem) selected = mappings[mi];
-            try {
-                if (!selected || !planClip(groups[ti], selected)) fallback.push(groups[ti]);
-            } catch (clipPlanError) { fallback.push(groups[ti]); }
+            var target = groups[ti];
+            if (selected) selected.intervals.push(target);
+            else {
+                // Unbound warnings keep their existing start-frame grouping.
+                var frame = Math.round(target.start * fps), prior = null;
+                for (var u = 0; u < fallback.length; u++) if (Math.round(fallback[u].start * fps) === frame) { prior = fallback[u]; break; }
+                if (prior) combine(prior, target);
+                else fallback.push(target);
+            }
+        }
+        function combine(span, next) {
+            span.start = Math.min(span.start, next.start);
+            span.end = Math.max(span.end, next.end);
+            span.notes = span.notes.concat(next.notes);
+            span.error = span.error || next.error;
+        }
+        // Each list belongs to one TrackItem, even for repeated source ranges.
+        for (var m = 0; m < mappings.length; m++) {
+            var piece = mappings[m], intervals = piece.intervals;
+            intervals.sort(function (a, b) { return a.start - b.start || a.order - b.order; });
+            for (var n = 0; n < intervals.length; n++) {
+                var span = intervals[n];
+                while (n + 1 < intervals.length && Math.round(intervals[n + 1].start * fps) <= Math.round(span.end * fps)) combine(span, intervals[++n]);
+                try {
+                    if (!planClip(span, piece)) fallback.push(span);
+                } catch (clipPlanError) { fallback.push(span); }
+            }
         }
         if (transaction && transaction.prepareOnly) {
             // Only safe source requests are staged. Ruler targets stay in the final pass.
@@ -1843,6 +1865,7 @@ $._PVS.executePlan = function (planPath) {
         var markerColorIndex = target.color;
         var markerName = String(spec.Name), markerComments = String(spec.Comments || "") + "\n[PremiereVoiceSync:owned-marker:v1]";
         var requestKey = "r" + JSON.stringify([sourceStart, sourceEnd, markerName, markerComments, markerColorIndex, !!spec.Merged]);
+        if (spec.Owner === "A2") requestKey += ":" + start + ":" + end;
         if (!group.requests) group.requests = {};
         if (group.requests[requestKey] !== undefined) {
             var projected = map.timeline(group.requests[requestKey]);
@@ -1889,8 +1912,30 @@ $._PVS.executePlan = function (planPath) {
                 source: function (t) { return (t - start + input) * speed; },
                 timeline: function (m) { return start + m / speed - input; } } };
     }
-    function planVoiceProjection() {
-        var pieces = [], bySegment = {}, specs = asArray(plan.markers);
+    function voiceMarkerSpecs(specs) {
+        var result = [], bySegment = {};
+        for (var i = 0; i < specs.length; i++) {
+            var spec = specs[i], segment = segmentForMarker(spec);
+            if (segment === null || spec.Owner !== "A2" || spec.Name !== "VOICE SYNC - Kiem tra can voice") {
+                result.push(spec);
+                continue;
+            }
+            var key = "s" + segment, note = String(spec.Comments || ""), entry = bySegment[key];
+            if (!entry) {
+                var copy = {};
+                for (var field in spec) if (spec.hasOwnProperty(field)) copy[field] = spec[field];
+                entry = { spec: copy, reasons: {} };
+                bySegment[key] = entry;
+                result.push(copy);
+            } else if (note && !entry.reasons["r" + note]) {
+                entry.spec.Comments = entry.spec.Comments ? entry.spec.Comments + "\n" + note : note;
+            }
+            entry.reasons["r" + note] = true;
+        }
+        return result;
+    }
+    function planVoiceProjection(specs) {
+        var pieces = [], bySegment = {};
         if (chapters.length !== voiceClips.length || (!specs.length && !asArray(plan.reviewMarkers).length)) return null;
         for (var i = 0; i < plan.segments.length; i++) if (plan.segments[i].Kind === "retime") {
             var piece = projectVoicePiece(plan.segments[i]);
@@ -2111,7 +2156,8 @@ $._PVS.executePlan = function (planPath) {
         var cuts = [];
         for (var cutKey in cutFrames) if (cutFrames.hasOwnProperty(cutKey)) cuts.push(Number(cutKey));
         cuts.sort(function (a, b) { return a - b; });
-        var projectedPieces = planVoiceProjection(), preparedReview = { prepareOnly: true, pendingDeletion: function (key, seconds) {
+        var plannedClipMarkers = voiceMarkerSpecs(asArray(plan.markers));
+        var voiceReservations = {}, projectedPieces = planVoiceProjection(plannedClipMarkers), preparedReview = { prepareOnly: true, voiceReservations: voiceReservations, pendingDeletion: function (key, seconds) {
             var group = clipMarkerGroups[key], surplus = group && group.surplus;
             for (var i = 0; surplus && i < surplus.length; i++) if (Math.abs(surplus[i].seconds - seconds) < group.tolerance) return true;
             return false;
@@ -2130,6 +2176,7 @@ $._PVS.executePlan = function (planPath) {
                 if (preGroup.desired.length) {
                     preClipTiming = preCommit(preOwner, preGroup, "voice", preOwnerIndex);
                     preOwner.eligible = !!preClipTiming && !preClipTiming.failed;
+                    if (preOwner.eligible) voiceReservations[projectItemKey(preOwner.Item)] = preGroup.reserved;
                 } else preGroup.surplus = markerTools.snapshotOwned(preGroup, preGroup.before);
             }
             preGroup.blocked = false;
@@ -2146,8 +2193,9 @@ $._PVS.executePlan = function (planPath) {
                 sourceOwner.reviewOffset = sourceOwner.journal.length;
                 preReviewTiming = preCommit(sourceOwner, reviewOwner.group, "review", sourceOwner.index);
                 sourceOwner.reviewEntry = sourceOwner.journal[sourceOwner.reviewOffset];
-                // Keep the positions index for final voice planning as it was before review writes.
+                // Keep original review positions free for rollback as well as the staged SRT points.
                 sourceOwner.Group.before = sourceOwner.expected;
+                if (preReviewTiming && !preReviewTiming.failed) sourceOwner.Group.peerReservations = reviewOwner.group.reserved;
             }
         }
         for (var cutIndex = 0; cutIndex < cuts.length; cutIndex++) {
@@ -2468,7 +2516,6 @@ $._PVS.executePlan = function (planPath) {
         var markerCount = 0;
         var mergeClipMarkerCount = 0;
         var markerFailures = [];
-        var plannedClipMarkers = asArray(plan.markers);
         for (var markerIndex = 0; markerIndex < plannedClipMarkers.length; markerIndex++) {
             var plannedMarkerSpec = plannedClipMarkers[markerIndex];
             var plannedSegmentIndex = segmentForMarker(plannedMarkerSpec);
@@ -2511,11 +2558,13 @@ $._PVS.executePlan = function (planPath) {
             }
         }
         // One synchronous commit per source; pause/cancel only between groups.
+        voiceReservations = {};
         for (var markerOwnerIndex = 0; markerOwnerIndex < cleanupOwners.length; markerOwnerIndex++) {
             var markerOwner = cleanupOwners[markerOwnerIndex];
             try {
                 markerOwner.Group.collection = markerOwner.ProjectItem.getMarkers();
                 var clipMarkerResult = $._PVS._markerTools.commit(markerOwner.Group, function () { timelineMutated = true; }, markerOwner.trackChanges ? markerOwner.journal : null);
+                if (!markerOwner.picture && !clipMarkerResult.failures.length) voiceReservations[projectItemKey(markerOwner.Item)] = markerOwner.Group.reserved;
                 if (clipMarkerResult.failures.length === 0) markerOwner.expected = markerOwner.Group.after;
                 phaseTiming(clipMarkerResult, "post", markerOwner.picture ? "picture" : "voice", markerOwnerIndex);
                 markerCount += clipMarkerResult.count;
@@ -2588,7 +2637,7 @@ $._PVS.executePlan = function (planPath) {
                 undoEarlyReview(ro);
             }
         }
-        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview});
+        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview, voiceReservations:voiceReservations});
         var captionFile = new File(plan.captionSrtPath);
         var captionCreated = false;
         var captionTemporaryBinRemoved = false;

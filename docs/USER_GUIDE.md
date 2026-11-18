@@ -166,7 +166,9 @@ Marker nguồn cũng hiện trong các sequence khác dùng cùng file voice và
 - `Cue 9: chữ máy nghe (ngoài SRT) – kiểm tra`
 - `Hở hình 3 frame – kiểm tra`
 
-Các vấn đề cùng vị trí giữ một dòng cho mỗi ghi chú, bỏ dòng trùng và gộp cùng Cue khi còn ngắn. Dòng dấu sở hữu ở cuối được giữ để tool nhận diện marker. “Timing chưa xác minh” yêu cầu kiểm mép hiển thị; “chữ khác SRT” yêu cầu đối chiếu voice. Marker không tự kết luận lời nói sai.
+Trên cùng lát clip, các cảnh báo SRT có khoảng cue chồng lên nhau hoặc chạm mép trên lưới frame dùng một marker ở giữa đoạn gộp. Nếu cách nhau dù chỉ một frame trống, hoặc thuộc hai lát cắt của cùng nguồn, mỗi đoạn có marker riêng. Marker giữ các lý do, bỏ dòng trùng, gộp ghi chú cùng Cue khi còn ngắn và dùng màu nghiêm trọng nhất.
+
+Auto edit đặt marker căn voice ở giữa lát A2 trước. Nếu điểm giữa đoạn cue trùng với marker căn voice, marker SRT dịch tới frame trống gần nhất trong chính đoạn cue. Marker tốc độ/gộp hình vẫn ở giữa lát V1. Dòng dấu sở hữu ở cuối ghi chú giúp tool nhận diện marker. “Timing chưa xác minh” yêu cầu kiểm mép hiển thị; “chữ khác SRT” yêu cầu đối chiếu voice.
 
 Auto edit và Tạo phụ đề quản lý riêng các marker review này bằng tên và tag v2 gồm workflow/sequence ID. Trên mỗi nguồn voice đang dùng, chạy lại sẽ thay bộ marker review của cùng chức năng, kể cả marker từ sequence khác hoặc ở vị trí nguồn đã ngoài clip. Nếu lượt mới không có cảnh báo, bộ cũ của chức năng đó được dọn. Marker của chức năng kia vẫn được giữ. Trên thước, marker v2 chỉ được dọn trong vùng xử lý của đúng workflow và sequence. Marker review v1 chỉ từng có trên sequence và chỉ dọn trong vùng đang làm; không nhận v1 review trên ProjectItem. Dọn marker tốc độ/căn voice trên nguồn dùng cùng mapping với lúc đặt; không đoán speed 100% khi mapping không đọc được, nên giữ marker cũ ở vùng chưa ánh xạ được. Giữ marker người dùng và chức năng khác. Nếu cả gắn voice lẫn dự phòng sequence đều lỗi, tool báo lỗi; caption có thể đã được thêm, cần kiểm tra trước khi chạy lại. Thiếu API thước không cản marker clip; chỉ những marker cần dự phòng mới báo lỗi. Lỗi riêng màu vẫn giữ vị trí/ghi chú và được báo riêng.
 

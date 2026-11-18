@@ -1,5 +1,12 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #62 — Gộp cảnh báo cùng loại trên từng lát clip (18/11/2026)
+
+- **Quyết định.** Mỗi loại marker một marker cho mỗi đoạn trên một layer; khác loại đặt cạnh nhau. Trước đây host gom theo frame bắt đầu nên hai cue chồng nhau có thể tạo hai điểm, còn hai cảnh báo cùng frame bắt đầu có thể bị gom trước khi biết chúng thuộc lát clip nào.
+- **Quy tắc.** Với từng cảnh báo SRT, chọn lát voice theo phần giao dài nhất. Trong mỗi lát, gộp các khoảng chồng hoặc chạm nhau trên lưới frame rồi lấy điểm giữa phần giao của đoạn gộp với lát. Giữ các lý do, bỏ ghi chú trùng và dùng màu lỗi nếu có lỗi. Khoảng cách một frame và ranh giới lát đều tách marker. Cảnh báo căn voice lấy giữa lát A2, cảnh báo tốc độ/gộp hình lấy giữa lát V1.
+- **Thứ tự.** Cả trước cắt và sau dựng đều lập marker căn voice trước. Nhóm SRT đọc marker trên ProjectItem cùng các vị trí nhóm voice vừa dành trên nguồn đó. Khi vướng điểm đã dùng, tìm frame trống trong đoạn cue, ưu tiên phía sau khi cách đều.
+- **Hồi quy.** Trước sửa, mock trên một nguồn tạo 6 marker thay vì 4; fixture 65 lát tạo 2 marker SRT thay vì 1. `marker-reconciliation.test.js` kiểm tra cả Auto edit và Tạo phụ đề. `diagnostic-executor.test.js` kiểm tra hai loại cách nhau một frame, ghi trước cắt, hậu kiểm và chạy lại không ghi, khôi phục khi lỗi/Dừng. Chờ nghiệm thu trên Premiere.
+
 ## Issue #59 — Marker điểm ở giữa đoạn cảnh báo (18/11/2026)
 
 - **Quyết định.** Marker có độ dài che sóng âm và các lớp khi dựng. Theo quyết định ngày 18/11, marker của tool là điểm ở giữa đoạn cảnh báo (In = Out), thay quy tắc hiển thị bằng độ dài của #36.
