@@ -1,6 +1,6 @@
 # Bàn giao kỹ thuật Premiere Voice Sync
 
-Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo, 16/11/2026 khi chuẩn bị 2.20.92, 18/11/2026 khi chuẩn bị 2.20.93, 2.20.94 và 2.20.95. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
+Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo, 16/11/2026 khi chuẩn bị 2.20.92, 18/11/2026 khi chuẩn bị 2.20.93, 2.20.94, 2.20.95 và 2.20.96. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
 
 ## Git, bản phát hành và bản cài
 
@@ -124,6 +124,12 @@ marker review 17 → 6.
   sau khi chạy thêm project khác. Còn mở: vì sao marker review không được ghi trước khi cắt (2.20.93, 2.20.94);
   Dừng khi bước cuối đang chạy sẽ trả marker về cũ; panel có thể mất câu lỗi gốc nếu cả
   khôi phục marker cũng lỗi; AGENTS.md dòng 47 về tiền tố tên branch cần sửa (chờ user duyệt).
+- Điều tra ghi trước marker (#72): hậu kiểm review ở cả ba lượt báo `ownerIndex=-1` (tra
+  `ownerByKey` trượt), mock báo 1. Probe chỉ đọc `Probe-StaleTrackItem.jsx` loại giả thuyết TrackItem
+  cũ mất định danh (0/100 lệch); Premiere trả object mới mỗi lần đọc `clips[i]`, mock mô phỏng vẫn
+  ghi trước bình thường. #73 thêm số đo chỉ trong executor có đo. Chuẩn bị 2.20.96 (bản chẩn đoán,
+  không đổi hành vi) để user chạy Dựng theo voice một lần và đọc các trường `preKey`,
+  `reviewOwners`, `sourceOwnerFound`, `ownerKnown`.
 
 ## Việc còn lại (14/11/2026)
 

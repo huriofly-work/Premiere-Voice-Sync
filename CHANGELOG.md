@@ -2,7 +2,9 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
-## Chưa phát hành
+## 2.20.96 — 2026-11-18
+
+Prerelease chẩn đoán; không đổi cách dựng hay ghi marker so với 2.20.95; chưa chạy trên Premiere; 2.20.91 vẫn là stable. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.96.md).
 
 - Nhật ký Auto edit ghi thêm kết quả tra nguồn và lý do chưa gắn được marker review để tìm nguyên nhân bỏ qua bước ghi trước khi cắt. Nhật ký rút khóa theo đường dẫn thành `path`.
 
