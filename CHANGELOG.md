@@ -4,7 +4,8 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
-- Log marker tách thời gian tạo, ghi tên/comments/end/màu, đọc màu và xóa (gồm bù lỗi); thêm probe riêng đo trên ProjectItem media thử và kiểm tra khả năng đổi vị trí marker, chưa chạy native, chưa bỏ lệnh ghi (#49).
+- Marker clip nguồn tái sử dụng marker thuộc phạm vi bằng cách đổi vị trí thay vì xóa/tạo; giữ đọc lại và bù lỗi, thêm moves/moveMs, marker ruler không đổi; nghiệm thu native pending (#53).
+- Log marker tách thời gian tạo, ghi tên/comments/end/màu, đọc màu và xóa (gồm bù lỗi); thêm probe riêng đo trên ProjectItem media thử và kiểm tra khả năng đổi vị trí marker; kết quả hai lượt native ngày 17/11 ghi trong báo cáo probe (#49).
 - Dựng theo voice bỏ giới hạn chia đợt trong từng bước để giảm lượt gọi Premiere; Dừng/Tạm dừng có hiệu lực khi bước hiện tại kết thúc, timeline không vẽ lại trong bước dài (#47).
 
 ## 2.20.92 — 2026-11-16

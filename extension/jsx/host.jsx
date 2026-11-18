@@ -874,13 +874,13 @@ $._PVS._markerTools = (function () {
         }
         return result;
     }
-    function group(collection, ranges, owns, tolerance) {
+    function group(collection, ranges, owns, tolerance, allowMove) {
         if (!collection || typeof collection.createMarker !== "function" || typeof collection.deleteMarker !== "function") throw new Error("Marker API unavailable.");
         if (!ranges || !ranges.length || !isFinite(tolerance) || tolerance <= 0) throw new Error("Marker scope missing.");
         for (var i = 0; i < ranges.length; i++) if (!isFinite(ranges[i].start) || !isFinite(ranges[i].end) || ranges[i].start < 0 || ranges[i].end <= ranges[i].start) throw new Error("Invalid marker scope.");
         var rows = read(collection);
         return { collection: collection, ranges: ranges, owns: owns, tolerance: tolerance, before: rows,
-            positions: index(rows, tolerance), reserved: {}, desired: [], blocked: false };
+            positions: index(rows, tolerance), reserved: {}, desired: [], blocked: false, allowMove: allowMove === true };
     }
     function available(g, seconds) {
         if (!inScope(g, seconds) || near(g.reserved, seconds, g.tolerance).length) return false;
@@ -906,12 +906,12 @@ $._PVS._markerTools = (function () {
         var commitStarted = (new Date()).getTime();
         var timings = { collectionBefore: g.before.length, collectionAfter: g.before.length,
             readPasses: 0, readMs: 0, creates: 0, nameWrites: 0, commentsWrites: 0,
-            endWrites: 0, colorWrites: 0, colorReads: 0, deletes: 0,
-            createMs: 0, nameWriteMs: 0, commentsWriteMs: 0, endWriteMs: 0,
+            endWrites: 0, colorWrites: 0, colorReads: 0, deletes: 0, moves: 0,
+            createMs: 0, moveMs: 0, nameWriteMs: 0, commentsWriteMs: 0, endWriteMs: 0,
             colorWriteMs: 0, colorReadMs: 0, deleteMs: 0, verificationMs: 0, commitMs: 0 };
         function finishResult() { timings.commitMs = (new Date()).getTime() - commitStarted; return result; }
         var result = { count: 0, deleted: 0, merged: 0, colorFailures: [], failures: [], timings: timings };
-        var changed = [], created = [], removed = [], before, kept = [], wanted = [], mutationAttempted = false;
+        var changed = [], moved = [], created = [], removed = [], before, kept = [], wanted = [], mutationAttempted = false;
         if (g.blocked) { result.failures.push("Marker group has an invalid request; old markers retained."); return finishResult(); }
         function mutate() { mutationAttempted = true; if (touch) touch(); }
         function writeField(marker, field, value, counter, elapsed) {
@@ -925,6 +925,13 @@ $._PVS._markerTools = (function () {
             timings.colorWrites++;
             try { marker.setColorByIndex(color); }
             finally { timings.colorWriteMs += (new Date()).getTime() - started; }
+        }
+        function writePosition(marker, currentStart, currentEnd, seconds, end) {
+            // Expanding the right edge first also handles starts beyond the old end.
+            // On the way back, read the actual bounds: a throwing call may mutate.
+            if (seconds > currentStart && end !== currentEnd) writeField(marker, "end", end, "endWrites", "endWriteMs");
+            if (seconds !== currentStart) writeField(marker, "start", seconds, "moves", "moveMs");
+            if (seconds <= currentStart && end !== currentEnd) writeField(marker, "end", end, "endWrites", "endWriteMs");
         }
         function removeMarker(marker) {
             var started = (new Date()).getTime();
@@ -970,16 +977,38 @@ $._PVS._markerTools = (function () {
             before = read(g.collection, timings);
             timings.collectionBefore = before.length;
             if (fingerprint(before, true) !== fingerprint(g.before, true)) throw new Error("Marker collection changed since preparation; inspect before retry.");
-            var positions = index(before, g.tolerance);
+            var positions = index(before, g.tolerance), plans = [], matched = [], unmatched = [], obsolete = [];
             for (var i = 0; i < g.desired.length; i++) {
                 var spec = g.desired[i], matches = near(positions, spec.seconds, g.tolerance), old = matches.length ? matches[0] : null;
-                var marker = old ? old.ref : null;
                 if (old && (!owned(g, old) || matches.length !== 1)) throw new Error("Marker ownership changed.");
+                var markerPlan = { spec: spec, old: old, order: i, move: false };
+                plans.push(markerPlan);
+                if (old) matched.push(old); else unmatched.push(markerPlan);
+            }
+            if (g.allowMove) {
+                for (var oi = 0; oi < before.length; oi++) {
+                    var candidate = before[oi];
+                    // A move requires the full compensation snapshot, including color.
+                    if (owned(g, candidate) && !find(matched, candidate) && candidate.end !== null && candidate.color !== null) obsolete.push({ row: candidate, order: oi });
+                }
+                obsolete.sort(function (a, b) { return a.row.seconds - b.row.seconds || a.order - b.order; });
+                unmatched.sort(function (a, b) { return a.spec.seconds - b.spec.seconds || a.order - b.order; });
+                for (var pair = 0; pair < unmatched.length && pair < obsolete.length; pair++) {
+                    unmatched[pair].old = obsolete[pair].row; unmatched[pair].move = true;
+                }
+            }
+            for (var p = 0; p < plans.length; p++) {
+                markerPlan = plans[p]; spec = markerPlan.spec; old = markerPlan.old;
+                var marker = old ? old.ref : null;
                 if (!marker) marker = create(spec.seconds, before, created);
-                else if (old.name !== spec.name || old.comments !== spec.comments || old.color !== spec.color || (spec.end !== undefined && old.end !== spec.end)) { changed.push(old); mutate(); }
+                else if (markerPlan.move || old.name !== spec.name || old.comments !== spec.comments || old.color !== spec.color || (spec.end !== undefined && old.end !== spec.end)) { changed.push(old); mutate(); }
+                if (markerPlan.move) {
+                    moved.push(old);
+                    writePosition(marker, old.seconds, old.end, spec.seconds, spec.end === undefined ? spec.seconds : spec.end);
+                }
                 if (!old || old.name !== spec.name) writeField(marker, "name", spec.name, "nameWrites", "nameWriteMs");
                 if (!old || old.comments !== spec.comments) writeField(marker, "comments", spec.comments, "commentsWrites", "commentsWriteMs");
-                if (spec.end !== undefined && (!old || old.end !== spec.end)) writeField(marker, "end", spec.end, "endWrites", "endWriteMs");
+                if (!markerPlan.move && spec.end !== undefined && (!old || old.end !== spec.end)) writeField(marker, "end", spec.end, "endWrites", "endWriteMs");
                 writeColor(marker, spec.color, old);
                 kept.push({ ref: marker, guid: String(marker.guid || "") });
                 wanted.push(spec);
@@ -991,6 +1020,11 @@ $._PVS._markerTools = (function () {
                 for (var v = 0; v < kept.length; v++) {
                     var actual = find(after, kept[v]), target = wanted[v];
                     if (!actual || actual.name !== target.name || actual.comments !== target.comments || !owned(g, actual) || (target.end !== undefined && (actual.end === null || Math.abs(actual.end - target.end) > g.tolerance / 2)) || (target.verify ? !target.verify(actual.seconds, actual.end) : Math.abs(actual.seconds - target.seconds) > g.tolerance / 2)) throw new Error("Marker position/notes verification failed.");
+                    if (find(moved, kept[v])) {
+                        for (var collision = 0; collision < after.length; collision++) {
+                            if (!same(actual, after[collision]) && Math.abs(actual.seconds - after[collision].seconds) < g.tolerance) throw new Error("Moved marker position occupied.");
+                        }
+                    }
                 }
             } finally { timings.verificationMs += (new Date()).getTime() - verificationStarted; }
             var expectedRows = after.slice(0);
@@ -1020,9 +1054,14 @@ $._PVS._markerTools = (function () {
             for (var u = changed.length - 1; u >= 0; u--) {
                 try {
                     var saved = changed[u];
+                    if (find(moved, saved)) {
+                        var currentStart = Number(saved.ref.start.seconds), currentEnd = Number(typeof saved.ref.end === "number" ? saved.ref.end : saved.ref.end.seconds);
+                        if (!isFinite(currentStart) || !isFinite(currentEnd)) throw new Error("Cannot read moved marker bounds for restoration.");
+                        writePosition(saved.ref, currentStart, currentEnd, saved.seconds, saved.end);
+                    }
                     writeField(saved.ref, "name", saved.name, "nameWrites", "nameWriteMs");
                     writeField(saved.ref, "comments", saved.comments, "commentsWrites", "commentsWriteMs");
-                    if (saved.end !== null) writeField(saved.ref, "end", saved.end, "endWrites", "endWriteMs");
+                    if (!find(moved, saved) && saved.end !== null) writeField(saved.ref, "end", saved.end, "endWrites", "endWriteMs");
                     if (saved.color !== null && Number(readColor(saved.ref, timings)) !== saved.color) setColor(saved.ref, saved.color);
                 } catch (updateError) { result.failures.push("Marker restoration: " + updateError.message); }
             }
@@ -1511,7 +1550,7 @@ $._PVS.executePlan = function (planPath) {
         owner.ProjectItem = owner.Item.projectItem;
         // No supported mapping means no range cleanup, not a guessed speed.
         // Unmapped owners remain snapshots only; warnings use ruler fallback.
-        owner.Group = $._PVS._markerTools.group(owner.ProjectItem.getMarkers(), owner.Ranges.length ? owner.Ranges : [{ start: 0, end: Number.MAX_VALUE }], owner.Ranges.length ? isOwnedClipMarker : function () { return false; }, 0.25 / fps);
+        owner.Group = $._PVS._markerTools.group(owner.ProjectItem.getMarkers(), owner.Ranges.length ? owner.Ranges : [{ start: 0, end: Number.MAX_VALUE }], owner.Ranges.length ? isOwnedClipMarker : function () { return false; }, 0.25 / fps, true);
         markerGroups[key] = owner.Group;
     }
     function blockClipMarkerGroup(item, markerGroups) {
