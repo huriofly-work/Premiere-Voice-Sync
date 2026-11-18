@@ -1289,6 +1289,15 @@ $._PVS._speedFactor = function (item) {
 
 // Native probe #34: TrackItem in/out are speed-divided; ProjectItem markers
 // use real source time. Unsupported mappings must stay on the sequence ruler.
+// Source identity for marker owners. Plain if statements: ExtendScript groups an
+// unparenthesized nested conditional from the left.
+$._PVS._projectItemKey = function (projectItem) {
+    if (!projectItem) return "";
+    try { if (projectItem.nodeId !== undefined && projectItem.nodeId !== null && String(projectItem.nodeId)) return "node:" + String(projectItem.nodeId); } catch (ignoreNodeId) {}
+    try { if (projectItem.treePath) return "path:" + String(projectItem.treePath); } catch (ignoreTreePath) {}
+    return ""; // A display name is not a durable source identity.
+};
+
 $._PVS._clipMarkerMapping = function (item, allowNested) {
     try {
         if (!item || !item.projectItem || typeof item.projectItem.getMarkers !== "function" || typeof item.getSpeed !== "function") return null;
@@ -1394,7 +1403,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
             var item = voiceItems[vi], mapping = transaction && transaction.prepareOnly ? item.mapping : $._PVS._clipMarkerMapping(item);
             if (!item || !item.projectItem || typeof item.projectItem.getMarkers !== "function" || seq.sequenceID === undefined) continue;
             var projectItem = item.projectItem, key = "", owner = null;
-            try { key = projectItem.nodeId ? "node:" + String(projectItem.nodeId) : projectItem.treePath ? "path:" + String(projectItem.treePath) : ""; } catch (ignoreIdentity) {}
+            key = $._PVS._projectItemKey(projectItem);
             if (!key) continue;
             for (var oi = 0; oi < owners.length; oi++) if (owners[oi].key === key) owner = owners[oi];
             if (!owner) { owner = { key: key, item: projectItem, targets: [] }; owners.push(owner); }
@@ -1452,7 +1461,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
             if (!ambiguous && coveringItem) for (var mi = 0; mi < mappings.length; mi++) if (mappings[mi].item === coveringItem) selected = mappings[mi];
             var target = groups[ti];
             if (selected) selected.intervals.push(target);
-            else unattached(target, ambiguous ? "Nhiều clip cùng phù hợp." : coveringItem ? "Không đọc được ánh xạ từ timeline sang nguồn." : "Không có clip trong khoảng cảnh báo.");
+            else unattached(target, ambiguous ? "Nhiều clip cùng phù hợp." : (coveringItem ? "Không đọc được ánh xạ từ timeline sang nguồn." : "Không có clip trong khoảng cảnh báo."));
         }
         function combine(span, next) {
             span.start = Math.min(span.start, next.start);
@@ -1683,7 +1692,7 @@ $._PVS.executePlan = function (planPath) {
         var file = null;
         try {
             var source = new File(planPath);
-            var progressPath = plan && plan.nativeProgressPath ? plan.nativeProgressPath : source.name === "timeline-executor.json" ? source.parent.fsName + "/native-progress.jsonl" : "";
+            var progressPath = plan && plan.nativeProgressPath ? plan.nativeProgressPath : (source.name === "timeline-executor.json" ? source.parent.fsName + "/native-progress.jsonl" : "");
             if (!progressPath) return;
             file = new File(progressPath);
             if (!file.exists || file.name !== "native-progress.jsonl" || String(file.parent.fsName).toLowerCase() !== String(source.parent.fsName).toLowerCase()) return;
@@ -1798,11 +1807,7 @@ $._PVS.executePlan = function (planPath) {
         return factor === null ? null : factor * 100;
     }
     function projectItemKey(trackItem) {
-        var projectItem = trackItem && trackItem.projectItem;
-        if (!projectItem) return "";
-        try { if (projectItem.nodeId !== undefined && projectItem.nodeId !== null && String(projectItem.nodeId)) return "node:" + String(projectItem.nodeId); } catch (ignoreNodeId) {}
-        try { if (projectItem.treePath) return "path:" + String(projectItem.treePath); } catch (ignoreTreePath) {}
-        return ""; // A display name is not a durable source identity.
+        return $._PVS._projectItemKey(trackItem && trackItem.projectItem);
     }
     function isOwnedClipMarker(marker) {
         var name = String(marker.name || ""), comments = String(marker.comments || "");

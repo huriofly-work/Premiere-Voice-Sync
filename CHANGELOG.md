@@ -2,6 +2,11 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
+## Chưa phát hành
+
+- Dựng theo voice ghi marker review trước khi cắt như thiết kế của 2.20.93. Trước đây khoá nhận diện file voice bị tính sai trong Premiere nên bước này luôn bị bỏ qua (#72).
+- Cảnh báo không gắn được vì nhiều clip cùng khớp nay báo đúng lý do "Nhiều clip cùng phù hợp.".
+
 ## 2.20.96 — 2026-11-18
 
 Prerelease chẩn đoán; không đổi cách dựng hay ghi marker so với 2.20.95; chưa chạy trên Premiere; 2.20.91 vẫn là stable. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.96.md).

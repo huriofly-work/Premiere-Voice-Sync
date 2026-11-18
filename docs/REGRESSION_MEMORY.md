@@ -1,5 +1,24 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #72 — Biểu thức điều kiện lồng trong ExtendScript làm bỏ qua ghi trước marker review (18/11/2026)
+
+- **Dấu hiệu.** Ba lượt Dựng theo voice native 2.20.93–2.20.95 không ghi gì ở bước "Ghi trước marker voice/review". Toàn bộ marker review được ghi sau khi cắt, khoảng 8,7 giây. Hậu kiểm báo `ownerIndex=-1`, còn mock báo 1.
+- **Nguyên nhân (đo native).** Số đo của 2.20.96 (#73) cho thấy owner review mang khoá `path`, còn các owner nguồn mang khoá `node:000f42bb` và `node:000f42bc` của cùng ProjectItem voice. `_applyReviewMarkers` tính khoá bằng `nodeId ? "node:…" : treePath ? "path:…" : ""`. ExtendScript gộp biểu thức điều kiện lồng không ngoặc từ trái sang: `(a ? b : c) ? d : e`. Phép thử chỉ đọc trên Premiere 2026 ngày 18/11 cho `a ? "N" : b ? "P" : "E"` ra "P", trong khi V8 ra "N". Với ProjectItem voice thật, `nodeId` có giá trị nhưng biểu thức vẫn ra `path:`. Mock chạy trên V8 nên không thấy lỗi.
+- **Đã loại.** Giả thuyết TrackItem giữ qua lần gọi host mất định danh nguồn: probe `Probe-StaleTrackItem.jsx` cho 0/100 lệch. Premiere có trả object mới ở mỗi lần đọc `clips[i]`, nhưng mock mô phỏng điều này vẫn ghi trước bình thường.
+- **Cùng mẫu.** Trong host có thêm hai chỗ:
+  - lý do "chưa gắn được": khi nhiều clip cùng khớp, câu "Nhiều clip cùng phù hợp." không bao giờ hiện;
+  - đường dẫn `native-progress`.
+
+  Trong executor sinh tự động có thêm hai chỗ:
+  - `diagnosticBatchLimit`/`diagnosticBatchBudgetMs`: no-delay nhận 20/200, nhưng no-delay không dùng hai giá trị này;
+  - `profile` trả về: no-delay bị báo là `fast`.
+- **Quy tắc.** Trong mọi nguồn ExtendScript, biểu thức điều kiện nằm trong nhánh của biểu thức điều kiện khác phải có ngoặc. Mọi khoá nguồn marker lấy từ `$._PVS._projectItemKey`, viết bằng `if` rõ ràng.
+- **Hồi quy.**
+  - `tests/unit/es3-nested-ternary.test.js` quét `host.jsx`, executor sinh tự động, `caption-input.js`, `diagnostic-fast-support.jsx` và các probe. Test cũng chỉ cho phép một chỗ tạo khoá `node:` và `path:`, và kiểm `_projectItemKey`.
+  - Test đỏ trên `main` với 7 vị trí, xanh sau sửa.
+  - Bộ chuẩn đạt 75 nhóm, parse 135 file PowerShell, bỏ qua 6 nhóm tích hợp Windows. Log ở `_local/fix-ternary/`.
+  - Chờ chạy lại Dựng theo voice để thấy 21 marker review được ghi trước khi cắt.
+
 ## Nghiệm thu native 2.20.95 (18/11/2026)
 
 User cài 2.20.95 (gói SHA-256 `77C15577…7DB0DA32`), mở lại bản đã lưu của project đã lỗi với
