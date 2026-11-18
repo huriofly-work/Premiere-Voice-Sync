@@ -405,6 +405,7 @@ var diagnosticNoDelay=profile==="no-delay", diagnosticFast=profile==="fast" || d
     }
     function commitFinalReview(clipOwner) {
         var owner = ownerByKey[clipOwner.key];
+        var ownerKnown = !!owner;
         if (owner && owner.trackChanges) guardOwner(owner, clipOwner.group.before);
         // Empty or deferred plans can first replace old review markers in this pass.
         // Snapshot the review group here, after unrelated clip-marker commits.
@@ -423,6 +424,12 @@ var diagnosticNoDelay=profile==="no-delay", diagnosticFast=profile==="fast" || d
             recordRestorationFailures(result);
             undoEarlyReview(owner);
         }
+        result.timings.ownerKey = diagnosticMarkerKey(clipOwner.key);
+        result.timings.ownerKnown = ownerKnown;
+        result.timings.ownerKeys = [];
+        for (var ownerKey in ownerByKey) {
+            if (ownerByKey.hasOwnProperty(ownerKey)) result.timings.ownerKeys.push(diagnosticMarkerKey(ownerKey));
+        }
         reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));
         return result;
     }
@@ -438,6 +445,22 @@ var diagnosticNoDelay=profile==="no-delay", diagnosticFast=profile==="fast" || d
         return tools.commit(group, function () { timelineMutated = true; }, rulerJournal);
     }
 
+
+function diagnosticMarkerKey(key) {
+    return key.indexOf("path:") === 0 ? "path" : key;
+}
+function diagnosticReviewReason(reason) {
+    // Only built-in allocation messages are safe to include in this trace.
+    switch (reason) {
+        case "Nhi\u1ec1u clip c\u00f9ng ph\u00f9 h\u1ee3p.":
+        case "Kh\u00f4ng \u0111\u1ecdc \u0111\u01b0\u1ee3c \u00e1nh x\u1ea1 t\u1eeb timeline sang ngu\u1ed3n.":
+        case "Kh\u00f4ng c\u00f3 clip trong kho\u1ea3ng c\u1ea3nh b\u00e1o.":
+        case "Kh\u00f4ng c\u00f2n frame tr\u1ed1ng tr\u00ean clip.":
+            return reason;
+        default:
+            return "L\u1ed7i khi chu\u1ea9n b\u1ecb marker review.";
+    }
+}
 
 // Build-only ES3 helpers inserted into the generated executor's closure.
 // No native writes here. Keep the baseline helpers and edit statements intact.
@@ -828,7 +851,8 @@ batchCount++;
             preOwner.expected = preGroup.before;
             preOwner.ownsReview = markerTools.sourceReviewOwner("edit");
             preOwner.snapshot = preGroup.before;
-            ownerByKey[projectItemKey(preOwner.Item)] = preOwner;
+            var preKey = projectItemKey(preOwner.Item);
+            ownerByKey[preKey] = preOwner;
             preOwner.eligible = projectedPieces && !preOwner.picture && !preGroup.blocked && markerTools.reversible(preGroup, preOwner.ownsReview);
                 preClipTiming = null;
             if (preOwner.eligible) {
@@ -839,20 +863,41 @@ batchCount++;
                     if (preOwner.eligible) voiceReservations[projectItemKey(preOwner.Item)] = preGroup.reserved;
                 } else preGroup.surplus = markerTools.snapshotOwned(preGroup, preGroup.before);
             }
+            diagnosticDetail.markerCommit = preClipTiming;
+            diagnosticDetail.preKey = diagnosticMarkerKey(preKey);
+            diagnosticDetail.picture = !!preOwner.picture;
+            diagnosticDetail.eligible = !!preOwner.eligible;
+            diagnosticDetail.blocked = !!preGroup.blocked;
+            diagnosticDetail.desired = preGroup.desired.length;
+            diagnosticDetail.projected = !!projectedPieces;
             preGroup.blocked = false;
             markerTools.resetGroup(preGroup, preOwner.expected);
 
-diagnosticDetail.markerCommit = preClipTiming;
 }
 
 return true;}},
 {label:"Chu\u1ea9n b\u1ecb sau Ghi tr\u01b0\u1edbc marker voice",checkpoint:"",postMode:"full",measurePrepare:true,run:function(){
+var preparedReviewStats = null;
 
         if (projectedPieces && asArray(plan.reviewMarkers).length) {
-            $._PVS._applyReviewMarkers(workingSequence, asArray(plan.reviewMarkers), [{start:0,end:plannedCollisionEndFrame/fps}], "edit", plan.captions, projectedPieces, preparedReview);
+            preparedReviewStats = $._PVS._applyReviewMarkers(workingSequence, asArray(plan.reviewMarkers), [{start:0,end:plannedCollisionEndFrame/fps}], "edit", plan.captions, projectedPieces, preparedReview);
         }
             reviewOwners = preparedReview.owners || [];
 
+diagnosticDetail.unattachedMarkerCount = preparedReviewStats ? preparedReviewStats.unattachedMarkerCount : 0;
+diagnosticDetail.unattachedReasons = [];
+for (var ui = 0; preparedReviewStats && ui < preparedReviewStats.unattachedMarkers.length; ui++) {
+    diagnosticDetail.unattachedReasons.push(diagnosticReviewReason(preparedReviewStats.unattachedMarkers[ui].reason));
+}
+diagnosticDetail.reviewOwnersLength = reviewOwners.length;
+diagnosticDetail.reviewOwners = [];
+for (var ri = 0; ri < reviewOwners.length; ri++) {
+    var preparedOwner = reviewOwners[ri];
+    diagnosticDetail.reviewOwners.push({
+        key: diagnosticMarkerKey(preparedOwner.key), defer: !!preparedOwner.defer, error: !!preparedOwner.error,
+        desired: preparedOwner.group ? preparedOwner.group.desired.length : 0, targets: preparedOwner.targets.length
+    });
+}
 return true;}},
 {label:"Ghi tr\u01b0\u1edbc marker review",checkpoint:"",postMode:"read-only",measurePrepare:false,run:function(){
 if (!loopInitialized5) {     preReviewIndex = 0; loopInitialized5 = true; }
@@ -862,6 +907,11 @@ if (batchCount >= 1) return false;
 batchCount++;
 
                 reviewOwner = reviewOwners[preReviewIndex], sourceOwner = ownerByKey[reviewOwner.key], preReviewTiming = null;
+            diagnosticDetail.reviewKey = diagnosticMarkerKey(reviewOwner.key);
+            diagnosticDetail.sourceOwnerFound = !!sourceOwner;
+            diagnosticDetail.sourceEligible = !!(sourceOwner && sourceOwner.eligible);
+            diagnosticDetail.defer = !!reviewOwner.defer;
+            diagnosticDetail.desired = reviewOwner.group ? reviewOwner.group.desired.length : 0;
             if (sourceOwner && sourceOwner.eligible && !reviewOwner.defer && reviewOwner.group && reviewOwner.group.desired.length) {
                 guardOwner(sourceOwner, reviewOwner.group.before);
                 sourceOwner.reviewOffset = sourceOwner.journal.length;

@@ -25,7 +25,7 @@ const TPF = 8467200000;
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
 function tracks(items) { Object.defineProperty(items,"numTracks",{get(){return this.length;}}); return items; }
 function time(frame) { return { ticks:String(frame*TPF),seconds:frame/30 }; }
-function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false, observe=false) {
+function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false, observe=false, {nativeWrappers=false}={}) {
   let nextId=0;
   const actions=[],nativeRows=[];let qeReads=0;
   function markers(){
@@ -75,7 +75,36 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);const oldSpeed=c.speed;c.inPoint=time(Number(c.inPoint.ticks)/TPF*oldSpeed/factor);c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
   const rootItem={children:collection([]),nodeId:"root",createBin(){actions.push(["createBin"]);const bin={nodeId:"bin",children:collection([]),deleteBin(){actions.push(["deleteBin"]);rootItem.children.splice(rootItem.children.indexOf(bin),1);return true;}};rootItem.children.push(bin);return bin;}};
   seq.createCaptionTrack=function(){actions.push(["captionTrack"]);return true;};
-  const project={activeSequence:seq,rootItem,openSequence(){actions.push(["openSequence"]);},importFiles(paths,a,bin){actions.push(["importCaption"]);bin.children.push({nodeId:"srt",getMediaPath(){return paths[0];}});return true;},save(){throw Error("MUST_NOT_SAVE");}};
+  // Expose fresh TrackItems only at the host boundary. The mock keeps its raw arrays.
+  const views = new WeakMap();
+  function view(target, read) {
+    if (!views.has(target)) views.set(target, new Proxy(target, {
+      get(object, key) { return read(Reflect.get(object, key, object), key); }
+    }));
+    return views.get(target);
+  }
+  function isIndexedRead(value, key) {
+    return value && typeof key === "string" && /^(0|[1-9]\d*)$/.test(key);
+  }
+  function readClip(value, key) {
+    if (!isIndexedRead(value, key)) return value;
+    return new Proxy(value, {
+      get(item, property) {
+        const member = Reflect.get(item, property, item);
+        return typeof member === "function" ? member.bind(item) : member;
+      },
+      set(item, property, member) { return Reflect.set(item, property, member, item); }
+    });
+  }
+  function readTrackProperty(value, key) {
+    return key === "clips" ? view(value, readClip) : value;
+  }
+  function readTrack(value, key) {
+    return isIndexedRead(value, key) ? view(value, readTrackProperty) : value;
+  }
+  const hostSequence = nativeWrappers ? view(seq, (value, key) =>
+    key === "videoTracks" || key === "audioTracks" ? view(value, readTrack) : value) : seq;
+  const project={activeSequence:hostSequence,rootItem,openSequence(){actions.push(["openSequence"]);},importFiles(paths,a,bin){actions.push(["importCaption"]);bin.children.push({nodeId:"srt",getMediaPath(){return paths[0];}});return true;},save(){throw Error("MUST_NOT_SAVE");}};
   const plan={schemaVersion:8,sequenceId:"seq",frameRate:30,mainVideoSourceEnd:count*4,plannedMainVideoEnd:outputFrame/30,plannedMainVideoEndFrame:outputFrame,voiceTrackIndex:1,voiceClips:[{name:"Voice",end:voiceFrame/30}],linkedAudio:[{name:"Nest"}],segments,captionSrtPath:"fixture.srt",captions:segments.map(()=>({})),summary:{captionCueCount:count},speedWarningMinPercent:90,speedWarningMaxPercent:110,markers:[]};
   if(oldMarkers)plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"Sentence cues 1-1 needs review",ColorIndex:1});
   if(merged){
@@ -568,6 +597,52 @@ function finishTrial(f,profile){
   do {r=JSON.parse(api.advanceDiagnosticEdit("token",r.nextCall));calls++;if(r.checkpoint)checkpoints.push(r.checkpoint);assert(calls<500); }while(!r.done);
   assert.strictEqual(JSON.parse(api.diagnosticInfo()).active,false);
   return {report:r.result,checkpoints,calls,timings:r.timings};
+}
+function reviewOnlyFixture(nativeWrappers) {
+  const f = fixture(65, false, true, 1.1, false, false, false, false, {nativeWrappers});
+  f.plan.markers = [];
+  f.plan.reviewMarkers = [{start:1,end:1.8,reason:"first"},{start:10,end:25,reason:"second"}];
+  vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
+  return f;
+}
+if (!process.argv.slice(2).length) {
+  for (const sourceKey of ["node:voice", "path"]) {
+    const f = reviewOnlyFixture(true);
+    const sequence = f.context.app.project.activeSequence;
+    for (const [hostTrack, rawTrack] of [[sequence.videoTracks[0], f.seq.videoTracks[0]],
+        [sequence.audioTracks[1], f.seq.audioTracks[1]]]) {
+      const first = hostTrack.clips[0], second = hostTrack.clips[0];
+      assert.notStrictEqual(first, second);
+      assert.strictEqual(first.nodeId, second.nodeId);
+      first.wrapperTest = true;
+      assert.strictEqual(rawTrack.clips[0].wrapperTest, true);
+      delete rawTrack.clips[0].wrapperTest;
+    }
+    const privatePath = "/fixture/private-bin/private-voice.wav";
+    if (sourceKey === "path") {
+      delete f.voice.nodeId;
+      f.voice.treePath = privatePath;
+    }
+    const {report, timings} = finishTrial(f, "no-delay");
+    assert(report.ok, JSON.stringify(report));
+    const detailFor = stage => timings.filter(t => t.stage === stage).map(t => t.detail);
+    const {preKey, picture, eligible, blocked, desired, projected, markerCommit} = detailFor("Ghi trước marker voice")[1];
+    assert.deepStrictEqual({preKey, picture, eligible, blocked, desired, projected, markerCommit},
+      {preKey:sourceKey, picture:false, eligible:true, blocked:false, desired:0, projected:true, markerCommit:null});
+    const [{unattachedMarkerCount, unattachedReasons, reviewOwnersLength, reviewOwners}] = detailFor("Chuẩn bị sau Ghi trước marker voice");
+    assert.deepStrictEqual({unattachedMarkerCount, unattachedReasons, reviewOwnersLength, reviewOwners},
+      {unattachedMarkerCount:0, unattachedReasons:[], reviewOwnersLength:1,
+        reviewOwners:[{key:sourceKey, defer:false, error:false, desired:2, targets:2}]});
+    const [{reviewKey, sourceOwnerFound, sourceEligible, defer, desired:reviewDesired, markerCommit:early}] = detailFor("Ghi trước marker review");
+    assert.deepStrictEqual({reviewKey, sourceOwnerFound, sourceEligible, defer, reviewDesired},
+      {reviewKey:sourceKey, sourceOwnerFound:true, sourceEligible:true, defer:false, reviewDesired:2});
+    assert.deepStrictEqual([early.phase, early.kind, early.creates], ["pre", "review", 2]);
+    const [{reviewCommits:[post]}] = detailFor("Chuẩn bị sau Cập nhật marker nguồn");
+    assert.deepStrictEqual([post.phase, post.kind, post.ownerIndex, post.ownerKey, post.ownerKnown, post.ownerKeys],
+      ["post", "review", 1, sourceKey, true, ["node:nested", sourceKey]]);
+    assert(!JSON.stringify(timings).includes(privatePath));
+  }
+  console.log("MARKER_PRECOMMIT_TRACE_OK:fresh-wrappers;path-redaction");
 }
 for(const profile of [undefined,"baseline","fast","no-delay"])for(const [count,gaps,voiceSpeed] of [[1,false,1],[6,false,1],[65,false,1],[65,true,1],[65,true,1.1],[65,true,0.9],[130,true,1.1]]){
   const stable=fixture(count,false,gaps,voiceSpeed),trial=fixture(count,false,gaps,voiceSpeed);

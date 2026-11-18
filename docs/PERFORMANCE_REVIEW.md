@@ -6,6 +6,17 @@ Lượt Sông Congo 2.20.92 mất 25,2 giây cho 19 marker nguồn voice và kho
 
 Trace ghi `phase`, `kind` và `ownerIndex` cùng các bộ đếm và thời gian #50 trong `detail.markerCommit`. Lượt review sau dựng dùng `detail.reviewCommits` vì một bước hậu kiểm có thể gặp nhiều nguồn. Fixture 65 lát A2 có khoảng lặng và speed 90% ghi marker căn voice và review trước cắt. Khi timeline khớp dự kiến, hai nhóm này có 0 lần tạo, dời, xóa hoặc ghi thuộc tính sau dựng. Chưa đo thời gian toàn lượt trên Premiere với #55.
 
+Trace bổ sung để tìm lý do marker review chỉ được ghi sau khi cắt. Các trường lấy từ dữ liệu đã tính trong lượt dựng, không thêm lượt đọc Premiere.
+
+| Bước | Trường bổ sung |
+| --- | --- |
+| Ghi trước marker voice | `preKey`, `picture`, `eligible`, `blocked`, số yêu cầu `desired` và cờ `projected` cho biết có kết quả chiếu voice. |
+| Chuẩn bị sau Ghi trước marker voice | `unattachedMarkerCount`, `unattachedReasons`, `reviewOwnersLength` và danh sách `reviewOwners` với `key`, `defer`, cờ `error`, số yêu cầu `desired` và số đoạn `targets`. |
+| Ghi trước marker review | `reviewKey`, `sourceOwnerFound`, `sourceEligible`, `defer` và `desired`. |
+| Chuẩn bị sau Cập nhật marker nguồn | Mỗi mục `detail.reviewCommits` có `ownerKey`, `ownerKnown` tại lúc tra nguồn và danh sách `ownerKeys` đã đăng ký trước khi cắt. |
+
+Trace giữ khóa `node:<id>` và rút mọi khóa `path:` thành `path`. Lý do chưa gắn chỉ ghi các thông báo có sẵn của bước phân bổ hoặc thông báo lỗi chung.
+
 ## Tái sử dụng marker clip nguồn, issue #53 (17/11/2026)
 
 Probe ngày 17/11 trên Premiere 26.2.2 có hai lượt: sequence `Final t` với 1 clip

@@ -100,9 +100,31 @@ function generate(source, options) {
     markerIndex: "Chuẩn bị marker voice", speedMarkerIndex: "Chuẩn bị marker tốc độ", markerOwnerIndex: "Cập nhật marker nguồn"
   };
   const boundaries = { voiceNames: "Hình V1–A1", fillRequests: "Voice A2", captionFile: "Marker", masterInOutReset: "Caption" };
+  function insertMeasurement(code, point, replacement) {
+    if (code.split(point).length !== 2) throw Error("Review diagnostic measurement placement: " + point);
+    return code.replace(point, replacement);
+  }
   const steps = []; let cursor = start, label = "Kiểm tra đầu vào và chuẩn bị";
   function flush(to, checkpoint) {
-    const code = slice(cursor,to);
+    let code = slice(cursor,to);
+    if (measure && label === "Chuẩn bị sau " + loops.preOwnerIndex) {
+      const prepareReview = "$._PVS._applyReviewMarkers(workingSequence, asArray(plan.reviewMarkers),";
+      code = "var preparedReviewStats = null;\n" + insertMeasurement(code, prepareReview, "preparedReviewStats = " + prepareReview) + `
+diagnosticDetail.unattachedMarkerCount = preparedReviewStats ? preparedReviewStats.unattachedMarkerCount : 0;
+diagnosticDetail.unattachedReasons = [];
+for (var ui = 0; preparedReviewStats && ui < preparedReviewStats.unattachedMarkers.length; ui++) {
+    diagnosticDetail.unattachedReasons.push(diagnosticReviewReason(preparedReviewStats.unattachedMarkers[ui].reason));
+}
+diagnosticDetail.reviewOwnersLength = reviewOwners.length;
+diagnosticDetail.reviewOwners = [];
+for (var ri = 0; ri < reviewOwners.length; ri++) {
+    var preparedOwner = reviewOwners[ri];
+    diagnosticDetail.reviewOwners.push({
+        key: diagnosticMarkerKey(preparedOwner.key), defer: !!preparedOwner.defer, error: !!preparedOwner.error,
+        desired: preparedOwner.group ? preparedOwner.group.desired.length : 0, targets: preparedOwner.targets.length
+    });
+}`;
+    }
     if (code.trim()) steps.push({ label, code, checkpoint: checkpoint || "" });
     else if (checkpoint && steps.length) steps[steps.length-1].checkpoint = checkpoint;
     cursor = to;
@@ -128,8 +150,28 @@ function generate(source, options) {
       loopBody = loopBody.replace(point, "diagnosticMarkerOwner(markerOwner.Group, cleanupOwners.length);\n                " + point)
         .replace("markerCount += clipMarkerResult.count;", "diagnosticDetail.markerCommit = clipMarkerResult.timings;\n                markerCount += clipMarkerResult.count;");
     }
-    if (measure && loopVariable === "preOwnerIndex") loopBody += "\ndiagnosticDetail.markerCommit = preClipTiming;";
-    if (measure && loopVariable === "preReviewIndex") loopBody += "\ndiagnosticDetail.markerCommit = preReviewTiming;";
+    if (measure && loopVariable === "preOwnerIndex") {
+      loopBody = insertMeasurement(loopBody, "ownerByKey[projectItemKey(preOwner.Item)] = preOwner;",
+        "var preKey = projectItemKey(preOwner.Item);\n            ownerByKey[preKey] = preOwner;");
+      loopBody = insertMeasurement(loopBody, "preGroup.blocked = false;", `diagnosticDetail.markerCommit = preClipTiming;
+            diagnosticDetail.preKey = diagnosticMarkerKey(preKey);
+            diagnosticDetail.picture = !!preOwner.picture;
+            diagnosticDetail.eligible = !!preOwner.eligible;
+            diagnosticDetail.blocked = !!preGroup.blocked;
+            diagnosticDetail.desired = preGroup.desired.length;
+            diagnosticDetail.projected = !!projectedPieces;
+            preGroup.blocked = false;`);
+    }
+    if (measure && loopVariable === "preReviewIndex") {
+      const reviewGate = "if (sourceOwner && sourceOwner.eligible";
+      loopBody = insertMeasurement(loopBody, reviewGate, `diagnosticDetail.reviewKey = diagnosticMarkerKey(reviewOwner.key);
+            diagnosticDetail.sourceOwnerFound = !!sourceOwner;
+            diagnosticDetail.sourceEligible = !!(sourceOwner && sourceOwner.eligible);
+            diagnosticDetail.defer = !!reviewOwner.defer;
+            diagnosticDetail.desired = reviewOwner.group ? reviewOwner.group.desired.length : 0;
+            ${reviewGate}`);
+      loopBody += "\ndiagnosticDetail.markerCommit = preReviewTiming;";
+    }
     if (speedLoop) {
       // Baseline/fast count four atomic V1/A1 mutations after plan-only skips.
       // No-delay completes the whole stage before returning to the panel.
@@ -157,7 +199,36 @@ function generate(source, options) {
   const speedHelper = fn.body.body.find(n => n.type === "FunctionDeclaration" && n.id.name === "setClipSpeed");
   if (!speedHelper || speedHelper.params[0].name !== "item") throw Error("Review speed dirty-item instrumentation.");
   const insertion = speedHelper.body.start + 1 - fn.body.start - 1;
-  const instrumentedPrefix = rawPrefix.slice(0,insertion) + "\n        diagnosticTouch(item);\n" + rawPrefix.slice(insertion);
+  let instrumentedPrefix = rawPrefix.slice(0,insertion) + "\n        diagnosticTouch(item);\n" + rawPrefix.slice(insertion);
+  if (measure) {
+    const ownerLookup = "var owner = ownerByKey[clipOwner.key];";
+    instrumentedPrefix = insertMeasurement(instrumentedPrefix, ownerLookup, ownerLookup + "\n        var ownerKnown = !!owner;");
+    const finalTiming = 'reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));';
+    instrumentedPrefix = insertMeasurement(instrumentedPrefix, finalTiming, `result.timings.ownerKey = diagnosticMarkerKey(clipOwner.key);
+        result.timings.ownerKnown = ownerKnown;
+        result.timings.ownerKeys = [];
+        for (var ownerKey in ownerByKey) {
+            if (ownerByKey.hasOwnProperty(ownerKey)) result.timings.ownerKeys.push(diagnosticMarkerKey(ownerKey));
+        }
+        ${finalTiming}`);
+    instrumentedPrefix += `
+function diagnosticMarkerKey(key) {
+    return key.indexOf("path:") === 0 ? "path" : key;
+}
+function diagnosticReviewReason(reason) {
+    // Only built-in allocation messages are safe to include in this trace.
+    switch (reason) {
+        case "Nhiều clip cùng phù hợp.":
+        case "Không đọc được ánh xạ từ timeline sang nguồn.":
+        case "Không có clip trong khoảng cảnh báo.":
+        case "Không còn frame trống trên clip.":
+            return reason;
+        default:
+            return "Lỗi khi chuẩn bị marker review.";
+    }
+}
+`;
+  }
   const speedSignature = "function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, allowTerminalEndFallback)";
   const qeLookup = "$._PVS._findQEClipAtTicks(qeTrack, item.start.ticks, tolerance)";
   if (instrumentedPrefix.split(speedSignature).length!==2 || instrumentedPrefix.split(qeLookup).length!==2) throw Error("Review logical QE helper signature.");
