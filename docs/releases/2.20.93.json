@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.93",
+  "tag": "v2.20.93",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "1B76093D69140245F17C37FA61CB039ED679E32FB48546D37F58969C8CCB5E0D",
+    "bytes": 1535380089,
+    "filename": "Premiere-Voice-Sync-2.20.93-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 73,
+    "powershellScriptsParsed": 133,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "baselineNativeRun": {
+      "note": "2.20.92 Auto edit on the user's Sông Congo project, 2026-11-16; the reason for this release, not a measurement of it.",
+      "timelineMilliseconds": 85520,
+      "hostCalls": 76,
+      "perCallOverheadMilliseconds": 27276,
+      "voiceMarkerCommitMilliseconds": 25192,
+      "reviewMarkerStageMilliseconds": 4975,
+      "clipSortMilliseconds": 4031
+    },
+    "nativeProbes": [
+      "Premiere 26.2.2, 2026-11-17: marker ops on the voice ProjectItem average 7-25 ms with 1 A2 clip and 23-47 ms with 101 A2 clips; assigning marker.start in seconds moves a marker, a Time object throws (both runs cleaned up, 37 -> 37 markers)."
+    ],
+    "mockEvidence": [
+      "No-delay native mutations equal baseline; measured and unmeasured executors make the same native calls.",
+      "Final marker collections equal the previous flow on 42 fixtures across direct/baseline/fast/no-delay.",
+      "65-piece fixture: A2 voice markers and planned review markers are written before cutting; the post-edit pass makes no writes.",
+      "Failure and Stop after the pre-commit restore owned markers to the pre-run snapshot; foreign markers are untouched."
+    ]
+  },
+  "changes": [
+    "No-delay Auto edit runs each loop stage in one host call; Stop/Pause take effect at stage boundaries (#48).",
+    "Marker commit traces time each operation; a native probe measures marker write cost (#50).",
+    "Clip sorts read each start once instead of on every comparison (#52).",
+    "Owned clip markers are moved and reused instead of deleted and recreated (#54).",
+    "Plan-derived voice and review markers are committed before the first cut; the post-edit pass stays authoritative and failures or Stop restore owned markers (#56)."
+  ],
+  "pullRequests": [
+    48,
+    50,
+    52,
+    54,
+    56
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "Not verified in Premiere: actual timeline time saved, and whether pre-committed markers land on the right clip pieces after cuts, speed changes and moves.",
+    "Stop requested while the final stage runs restores owned markers even if that stage completes; the timeline must be undone as with any Stop.",
+    "If the host call fails and marker restoration also fails, the panel reports the restoration failure rather than the original host error.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}

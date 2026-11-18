@@ -4,7 +4,7 @@ Set-StrictMode -Version Latest
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $version = (Get-Content -LiteralPath (Join-Path $projectRoot 'VERSION') -Raw -Encoding UTF8).Trim()
 [xml]$manifest = Get-Content -LiteralPath (Join-Path $projectRoot 'extension\CSXS\manifest.xml') -Raw -Encoding UTF8
-if ($version -ne '2.20.92') { throw "VERSION_FILE_INVALID:$version" }
+if ($version -ne '2.20.93') { throw "VERSION_FILE_INVALID:$version" }
 if ([string]$manifest.ExtensionManifest.ExtensionBundleVersion -ne $version) { throw 'MANIFEST_VERSION_MISMATCH' }
 if ([string]$manifest.ExtensionManifest.ExtensionList.Extension.Version -ne $version) { throw 'EXTENSION_VERSION_MISMATCH' }
 $html = [IO.File]::ReadAllText((Join-Path $projectRoot 'extension\index.html'), [Text.Encoding]::UTF8)
