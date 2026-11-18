@@ -1,6 +1,6 @@
 # Kiến trúc hiện tại
 
-Tài liệu này mô tả runtime 2.20.x (bản mới nhất 2.20.94, Whisper large-v3-turbo)
+Tài liệu này mô tả runtime 2.20.x (bản mới nhất 2.20.95, Whisper large-v3-turbo)
 và lịch sử thiết kế của nó. Big update phát triển từng bước trên chính kiến trúc
 này; kiến trúc cue-first riêng đã đóng ngày 13/11/2026.
 

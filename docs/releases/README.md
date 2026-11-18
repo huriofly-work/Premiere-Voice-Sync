@@ -2,7 +2,8 @@
 
 Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_RESTART_2026-11-14.md));
 bản public đầu tiên là 2.20.91 (stable, user chạy thật ngày 15/11/2026); 2.20.92,
-2.20.93 và 2.20.94 là prerelease còn chờ nghiệm thu Premiere. Trong lịch
+2.20.93, 2.20.94 và bản vá 2.20.95 là prerelease còn chờ nghiệm thu Premiere
+(2.20.93/2.20.94 có lỗi dời marker). Trong lịch
 sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
 2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 
@@ -13,6 +14,7 @@ sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90
 
 ## Ghi chú theo phiên bản
 
+- [2.20.95 — Bản vá: sửa lỗi dời marker của 2.20.94](notes/REVIEW_MARKERS_2.20.95.md)
 - [2.20.94 — Marker gọn hơn: không chồng, dạng điểm ở giữa đoạn, gộp theo loại, bỏ marker dự phòng](notes/REVIEW_MARKERS_2.20.94.md)
 - [2.20.93 — Giảm các lần "nghỉ" khi dựng timeline: bỏ chia đợt, marker ghi trước khi cắt](notes/AUTO_EDIT_ACOUSTIC_2.20.93.md)
 - [2.20.92 — Sửa lỗi dừng ở bước lập kế hoạch, thêm số đo timeline](notes/AUTO_EDIT_ACOUSTIC_2.20.92.md)

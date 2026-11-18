@@ -9,7 +9,7 @@ for detail. Not verified by running Premiere: nothing here is native acceptance.
 ## What the product is
 
 A Windows Adobe Premiere Pro CEP panel (id `com.premierevoicesync.local`, runtime
-2.20.94, last stable the user tested: 2.20.91). Two workflows share one alignment core:
+2.20.95, last stable the user tested: 2.20.91). Two workflows share one alignment core:
 
 - **Dựng theo voice (Auto edit):** from a template (one V1/A1 nest, A2 voice chapters)
   and a Vietnamese SRT, align the new voice to SRT cues and rebuild picture/audio
@@ -84,7 +84,10 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
   2026-11-18 (timeline 85.5 s -> 64.5 s) and found duplicate review markers.
   2.20.94 (2026-11-18) is a prerelease for markers: review markers replace
   earlier runs (#60), point markers at the span middle (#61), same-kind merge
-  per layer (#64) and no ruler fallback markers (#65); native acceptance pending.
+  per layer (#64) and no ruler fallback markers (#65); its native run failed:
+  Premiere moves the whole marker on `start` and the tool wrote `end` first.
+  2.20.95 (2026-11-18) is the fix (#68: start first, then end); native
+  acceptance pending.
   In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
   prerelease, installed on the user's machine 2026-11-13; the accepted stable was
   2.20.25.
