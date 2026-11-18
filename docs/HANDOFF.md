@@ -115,9 +115,13 @@ marker review 17 → 6.
   trước, đọc lại rồi mới ghi `end`; mock dùng chung `tests/unit/marker-bounds.js`); chuẩn
   bị bản vá 2.20.95. Bài học: năng lực native mới phải có probe đọc lại đủ các trường trước
   khi viết mock và phát hành.
-- Việc kế: phát hành và cài 2.20.95, user chạy lại Sông Congo: kiểm không còn lỗi dời
-  marker, marker trùng được dọn, marker dạng điểm, khác loại đặt sát bên, thời gian ghi
-  marker. Còn mở: vì sao marker review không được ghi trước khi cắt (2.20.93, 2.20.94);
+- #69 phát hành 2.20.95 (prerelease, tag tại `f8622b3`, ZIP 1.535.382.608 byte, SHA-256
+  `77C15577…7DB0DA32`), đã cài. Lượt chạy Sông Congo 18/11 21:38 **xong**: timeline 75,0 s
+  (gồm đổi marker cũ một lần: clip hình 7,6 s, review 8,8 s), 0 cảnh báo chưa gắn, 0 lỗi;
+  file voice 59 → 21 marker. User xem timeline và xác nhận marker đúng (nghiệm thu, một
+  project); vẫn là prerelease.
+- Việc kế: đo lượt chạy thứ hai (gần như không ghi marker); cân nhắc nâng 2.20.95 lên stable
+  sau khi chạy thêm project khác. Còn mở: vì sao marker review không được ghi trước khi cắt (2.20.93, 2.20.94);
   Dừng khi bước cuối đang chạy sẽ trả marker về cũ; panel có thể mất câu lỗi gốc nếu cả
   khôi phục marker cũng lỗi; AGENTS.md dòng 47 về tiền tố tên branch cần sửa (chờ user duyệt).
 

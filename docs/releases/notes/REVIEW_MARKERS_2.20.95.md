@@ -1,6 +1,7 @@
 # 2.20.95 — Bản vá: sửa lỗi dời marker của 2.20.94
 
-Prerelease. **Chưa nghiệm thu trên Premiere**; 2.20.91 vẫn là stable/Latest.
+Prerelease; 2.20.91 vẫn là stable/Latest. **Đã chạy thật trên Premiere 26.2.2 ngày 18/11/2026**
+(một project): Dựng theo voice xong, marker là điểm ở giữa đoạn, hết bộ trùng.
 **Không dùng 2.20.94 và 2.20.93 cho Dựng theo voice**; cập nhật lên bản này.
 
 ## Lỗi của 2.20.94
@@ -36,5 +37,9 @@ trước lượt chạy đó, rồi chạy lại bằng 2.20.95.
 - Mock marker trong test giờ giữ độ dài khi đổi điểm bắt đầu như Premiere. Với mock này, test
   dời marker chạy đỏ trên code 2.20.94 và xanh sau khi sửa.
 - Bộ hồi quy `-NoWindowsIntegration` đạt 73 nhóm; 6 nhóm Windows integration không chạy.
-- **Chưa chạy lại Dựng theo voice trên Premiere** với bản này.
+- **Chạy thật 18/11/2026** trên đúng project đã lỗi với 2.20.94 (mở lại bản đã lưu): dựng timeline
+  75,0 giây, 40 marker clip (21 marker review trên voice), 0 cảnh báo chưa gắn, 0 lỗi marker.
+  File voice từ 59 marker còn 21 (dọn 38 marker trùng, dời 21 marker về dạng điểm); 19 marker
+  trên clip hình được dời về dạng điểm. User xem timeline: marker đúng dạng điểm, không trùng.
+- Chưa đo lượt chạy thứ hai (gần như không phải ghi marker) và Tạo phụ đề chế độ trộn.
 - Cài đặt: đóng Premiere và helper thông báo bằng tay trước khi cài.

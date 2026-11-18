@@ -4,7 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## 2.20.95 — 2026-11-18
 
-Prerelease, bản vá cho 2.20.94; chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. 2.20.94 hỏng ở bước dựng timeline khi phải dời marker cũ; bản này sửa thứ tự ghi marker. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.95.md).
+Prerelease, bản vá cho 2.20.94; đã chạy thật trên Premiere ngày 18/11/2026 (một project); 2.20.91 vẫn là stable. 2.20.94 hỏng ở bước dựng timeline khi phải dời marker cũ; bản này sửa thứ tự ghi marker. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.95.md).
 
 - Sửa lỗi Auto edit khi dời marker đến giữa đoạn cảnh báo và khi khôi phục vị trí marker cũ (#67).
 

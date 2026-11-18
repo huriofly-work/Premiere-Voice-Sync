@@ -86,8 +86,9 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
   earlier runs (#60), point markers at the span middle (#61), same-kind merge
   per layer (#64) and no ruler fallback markers (#65); its native run failed:
   Premiere moves the whole marker on `start` and the tool wrote `end` first.
-  2.20.95 (2026-11-18) is the fix (#68: start first, then end); native
-  acceptance pending.
+  2.20.95 (2026-11-18) is the fix (#68: start first, then end); the user ran
+  it natively the same day on that project and accepted the markers (still a
+  prerelease).
   In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
   prerelease, installed on the user's machine 2026-11-13; the accepted stable was
   2.20.25.

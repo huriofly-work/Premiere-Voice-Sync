@@ -2,8 +2,8 @@
 
 Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_RESTART_2026-11-14.md));
 bản public đầu tiên là 2.20.91 (stable, user chạy thật ngày 15/11/2026); 2.20.92,
-2.20.93, 2.20.94 và bản vá 2.20.95 là prerelease còn chờ nghiệm thu Premiere
-(2.20.93/2.20.94 có lỗi dời marker). Trong lịch
+2.20.93, 2.20.94 và bản vá 2.20.95 là prerelease; 2.20.95 đã chạy thật trên Premiere ngày
+18/11/2026 (2.20.93/2.20.94 có lỗi dời marker). Trong lịch
 sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
 2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 

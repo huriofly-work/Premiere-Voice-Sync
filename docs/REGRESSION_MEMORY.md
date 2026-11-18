@@ -1,5 +1,17 @@
 # Bộ nhớ hồi quy của project
 
+## Nghiệm thu native 2.20.95 (18/11/2026)
+
+User cài 2.20.95 (gói SHA-256 `77C15577…7DB0DA32`), mở lại bản đã lưu của project đã lỗi với
+2.20.94 và chạy lại Dựng theo voice trên sequence mới, Premiere 26.2.2: **chạy xong**. Dựng
+timeline 75,0 giây, 34 lần gọi host; 40 marker clip, 21 marker review trên voice, 0 cảnh báo
+chưa gắn, 0 lỗi marker, 0 lỗi khôi phục. Lượt này đổi một lần toàn bộ marker cũ: file voice
+59 → 21 marker (xóa 38 marker review trùng, dời 21 marker về dạng điểm, 8,8 giây), 19 marker
+clip hình dời về dạng điểm (7,6 giây). User xem timeline: marker là điểm ở giữa đoạn, không
+còn bộ trùng. Đây là bằng chứng native cho #60, #61, #64, #65, #68 trên **một** project.
+Chưa đo: lượt chạy lại không ghi marker, Tạo phụ đề chế độ trộn; ghi trước khi cắt vẫn không
+ghi marker nào (đang điều tra riêng).
+
 ## Issue #67 — Giữ đúng vị trí khi dời marker (18/11/2026)
 
 - **Lỗi native ở 2.20.94.** Auto edit báo `Marker position/notes verification failed` sau khi dựng. Nhóm hình có 19 marker, trace ghi nhận 38 lần dời, 34 lần ghi end, 19 lần ghi name và 19 lần ghi comments qua hai lượt ghi và bù. Nhóm review có 21 marker, 42 lần dời. Khi khôi phục, host báo `Marker restoration: source snapshot differs`.
