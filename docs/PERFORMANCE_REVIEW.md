@@ -1,5 +1,11 @@
 # Đánh giá tăng tốc Premiere Voice Sync
 
+## Ghi marker trước khi cắt, issue #55 (18/11/2026)
+
+Lượt Sông Congo 2.20.92 mất 25,2 giây cho 19 marker nguồn voice và khoảng 5 giây cho 22 marker rà trên 101 lát A2. Probe 17/11 đo trung bình một lần tạo marker tăng từ 14,7 lên 45,1 ms giữa hai lượt có 1 và 101 clip. [Bảng đo từng thao tác](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+
+Trace ghi `phase`, `kind` và `ownerIndex` cùng các bộ đếm và thời gian #50 trong `detail.markerCommit`. Lượt review sau dựng dùng `detail.reviewCommits` vì một bước hậu kiểm có thể gặp nhiều nguồn. Fixture 65 lát A2 có khoảng lặng và speed 90% ghi marker căn voice và review trước cắt. Khi timeline khớp dự kiến, hai nhóm này có 0 lần tạo, dời, xóa hoặc ghi thuộc tính sau dựng. Chưa đo thời gian toàn lượt trên Premiere với #55.
+
 ## Tái sử dụng marker clip nguồn, issue #53 (17/11/2026)
 
 Probe ngày 17/11 trên Premiere 26.2.2 có hai lượt: sequence `Final t` với 1 clip

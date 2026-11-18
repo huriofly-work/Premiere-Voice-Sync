@@ -4,6 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
+- Auto edit ghi trước marker căn voice và marker rà cue ánh xạ được trước khi cắt, đối chiếu lại sau dựng và khôi phục marker nguồn nếu lỗi hoặc Dừng (#55).
 - Marker clip nguồn tái sử dụng marker thuộc phạm vi bằng cách đổi vị trí thay vì xóa/tạo; giữ đọc lại và bù lỗi, thêm moves/moveMs, marker ruler không đổi; nghiệm thu native pending (#53).
 - Sắp xếp clip chỉ đọc mốc bắt đầu một lần mỗi clip để giảm lượt đọc Premiere, giữ thứ tự và lệnh sửa timeline (#51).
 - Log marker tách thời gian tạo, ghi tên/comments/end/màu, đọc màu và xóa (gồm bù lỗi); thêm probe riêng đo trên ProjectItem media thử và kiểm tra khả năng đổi vị trí marker; kết quả hai lượt native ngày 17/11 ghi trong báo cáo probe (#49).

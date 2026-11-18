@@ -27,6 +27,8 @@ function fixture(options={}){
     return {};
   }};
   const context={require:n=>({fs:fakeFs,path,child_process:childProcess,crypto}[n]),window:{PvsSecurity:{assertNoLinks(){}},PvsNotificationPolicy:policy},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){},hasFocus:()=>true},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},process:{env:{SystemRoot:"C:\\Windows"}},fixture:{calls,sequence,options,stopAt},setTimeout:(fn)=>{stopAt("export-yield");Promise.resolve().then(fn);}};
+  const storage=options.storage||new Map();
+  context.localStorage={getItem:key=>storage.get(key)||null,setItem:(key,v)=>storage.set(key,v),removeItem:key=>storage.delete(key)};
   context.window.setTimeout=(fn)=>Promise.resolve().then(fn);
   context.window.__adobe_cep__={evalScript(expression,callback){
     calls.push(["host",expression]);let result;
@@ -35,7 +37,9 @@ function fixture(options={}){
     else if(expression.includes("diagnosticInfo"))result={ok:true,revision:"staged-edit-v3",baseHash:sourceHash};
     else if(expression.includes("beginDiagnosticEdit")){stopAt("edit-begin");result={ok:true,nextCall:0,nextStage:"video"};}
     else if(expression.includes("advanceDiagnosticEdit")){advances++;stopAt("edit-advance-"+advances);result=advances===1?{ok:true,done:false,nextCall:1,nextStage:"voice",stage:"video",timelineMutated:true}:{ok:true,done:true,result:{ok:true,executorVersion:25,timelineMutated:true}};}
-    else if(expression.includes("abortDiagnosticEdit"))result={ok:false,done:true,result:{timelineMutated:advances>0}};
+    else if(expression.includes("acceptDiagnosticEdit"))result={ok:true};
+    else if(expression.includes("abortDiagnosticEdit") && options.lostSession)result={ok:false,error:"DIAGNOSTIC_SESSION_NOT_FOUND"};
+    else if(expression.includes("abortDiagnosticEdit"))result={ok:false,done:true,result:{timelineMutated:advances>0,markerRestorationFailures:options.markerRestoreError?["MARKER_RESTORE_FAILED"]:[]}};
     else if(expression.includes("beginCaptionAudioExport")){stopAt("export-begin");result={ok:true,done:false,nextCall:0,rangeCount:2};}
     else if(expression.includes("advanceCaptionAudioExport")){advances++;stopAt("export-advance-"+advances);result={ok:true,done:advances===2,nextCall:advances,restored:advances===2};}
     else if(expression.includes("abortCaptionAudioExport"))result=options.restoreError?{ok:false,done:true,restored:false,exportFailurePhase:"restore",error:"RESTORE_FAILED"}:{ok:false,done:true,restored:true};
@@ -55,7 +59,7 @@ function fixture(options={}){
     retainLastRun=removeTreeSafe;
     status=log=renderBackend=logCaptionTiming=()=>{};
     state.targetSrt="input.srt";
-    window.api={edit:runSync,captions:runCaptions,stop:requestWorkflowStop,pause:requestWorkflowPause,fatal:reportUnexpectedError,choose:chooseWorkflowNotice,pending:()=>!!state.noticeChoice,busy:()=>state.workflowBusy,context:()=>runContext,recovery:()=>recoveryContext};
+    window.api={reload:loadRecoveryJournal,check:checkIncidentInputs,edit:runSync,captions:runCaptions,stop:requestWorkflowStop,pause:requestWorkflowPause,fatal:reportUnexpectedError,choose:chooseWorkflowNotice,pending:()=>!!state.noticeChoice,busy:()=>state.workflowBusy,context:()=>runContext,recovery:()=>recoveryContext};
   `;
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',inject),context);api=context.window.api;
   return {api,calls,controls,files,release:()=>engineCallback(),releaseResume:()=>resumeCallback()};
@@ -77,7 +81,7 @@ if(require.main===module)(async()=>{
       if(changed)assert(f.controls.runSync.disabled&&f.controls.runCaptions.disabled);
       else assert(f.controls.workflowNoticeMessage.textContent.includes("Timeline chưa bị thay đổi"));
       const hosts=f.calls.filter(c=>c[0]==="host").map(c=>c[1]);
-      if(["edit-begin","edit-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
+      if(["edit-begin","edit-advance-1","edit-advance-2"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
       if(["export-begin","export-yield","export-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortCaptionAudioExport")).length,1);
       if(stopAt.startsWith("export"))assert(!f.calls.some(c=>c[0]==="engine"));
       assert(!hosts.some(c=>/\.save\(|\.undo\(/i.test(c)));
@@ -92,6 +96,24 @@ if(require.main===module)(async()=>{
     const f=fixture(options);await settle(f,f.api.captions());assert(f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));assert(!f.controls.workflowNoticeTitle.textContent.includes("Đã dừng tác vụ"));
     if(options.restoreError)assert(f.api.recovery());
   }
+  for(const lostSession of [false,true]) {
+    const storage=new Map(),key="pvs.recovery.v1";
+    let saved;
+    const active=fixture({storage,onPoint(point){if(point==="edit-advance-1")saved=storage.get(key);}});
+    await settle(active,active.api.edit());
+    assert(JSON.parse(saved).markerSession && !storage.has(key));
+    storage.set(key,saved);
+    const reloaded=fixture({storage,lostSession});
+    reloaded.api.reload();
+    const checking=reloaded.api.check();reloaded.api.choose(true);await checking;
+    assert(reloaded.calls.some(c=>c[0]==="host" && c[1].includes(JSON.parse(saved).markerSession)));
+    assert.equal(storage.has(key),lostSession);
+    if(lostSession)assert(JSON.parse(storage.get(key)).markerManualReview && reloaded.api.recovery());
+  }
+  const failedRestore=fixture({stopAt:"edit-advance-2",markerRestoreError:true});
+  await settle(failedRestore,failedRestore.api.edit());
+  assert(failedRestore.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));
+  assert(failedRestore.api.recovery().markerSession);
   const quiet=policy.route({kind:"cancelled",impact:"changed"},{background:true});assert.equal(quiet.toast,"banner-and-center");assert.equal(quiet.attention,"none");assert.equal(policy.route({kind:"cancelled",observed:true},{background:true}).toast,"none");
   console.log("WORKFLOW_CANCELLATION_OK:both-workflows;preflight;engine;export-restoration;staged-abort;final-native-call;pending-lock;repeat-stop;recovery;error-precedence;quiet-cancel");
 })().catch(e=>{console.error(e);process.exitCode=1;});
