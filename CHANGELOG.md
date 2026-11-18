@@ -2,7 +2,9 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
-## Chưa phát hành
+## 2.20.93 — 2026-11-18
+
+Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. Giảm các lần "nghỉ" khi dựng timeline: bỏ chia đợt, sắp xếp clip nhanh hơn, marker ghi trước khi cắt và dời thay vì xóa/tạo. [Ghi chú phát hành](docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md).
 
 - Auto edit ghi trước marker căn voice và marker rà cue ánh xạ được trước khi cắt, đối chiếu lại sau dựng và khôi phục marker nguồn nếu lỗi hoặc Dừng (#55).
 - Marker clip nguồn tái sử dụng marker thuộc phạm vi bằng cách đổi vị trí thay vì xóa/tạo; giữ đọc lại và bù lỗi, thêm moves/moveMs, marker ruler không đổi; nghiệm thu native pending (#53).

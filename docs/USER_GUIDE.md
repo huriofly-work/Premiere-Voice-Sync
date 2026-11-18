@@ -1,4 +1,4 @@
-# Hướng dẫn Premiere Voice Sync 2.20.92
+# Hướng dẫn Premiere Voice Sync 2.20.93
 
 ## Khi báo lỗi
 
@@ -17,6 +17,8 @@ từ, không khác số và chỉ có một ứng viên cue/chuỗi cue liên ti
 trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ước lượng
 vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
 vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
+
+**2.20.93:** Dựng theo voice ít "nghỉ" hơn khi chạy trên timeline: mỗi bước chạy hết một lần, marker được ghi trước khi cắt và dời thay vì xóa/tạo lại. Dừng/Tạm dừng có hiệu lực khi bước đang chạy kết thúc. Nếu dựng lỗi hoặc bấm Dừng, marker của tool được trả về như trước khi chạy. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md).
 
 **2.20.92:** Dựng theo voice không còn dừng ở bước lập kế hoạch với lỗi `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED` (gặp ở project có vùng sửa tay); log hiệu năng ghi thêm chi tiết bước dựng timeline. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md).
 

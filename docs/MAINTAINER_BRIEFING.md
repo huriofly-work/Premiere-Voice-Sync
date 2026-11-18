@@ -9,7 +9,7 @@ for detail. Not verified by running Premiere: nothing here is native acceptance.
 ## What the product is
 
 A Windows Adobe Premiere Pro CEP panel (id `com.premierevoicesync.local`, runtime
-2.20.92, last stable the user tested: 2.20.91). Two workflows share one alignment core:
+2.20.93, last stable the user tested: 2.20.91). Two workflows share one alignment core:
 
 - **Dựng theo voice (Auto edit):** from a template (one V1/A1 nest, A2 voice chapters)
   and a Vietnamese SRT, align the new voice to SRT cues and rebuild picture/audio
@@ -76,8 +76,12 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
   restart of 2026-11-14 (fixes from a real run on 2026-11-15). Published as a
   prerelease, promoted to stable/Latest by the user the same day after a real run
   on Premiere 26.2.2 found no issues. 2.20.92 (2026-11-16) is a prerelease with
-  the sentence-planner fix (#43) and timeline trace counters (#45); native
-  acceptance pending. In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
+  the sentence-planner fix (#43) and timeline trace counters (#45); the user's
+  native rerun passed the planner. 2.20.93 (2026-11-18) is a prerelease that
+  removes no-delay batch caps (#48), adds marker timers and a write-cost probe
+  (#50), caches clip sort keys (#52), moves owned clip markers (#54) and
+  pre-commits clip markers before cutting (#56); native acceptance pending.
+  In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
   prerelease, installed on the user's machine 2026-11-13; the accepted stable was
   2.20.25.
 - Direction (2026-11-13): build the big update in small releases on the 2.20.x

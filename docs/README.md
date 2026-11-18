@@ -25,8 +25,9 @@ và tài liệu của luồng bị ảnh hưởng trước khi sửa mã.
 
 Repo khởi tạo lại ngày 14/11/2026 ([lý do](maintenance/REPO_RESTART_2026-11-14.md));
 bản public đầu tiên là stable [2.20.91](releases/notes/REVIEW_MARKERS_2.20.91.md), user
-đã chạy thật trên Premiere ngày 15/11/2026; prerelease
-[2.20.92](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md) còn chờ nghiệm thu. Trước đó stable là 2.20.25 và
+đã chạy thật trên Premiere ngày 15/11/2026; các prerelease
+[2.20.92](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md) và
+[2.20.93](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md) còn chờ nghiệm thu. Trước đó stable là 2.20.25 và
 prerelease gần nhất là [2.20.90](releases/notes/ASR_TURBO_2.20.90.md). Nghiên cứu cue-first, chọn model ASR và Qwen đã đóng
 ngày 13/11/2026; mã, test và báo cáo của chúng đã gỡ khỏi repo (chỉ còn trong
 bản sao lưu lịch sử repo cũ, ngoài GitHub). Không coi test/CI hoặc việc sắp xếp này là nghiệm thu native.
