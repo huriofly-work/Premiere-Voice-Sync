@@ -9,7 +9,7 @@ for detail. Not verified by running Premiere: nothing here is native acceptance.
 ## What the product is
 
 A Windows Adobe Premiere Pro CEP panel (id `com.premierevoicesync.local`, runtime
-2.20.95, last stable the user tested: 2.20.91). Two workflows share one alignment core:
+2.20.96, last stable the user tested: 2.20.91). Two workflows share one alignment core:
 
 - **Dựng theo voice (Auto edit):** from a template (one V1/A1 nest, A2 voice chapters)
   and a Vietnamese SRT, align the new voice to SRT cues and rebuild picture/audio
@@ -88,7 +88,9 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
   Premiere moves the whole marker on `start` and the tool wrote `end` first.
   2.20.95 (2026-11-18) is the fix (#68: start first, then end); the user ran
   it natively the same day on that project and accepted the markers (still a
-  prerelease).
+  prerelease). 2.20.96 (2026-11-18) adds measurement-only trace fields (#73) to
+  find why the #56 review pre-commit writes nothing natively (#72); behavior is
+  unchanged and native run pending.
   In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
   prerelease, installed on the user's machine 2026-11-13; the accepted stable was
   2.20.25.

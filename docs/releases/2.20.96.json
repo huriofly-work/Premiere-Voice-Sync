@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.96",
+  "tag": "v2.20.96",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "F183BDBB300E22061F78AA231A6515D07140899236AFC0CFB19454FFFA74A8B3",
+    "bytes": 1535383616,
+    "filename": "Premiere-Voice-Sync-2.20.96-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 74,
+    "powershellScriptsParsed": 134,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "packagedExecutorMatchesSource": true,
+    "baselineNativeRun": {
+      "note": "2.20.95 Auto edit on the user's Sông Congo project, 2026-11-18. The reason for this release, not a measurement of it.",
+      "timelineMilliseconds": 74992,
+      "outcome": "succeeded",
+      "preCommitMarkerWrites": 0,
+      "postReviewOwnerIndex": -1,
+      "reviewMarkersWrittenAfterCuts": 21
+    },
+    "nativeProbes": [
+      "Premiere 26.2.2, 2026-11-18, read-only Probe-StaleTrackItem.jsx on the Sông Congo sequence: 100 A2 TrackItems kept from an earlier host call still report the same projectItem key (0/100 mismatches); Premiere returns a new TrackItem object on every clips[i] read; A1 and A2 TrackItem nodeIds do not collide."
+    ],
+    "mockEvidence": [
+      "With an executor mock that returns a new TrackItem object on every read, the review pre-commit still writes before the first razor and the final review lookup finds its owner; the native signature is not reproduced.",
+      "The unmeasured executor is byte-identical to 2.20.95; measured and unmeasured executors keep identical native calls across 42 fixtures and four executor modes."
+    ]
+  },
+  "changes": [
+    "The measured staged executor records pre-commit owner keys and gates, prepared review owners and unattached reasons, the review-to-source lookup and the final review key lookup; path keys are masked (#73).",
+    "Read-only probe for TrackItems kept across host calls (#73)."
+  ],
+  "pullRequests": [
+    73
+  ],
+  "issues": [
+    72
+  ],
+  "knownLimitations": [
+    "Diagnostic build: timeline editing and marker writes are unchanged from 2.20.95, so review markers are still written after the cuts.",
+    "Not run in Premiere yet; the new trace fields have not been read from a native run.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}
