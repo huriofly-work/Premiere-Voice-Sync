@@ -1,4 +1,4 @@
-# Hướng dẫn Premiere Voice Sync 2.20.93
+# Hướng dẫn Premiere Voice Sync 2.20.94
 
 ## Khi báo lỗi
 
@@ -17,6 +17,8 @@ từ, không khác số và chỉ có một ứng viên cue/chuỗi cue liên ti
 trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ước lượng
 vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
 vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
+
+**2.20.94:** Marker gọn hơn. Chạy lại không còn thêm bộ marker review trùng trên file voice; marker là điểm ở giữa đoạn cảnh báo nên không che sóng âm; cảnh báo cùng loại chồng nhau trên một clip gộp vào một marker, khác loại đặt sát bên; không còn marker dự phòng trên thước timeline, cảnh báo không gắn được clip được liệt kê trong nhật ký. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.94.md).
 
 **2.20.93:** Dựng theo voice ít "nghỉ" hơn khi chạy trên timeline: mỗi bước chạy hết một lần, marker được ghi trước khi cắt và dời thay vì xóa/tạo lại. Dừng/Tạm dừng có hiệu lực khi bước đang chạy kết thúc. Nếu dựng lỗi hoặc bấm Dừng, marker của tool được trả về như trước khi chạy. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md).
 

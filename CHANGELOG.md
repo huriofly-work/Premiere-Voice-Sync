@@ -2,11 +2,13 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
-## Chưa phát hành
+## 2.20.94 — 2026-11-18
+
+Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. Marker gọn hơn: không chồng qua các lần chạy, là điểm ở giữa đoạn cảnh báo, gộp cảnh báo cùng loại, không còn marker dự phòng trên thước timeline. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.94.md).
 
 - Auto edit và Tạo phụ đề gắn marker lên clip. Cảnh báo chưa gắn được có khoảng thời gian và lý do trong nhật ký, kèm số lượng ở thông báo cuối (#63).
 - Trên cùng lát clip, các cảnh báo SRT chồng hoặc chạm nhau dùng một marker ở giữa đoạn gộp, giữ đủ ghi chú. Nếu trùng điểm với marker căn voice, marker SRT nằm ở frame trống gần nhất trong đoạn cue (#62).
-- Marker của tool trên clip và thước timeline là điểm ở giữa đoạn cảnh báo để không che sóng âm khi dựng (#59).
+- Marker của tool trên clip là điểm ở giữa đoạn cảnh báo để không che sóng âm khi dựng (#59).
 - Chạy lại Auto edit hoặc Tạo phụ đề trên cùng nguồn voice sẽ thay bộ marker review của lần chạy trước cùng chức năng, kể cả khi dùng sequence mới (#58).
 
 ## 2.20.93 — 2026-11-18

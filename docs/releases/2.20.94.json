@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.94",
+  "tag": "v2.20.94",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "ABC66DAA3DD4C6B20639DD4BA1AFC74774B46D750C262D73F1598651EB514AA5",
+    "bytes": 1535382765,
+    "filename": "Premiere-Voice-Sync-2.20.94-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 73,
+    "powershellScriptsParsed": 133,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "baselineNativeRun": {
+      "note": "2.20.93 Auto edit on the user's Sông Congo project, 2026-11-18; the reason for this release, not a measurement of it.",
+      "timelineMilliseconds": 64485,
+      "hostCalls": 34,
+      "voiceSourceMarkersBeforeRun": 37,
+      "voiceSourceMarkersAfterRun": 59,
+      "reviewMarkersPerRun": 22,
+      "rulerFallbackMarkers": 0,
+      "pictureOwnerEndWrites": 19,
+      "pictureOwnerCommitMilliseconds": 3527,
+      "reviewCommitMilliseconds": 8717
+    },
+    "mockEvidence": [
+      "Two sequences sharing one voice source end with one review set per workflow; manual, other-workflow and owned clip markers stay (#60).",
+      "Every tool marker is a point at the middle of its span; earlier range markers collapse on rerun and a second rerun makes zero writes; timeline hashes unchanged on 42 fixtures (#61).",
+      "Overlapping or touching same-kind warnings on one clip piece become one marker; voice and SRT markers at the same spot sit on adjacent frames (#64).",
+      "No path writes new ruler markers; caption-only mixed mode attaches to the first audible track with a covering clip; unattached warnings are reported; old owned ruler fallbacks are cleaned with restore on failure or Stop (#65)."
+    ]
+  },
+  "changes": [
+    "Review markers on a voice source replace earlier runs' review markers of the same workflow, across sequences (#60).",
+    "Tool markers are points (In = Out) at the middle of the warned span (#61).",
+    "Same-kind warnings that overlap on one clip piece share one marker; other kinds sit beside it (#64).",
+    "Ruler fallback markers are removed; warnings that cannot be attached to a clip are listed in the panel log (#65)."
+  ],
+  "pullRequests": [
+    60,
+    61,
+    64,
+    65
+  ],
+  "installation": {
+    "status": "pending-manual-close-of-Premiere",
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
+  "knownLimitations": [
+    "Not verified in Premiere: point marker display on clips, whether a new marker already has end = start, the write-time saving, caption-only mixed-track attachment, and cleanup of the duplicate review sets and old ruler fallbacks.",
+    "On the first run after updating, a voice-alignment marker may sit one frame off if an old review marker occupies the midpoint; the next run moves it back.",
+    "Caption-only mixed mode attaches to the first audible track with a clip, which can be a music or SFX track.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}
