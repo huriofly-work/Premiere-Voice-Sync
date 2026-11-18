@@ -1,5 +1,11 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #63 — Cảnh báo trên clip hoặc trong panel (18/11/2026)
+
+- **Quyết định.** Lượt Auto edit native 2.20.93 gắn được 22/22 marker review lên clip. Trước đây các lỗi mapping/ghi/đọc lại và chế độ mix hoặc nhiều track có thể tạo marker trên thước. Quy tắc mới: không ghi marker lên thước timeline; cảnh báo không gắn được clip thì báo trong panel.
+- **Chọn clip.** Dùng danh sách track đã đóng băng khi xuất audio. Với mix hoặc nhiều track, xét A1, A2, … đến track đầu tiên có clip giao với vùng cảnh báo. Trên lát đã chọn vẫn gộp theo loại và lấy điểm giữa. Cảnh báo thiếu marker không làm hỏng caption đã tạo. Khi chạy lại, chỉ dọn marker cũ trên thước đúng dấu sở hữu và phạm vi.
+- **Hồi quy.** Trước sửa, mock caption thiếu binding tạo một marker thước thay vì 0. Mock caption, review, reconciliation, thông báo và executor kiểm tra chọn track, báo từng cảnh báo, dọn marker cũ và khôi phục khi lỗi hoặc Dừng. 42 fixture qua bốn executor giữ nguyên hash timeline và marker. Standard suite đạt 73 nhóm, parse 133 file PowerShell, bỏ qua sáu nhóm tích hợp Windows. Log ở `_local/remove-ruler-fallback/suite.log`. Chờ nghiệm thu hành vi mới trên Premiere.
+
 ## Issue #62 — Gộp cảnh báo cùng loại trên từng lát clip (18/11/2026)
 
 - **Quyết định.** Mỗi loại marker một marker cho mỗi đoạn trên một layer; khác loại đặt cạnh nhau. Trước đây host gom theo frame bắt đầu nên hai cue chồng nhau có thể tạo hai điểm, còn hai cảnh báo cùng frame bắt đầu có thể bị gom trước khi biết chúng thuộc lát clip nào.

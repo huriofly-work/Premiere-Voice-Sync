@@ -1068,7 +1068,7 @@ $._PVS._markerTools = (function () {
     function resetGroup(g, rows) {
         g.before = rows; g.positions = index(rows, g.tolerance); g.reserved = {}; g.desired = [];
         g.peerReservations = null;
-        g.requests = {}; g.fallbackTargets = [];
+        g.requests = {}; g.markerTargets = [];
     }
     function commit(g, touch, journal, keepSurplus) {
         var commitStarted = (new Date()).getTime();
@@ -1318,8 +1318,24 @@ $._PVS._clipMarkerMapping = function (item, allowNested) {
     } catch (ignoreMapping) { return null; }
 };
 
-$._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, voiceItems, transaction) {
-    var stats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, reviewMarkerSequenceFallbackCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
+$._PVS._reviewCueLabel = function (issue, start, end, captions) {
+    var indices = issue.captionIndices ? issue.captionIndices.slice(0) : [], sorted = [], labels = [];
+    if (!indices.length && issue.captionIndex) indices = [issue.captionIndex];
+    if (!indices.length && captions) {
+        for (var c = 0; c < captions.length; c++) if (captions[c] && Number(captions[c].Start) < end && Number(captions[c].End) > start) indices.push(captions[c].Index);
+    }
+    for (var i = 0; i < indices.length; i++) if (isFinite(Number(indices[i])) && Number(indices[i]) > 0) sorted.push(Number(indices[i]));
+    sorted.sort(function (a, b) { return a - b; });
+    for (var n = 0; n < sorted.length; n++) {
+        var first = sorted[n], last = first;
+        while (n + 1 < sorted.length && sorted[n + 1] <= last + 1) last = sorted[++n];
+        labels.push(String(first) + (last > first ? "–" + last : ""));
+    }
+    return labels.length ? "Cue " + labels.join(", ") + ": " : "";
+};
+
+$._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, voiceItems, transaction, trackRanks) {
+    var stats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, unattachedMarkers: [], unattachedMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     if (issues === undefined) return stats; // Older plans have no review contract.
     var legacyTag = "[PremiereVoiceSync:review-marker:v1:" + workflow + "]";
     var tag = seq.sequenceID === undefined ? legacyTag : "[PremiereVoiceSync:review-marker:v2:" + workflow + ":" + encodeURIComponent(String(seq.sequenceID)) + "]";
@@ -1332,21 +1348,6 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         return false;
     }
     function failure(message) { stats.reviewMarkerFailures.push(String(message)); stats.reviewMarkerFailureCount++; }
-    function cueLabel(issue, start, end) {
-        var indices = issue.captionIndices ? issue.captionIndices.slice(0) : [], sorted = [], labels = [];
-        if (!indices.length && issue.captionIndex) indices = [issue.captionIndex];
-        if (!indices.length && captions) {
-            for (var c = 0; c < captions.length; c++) if (captions[c] && Number(captions[c].Start) < end && Number(captions[c].End) > start) indices.push(captions[c].Index);
-        }
-        for (var i = 0; i < indices.length; i++) if (isFinite(Number(indices[i])) && Number(indices[i]) > 0) sorted.push(Number(indices[i]));
-        sorted.sort(function (a, b) { return a - b; });
-        for (var n = 0; n < sorted.length; n++) {
-            var first = sorted[n], last = first;
-            while (n + 1 < sorted.length && sorted[n + 1] <= last + 1) last = sorted[++n];
-            labels.push(String(first) + (last > first ? "–" + last : ""));
-        }
-        return labels.length ? "Cue " + labels.join(", ") + ": " : "";
-    }
     function shortNotes(notes) {
         var unique = [], lines = [];
         for (var i = 0; i < notes.length; i++) {
@@ -1381,11 +1382,11 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         for (var i = 0; i < issues.length; i++) {
             var issue = issues[i], start = Number(issue.start), end = Number(issue.end);
             if (issue.start === null || issue.end === null || !isFinite(start) || !isFinite(end) || start < 0 || end <= start || !inScope(start) || !inScope(Math.max(start, end - 0.000001))) throw new Error("Invalid review marker range: " + i);
-            groups.push({ start: start, end: end, order: i, notes: [{ label: cueLabel(issue, start, end), reason: String(issue.reason || "cần kiểm tra") }], error: issue.severity === "error" });
+            groups.push({ members: [i], start: start, end: end, order: i, notes: [{ label: $._PVS._reviewCueLabel(issue, start, end, captions), reason: String(issue.reason || "cần kiểm tra") }], error: issue.severity === "error" });
         }
         var scope = [];
         for (var sr = 0; sr < ranges.length; sr++) scope.push({ start: Number(ranges[sr].start), end: Number(ranges[sr].end) });
-        var tools = $._PVS._markerTools, owners = [], mappings = [], fallback = [], sequenceGroup = null;
+        var tools = $._PVS._markerTools, owners = [], mappings = [], sequenceGroup = null;
         var sourceOwned = tools.sourceReviewOwner(workflow);
         // Snapshot every current voice source, including those with no desired
         // issue, so empty reruns clean stale scoped warnings too. No display IDs.
@@ -1407,6 +1408,14 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         for (var po = 0; po < owners.length; po++) {
             try { owners[po].group = prepare(owners[po]); } catch (prepareError) { owners[po].error = String(prepareError); }
         }
+        function unattached(target, reason) {
+            for (var n = 0; n < target.members.length; n++) {
+                var issue = issues[target.members[n]];
+                stats.unattachedMarkers.push({ start: Number(issue.start), end: Number(issue.end), kind: name,
+                    cueLabel: $._PVS._reviewCueLabel(issue, issue.start, issue.end, captions).replace(/: $/, ""), warning: String(issue.reason || "cần kiểm tra"), reason: String(reason) });
+            }
+            stats.unattachedMarkerCount = stats.unattachedMarkers.length;
+        }
         function planClip(target, selected) {
             var map = selected.mapping, owner = selected.owner, end = Math.min(target.end, map.end), candidate = Math.max(target.start, map.start);
             if (!owner.group || owner.error || end <= candidate) return false;
@@ -1421,37 +1430,35 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
             owner.targets.push(target); return true;
         }
         for (var ti = 0; ti < groups.length; ti++) {
-            var selected = null, coveringItem = null, largest = 0, ambiguous = false, overlaps = [];
+            var selected = null, coveringItem = null, largest = 0, ambiguous = false, overlaps = [], rank = null;
             for (var ci = 0; voiceItems && ci < voiceItems.length; ci++) {
                 var left = Math.max(groups[ti].start, Number(voiceItems[ci].start.seconds));
                 var right = Math.min(groups[ti].end, Number(voiceItems[ci].end.seconds)), overlap = right - left;
                 if (overlap <= 0) continue;
+                if (trackRanks) {
+                    if (rank !== null && trackRanks[ci] !== rank) break;
+                    rank = trackRanks[ci];
+                }
                 overlaps.push({ start: left, end: right });
                 if (overlap > largest + 0.000001) { largest = overlap; coveringItem = voiceItems[ci]; ambiguous = false; }
                 else if (Math.abs(overlap - largest) <= 0.000001) ambiguous = true;
             }
             // Caption padding can precede its voice piece: choose the largest
             // overlap, then clamp both edges to that piece. Never span a gap.
-            // Simultaneous candidates (including unsupported sources on other
-            // tracks) remain ambiguous regardless of their overlap lengths.
+            // Simultaneous candidates within the chosen track remain ambiguous.
             for (var a = 0; a < overlaps.length; a++) for (var b = a + 1; b < overlaps.length; b++) {
                 if (Math.min(overlaps[a].end, overlaps[b].end) > Math.max(overlaps[a].start, overlaps[b].start)) ambiguous = true;
             }
             if (!ambiguous && coveringItem) for (var mi = 0; mi < mappings.length; mi++) if (mappings[mi].item === coveringItem) selected = mappings[mi];
             var target = groups[ti];
             if (selected) selected.intervals.push(target);
-            else {
-                // Unbound warnings keep their existing start-frame grouping.
-                var frame = Math.round(target.start * fps), prior = null;
-                for (var u = 0; u < fallback.length; u++) if (Math.round(fallback[u].start * fps) === frame) { prior = fallback[u]; break; }
-                if (prior) combine(prior, target);
-                else fallback.push(target);
-            }
+            else unattached(target, ambiguous ? "Nhiều clip cùng phù hợp." : coveringItem ? "Không đọc được ánh xạ từ timeline sang nguồn." : "Không có clip trong khoảng cảnh báo.");
         }
         function combine(span, next) {
             span.start = Math.min(span.start, next.start);
             span.end = Math.max(span.end, next.end);
             span.notes = span.notes.concat(next.notes);
+            span.members = span.members.concat(next.members);
             span.error = span.error || next.error;
         }
         // Each list belongs to one TrackItem, even for repeated source ranges.
@@ -1462,59 +1469,62 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
                 var span = intervals[n];
                 while (n + 1 < intervals.length && Math.round(intervals[n + 1].start * fps) <= Math.round(span.end * fps)) combine(span, intervals[++n]);
                 try {
-                    if (!planClip(span, piece)) fallback.push(span);
-                } catch (clipPlanError) { fallback.push(span); }
+                    if (!planClip(span, piece)) unattached(span, piece.owner.error || "Không còn frame trống trên clip.");
+                } catch (clipPlanError) { unattached(span, clipPlanError.message); }
             }
         }
         if (transaction && transaction.prepareOnly) {
-            // Only safe source requests are staged. Ruler targets stay in the final pass.
+            // The final pass reports requests that could not be staged.
             transaction.owners = owners;
             return stats;
         }
         for (var co = 0; co < owners.length; co++) {
             var clipOwner = owners[co];
             if (!clipOwner.group) continue;
-            var clipResult = transaction ? transaction.commit(clipOwner) : tools.commit(clipOwner.group);
+            var clipResult;
+            try { clipResult = transaction && transaction.commit ? transaction.commit(clipOwner) : tools.commit(clipOwner.group); }
+            catch (writeError) { clipResult = { failures: [String(writeError)], colorFailures: [] }; }
             stats.reviewMarkerColorFailureCount += clipResult.colorFailures.length;
             if (clipResult.failures.length) {
-                for (var ct = 0; ct < clipOwner.targets.length; ct++) fallback.push(clipOwner.targets[ct]);
-                // A compensated clip-write failure is handled by ruler fallback;
-                // failed restoration/conflicts must still reach the user.
+                for (var ct = 0; ct < clipOwner.targets.length; ct++) unattached(clipOwner.targets[ct], clipResult.failures.join("; "));
                 for (var cf = 0; cf < clipResult.failures.length; cf++) if (/restoration|changed since preparation/i.test(clipResult.failures[cf])) failure(clipResult.failures[cf]);
                 if (!clipOwner.targets.length) for (var ef = 0; ef < clipResult.failures.length; ef++) failure(clipResult.failures[ef]);
             } else stats.reviewMarkerClipCount += clipResult.count;
         }
         stats.reviewMarkerCount = stats.reviewMarkerClipCount;
+        if (workflow === "failure") return stats;
         // Ruler capability must not gate source writes, even on empty reruns.
-        try { if (seq.markers) sequenceGroup = tools.group(seq.markers, scope, owned, 0.5 / fps); } catch (sequencePrepareError) {}
-        if (!sequenceGroup) {
-            for (var missing = 0; missing < fallback.length; missing++) failure("Premiere does not expose sequence markers for review at " + fallback[missing].start + ".");
+        var ruler = seq.markers;
+        if (!ruler || typeof ruler.getFirstMarker !== "function") return stats;
+        sequenceGroup = tools.group(ruler, scope, owned, 0.5 / fps);
+        if (!tools.reversible(sequenceGroup)) throw new Error("Không đọc đủ dữ liệu để dọn marker cũ trên thước.");
+        if (transaction && transaction.deferRulerCleanup) {
+            if (tools.snapshotOwned(sequenceGroup, sequenceGroup.before).length) transaction.rulerGroup = sequenceGroup;
             return stats;
         }
-        var group = sequenceGroup;
-        for (var j = 0; j < fallback.length; j++) {
-            var target = fallback[j], spec = tools.point(group, target.start, target.end, fps);
-            if (!spec) throw new Error("No free frame inside review interval.");
-            spec.name = name;
-            spec.comments = shortNotes(target.notes) + "\n" + tag;
-            spec.color = target.error ? 1 : 4;
-            tools.add(group, spec);
-        }
-        var result = $._PVS._markerTools.commit(group);
-        stats.reviewMarkerSequenceFallbackCount = result.count;
-        stats.reviewMarkerCount += result.count;
-        stats.reviewMarkerColorFailureCount += result.colorFailures.length;
+        var result = tools.commit(sequenceGroup, null, transaction && transaction.rulerJournal);
         for (var f = 0; f < result.failures.length; f++) failure(result.failures[f]);
     } catch (e) { failure(e.message || e); }
     return stats;
 };
 
-$._PVS.applyCaptionOnly = function (resultPath) {
+$._PVS.finishCaptionMarkerCleanup = function (resultPath) {
+    var pending = $._PVS._captionMarkerCleanup, seq = app.project && app.project.activeSequence;
+    if (!pending || pending.path !== resultPath || !seq || String(seq.sequenceID) !== pending.sequenceId ||
+        String(app.project.documentID || app.project.path || "") !== pending.projectId || $._PVS._captionOnlySnapshot(seq) !== pending.snapshot)
+        return $._PVS._result({ ok: false, error: "Timeline đã thay đổi trước khi dọn marker cũ." });
+    var result = $._PVS._markerTools.commit(pending.group);
+    if (!result.failures.length) $._PVS._captionMarkerCleanup = null;
+    return $._PVS._result({ ok: !result.failures.length, error: result.failures.join("; ") });
+};
+
+$._PVS.applyCaptionOnly = function (resultPath, awaitAcceptance) {
     var captionCreated = false;
     var cleanupComplete = false;
     var captionBin = null;
     var seq = null;
-    var markerStats = null;
+    var markerStats = null, markerTransaction = { deferRulerCleanup: true };
+    $._PVS._captionMarkerCleanup = null;
     function withMarkers(value) {
         if (markerStats) for (var key in markerStats) if (markerStats.hasOwnProperty(key)) value[key] = markerStats[key];
         return $._PVS._result(value);
@@ -1546,12 +1556,10 @@ $._PVS.applyCaptionOnly = function (resultPath) {
             if (!item) throw new Error("Không tìm thấy subtitle sau khi import.");
             captionCreated = !!seq.createCaptionTrack(item, 0, Sequence.CAPTION_FORMAT_SUBTITLE);
             if (!captionCreated) throw new Error("Premiere không tạo được Caption Track.");
-            var voiceItems = [], voiceInput = result.reviewMarkerVoiceInput;
-            // A mix/multiple tracks can uniquely cover an issue with music/SFX.
-            // Only explicit clips or a single selected track identify voice well
-            // enough to write its ProjectItem (shared across sequences).
-            var unambiguousVoice = voiceInput && (voiceInput.sourceMode === "clips" || (voiceInput.sourceMode === "tracks" && voiceInput.trackIndices && voiceInput.trackIndices.length === 1));
-            if (unambiguousVoice && seq.audioTracks) for (var vt = 0; vt < voiceInput.trackIndices.length; vt++) {
+            var voiceItems = [], trackRanks = [], voiceInput = result.reviewMarkerVoiceInput;
+            var prioritizeTracks = voiceInput && (voiceInput.sourceMode === "mix" || (voiceInput.sourceMode === "tracks" && voiceInput.trackIndices && voiceInput.trackIndices.length > 1));
+            // trackIndices is the sorted, frozen list used for audio export.
+            if (voiceInput && voiceInput.trackIndices && seq.audioTracks) for (var vt = 0; vt < voiceInput.trackIndices.length; vt++) {
                 var trackIndex = Number(voiceInput.trackIndices[vt]), voiceTrack = seq.audioTracks[trackIndex];
                 if (!voiceTrack) continue;
                 for (var vc = 0; vc < voiceTrack.clips.numItems; vc++) {
@@ -1560,10 +1568,10 @@ $._PVS.applyCaptionOnly = function (resultPath) {
                         var selection = voiceInput.selectedClips[vs];
                         if (Number(selection.trackIndex) === trackIndex && String(selection.nodeId) === String(voiceItem.nodeId)) include = true;
                     }
-                    if (include) voiceItems.push(voiceItem);
+                    if (include && (!prioritizeTracks || voiceItem.disabled !== true)) { voiceItems.push(voiceItem); trackRanks.push(trackIndex); }
                 }
             }
-            markerStats = $._PVS._applyReviewMarkers(seq, result.reviewMarkers, result.reviewMarkerRanges, "captions", null, voiceItems);
+            markerStats = $._PVS._applyReviewMarkers(seq, result.reviewMarkers, result.reviewMarkerRanges, "captions", null, voiceItems, markerTransaction, prioritizeTracks ? trackRanks : null);
         } finally {
             captionBin.deleteBin();
             for (var probe = 0; probe < 6; probe++) {
@@ -1573,8 +1581,16 @@ $._PVS.applyCaptionOnly = function (resultPath) {
         }
         if (!cleanupComplete) throw new Error("Caption đã tạo nhưng bin tạm chưa dọn được; hãy xóa bin PVS_TEMP_SUBTITLE trong Project.");
         if ($._PVS._captionOnlySnapshot(seq) !== result.snapshot) throw new Error("Hậu kiểm phát hiện video/audio thay đổi trong lúc tạo caption.");
-        if (markerStats.reviewMarkerFailureCount) throw new Error("Caption đã tạo nhưng có mốc chưa gắn được marker: " + markerStats.reviewMarkerFailures.join("; "));
-        return withMarkers({ ok: true, captionCreated: true, captionCueCount: result.captionCueCount, mediaUnchanged: true, temporaryBinRemoved: true });
+        if (markerStats.reviewMarkerFailureCount) throw new Error("Caption đã tạo nhưng hậu kiểm marker gặp lỗi: " + markerStats.reviewMarkerFailures.join("; "));
+        if (markerTransaction.rulerGroup) {
+            $._PVS._captionMarkerCleanup = { path: resultPath, sequenceId: String(seq.sequenceID), snapshot: result.snapshot,
+                projectId: String(app.project.documentID || app.project.path || ""), group: markerTransaction.rulerGroup };
+            if (!awaitAcceptance) {
+                var cleanup = JSON.parse($._PVS.finishCaptionMarkerCleanup(resultPath));
+                if (!cleanup.ok) throw new Error(cleanup.error);
+            }
+        }
+        return withMarkers({ ok: true, rulerCleanupPending: !!$._PVS._captionMarkerCleanup, captionCreated: true, captionCueCount: result.captionCueCount, mediaUnchanged: true, temporaryBinRemoved: true });
     } catch (e) {
         return withMarkers({ ok: false, error: e.message || String(e), captionCreated: captionCreated, temporaryBinRemoved: cleanupComplete });
     }
@@ -1621,9 +1637,9 @@ $._PVS.executePlan = function (planPath) {
     var timelineMutated = false;
     var clearedClipMarkerCount = 0;
     var markerColorFailures = [];
-    var ownedMarkerFallbacks = [];
-    var ownedMarkerSequenceFallbackCount = 0;
-    var reviewMarkerStats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, reviewMarkerSequenceFallbackCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
+    var unattachedOwnedMarkers = [];
+    var rulerJournal = [];
+    var reviewMarkerStats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, unattachedMarkers: [], unattachedMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     var pendingNativeReview = null;
     var markerTools = $._PVS._markerTools, markerRestorationFailures = [];
     var preOwners = [], reviewTimings = [];
@@ -1634,6 +1650,12 @@ $._PVS.executePlan = function (planPath) {
         if (errors.length) throw new Error(errors.join("; "));
     }
     function restorePreOwners(retry) {
+        if (rulerJournal.length) {
+            try {
+                if (!app.project || String(app.project.documentID || app.project.path || "") !== markerProjectId) throw new Error("Marker restoration: project changed.");
+                restoreEntries(rulerJournal);
+            } catch (rulerError) { markerRestorationFailures.push(String(rulerError)); }
+        }
         for (var i = preOwners.length - 1; i >= 0; i--) {
             var owner = preOwners[i];
             if (!owner.trackChanges) continue;
@@ -1795,7 +1817,7 @@ $._PVS.executePlan = function (planPath) {
         if (!key || markerGroups[key]) throw new Error("Ambiguous clip marker source.");
         owner.ProjectItem = owner.Item.projectItem;
         // No supported mapping means no range cleanup, not a guessed speed.
-        // Unmapped owners remain snapshots only; warnings use ruler fallback.
+        // Unmapped owners remain snapshots only; unmapped warnings go in the report.
         owner.Group = $._PVS._markerTools.group(owner.ProjectItem.getMarkers(), owner.Ranges.length ? owner.Ranges : [{ start: 0, end: Number.MAX_VALUE }], owner.Ranges.length ? isOwnedClipMarker : function () { return false; }, 0.25 / fps, true);
         markerGroups[key] = owner.Group;
     }
@@ -1845,14 +1867,20 @@ $._PVS.executePlan = function (planPath) {
         if (!isFinite(start) || !isFinite(end) || start < 0 || end <= start) throw new Error("Invalid clip marker range.");
         var color = spec.Owner === "A2" ? 4 : Number(spec.ColorIndex === undefined ? 1 : spec.ColorIndex);
         if (!isFinite(color) || color < 0 || color > 7 || Math.floor(color) !== color) color = 1;
-        return { start: start, end: end, name: String(spec.Name), comments: String(spec.Comments || ""), color: color, merged: !!spec.Merged };
+        return { start: start, end: end, kind: String(spec.Name), warning: String(spec.Comments || ""), color: color };
     }
-    function queueOwnedMarkerFallback(trackItem, spec, fps, markerGroups, plannedRange, reason) {
-        var target = ownedMarkerTarget(trackItem, spec, fps, plannedRange);
+    function recordUnattachedOwnedMarker(trackItem, spec, fps, markerGroups, plannedRange, reason) {
+        var target;
+        try { target = ownedMarkerTarget(trackItem, spec, fps, plannedRange); }
+        catch (rangeError) {
+            var segment = plan.segments[segmentForMarker(spec)] || {};
+            target = { start: Number(segment.NewStart), end: Number(segment.NewEnd), kind: String(spec.Name), warning: String(spec.Comments || "") };
+        }
         target.reason = String(reason);
-        ownedMarkerFallbacks.push(target);
+        unattachedOwnedMarkers.push(target);
         var group = markerGroups[projectItemKey(trackItem)];
-        if (group) group.hasFallback = true;
+        if (group) group.hasUnattached = true;
+        else for (var key in markerGroups) if (markerGroups.hasOwnProperty(key)) markerGroups[key].hasUnattached = true;
     }
     function planOwnedClipMarker(trackItem, spec, fps, markerGroups, plannedRange, projectedMapping) {
         // Collect requests only. The complete source group is committed later.
@@ -1870,7 +1898,7 @@ $._PVS.executePlan = function (planPath) {
         if (group.requests[requestKey] !== undefined) {
             var projected = map.timeline(group.requests[requestKey]);
             if (!isFinite(projected) || projected < start - 0.000001 || projected >= end) throw new Error("Shared source marker cannot map to this clip.");
-            group.fallbackTargets.push(target);
+            group.markerTargets.push(target);
             return;
         }
         var point = $._PVS._markerTools.point(group, start, end, fps, map);
@@ -1881,8 +1909,8 @@ $._PVS.executePlan = function (planPath) {
         point.merged = !!spec.Merged;
         $._PVS._markerTools.add(group, point);
         group.requests[requestKey] = point.seconds;
-        if (!group.fallbackTargets) group.fallbackTargets = [];
-        group.fallbackTargets.push(target);
+        if (!group.markerTargets) group.markerTargets = [];
+        group.markerTargets.push(target);
     }
     function segmentForMarker(spec) {
         if (spec.SegmentIndex !== undefined && spec.SegmentIndex !== null) return spec.SegmentIndex;
@@ -2011,26 +2039,16 @@ $._PVS.executePlan = function (planPath) {
         reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));
         return result;
     }
-    function commitOwnedMarkerFallbacks(sequence, end, fps) {
+    function cleanLegacyOwnedRulerMarkers(sequence, end, fps) {
         var tag = "[PremiereVoiceSync:owned-marker:sequence:v1:" + encodeURIComponent(String(sequence.sequenceID)) + "]";
         var tools = $._PVS._markerTools, group;
-        try {
-            group = tools.group(sequence.markers, [{ start: 0, end: end }], function (row) {
-                return (row.name === "VOICE SYNC - Kiem tra toc do" || row.name === "VOICE SYNC - Kiem tra can voice" || row.name === "VOICE SYNC - Da gop hinh" || row.name === "VOICE SYNC - Gop hinh / Kiem tra toc do") && String(row.comments || "").indexOf(tag) >= 0;
-            }, 0.5 / fps);
-        } catch (prepareError) {
-            if (ownedMarkerFallbacks.length) throw prepareError;
-            return { count: 0, failures: [], colorFailures: [] };
-        }
-        for (var i = 0; i < ownedMarkerFallbacks.length; i++) {
-            var target = ownedMarkerFallbacks[i], spec = tools.point(group, target.start, target.end, fps);
-            if (!spec) throw new Error("No free frame inside owned marker fallback interval.");
-            spec.name = target.name;
-            spec.comments = target.comments + "\n" + tag;
-            spec.color = target.color;
-            tools.add(group, spec);
-        }
-        return tools.commit(group, function () { timelineMutated = true; });
+        var ruler = sequence.markers;
+        if (!ruler || typeof ruler.getFirstMarker !== "function") return { failures: [] };
+        group = tools.group(ruler, [{ start: 0, end: end }], function (row) {
+            return (row.name === "VOICE SYNC - Kiem tra toc do" || row.name === "VOICE SYNC - Kiem tra can voice" || row.name === "VOICE SYNC - Da gop hinh" || row.name === "VOICE SYNC - Gop hinh / Kiem tra toc do") && String(row.comments || "").indexOf(tag) >= 0;
+        }, 0.5 / fps);
+        if (!tools.reversible(group)) throw new Error("Không đọc đủ dữ liệu để dọn marker cũ trên thước.");
+        return tools.commit(group, function () { timelineMutated = true; }, rulerJournal);
     }
 
     try {
@@ -2527,14 +2545,14 @@ $._PVS.executePlan = function (planPath) {
                 planOwnedClipMarker(plannedMarkerItem, plannedMarkerSpec, fps, clipMarkerGroups);
             } catch (plannedMarkerError) {
                 blockClipMarkerGroup(plannedMarkerItem, clipMarkerGroups);
-                try { queueOwnedMarkerFallback(plannedMarkerItem, plannedMarkerSpec, fps, clipMarkerGroups, null, plannedMarkerError.message); }
-                catch (plannedFallbackError) { markerFailures.push(plannedMarkerError.message + "; " + plannedFallbackError.message); }
+                try { recordUnattachedOwnedMarker(plannedMarkerItem, plannedMarkerSpec, fps, clipMarkerGroups, null, plannedMarkerError.message); }
+                catch (reportError) { markerFailures.push(plannedMarkerError.message + "; " + reportError.message); }
             }
         }
         for (var speedMarkerIndex = 0; speedMarkerIndex < actualSpeedWarningMarkers.length; speedMarkerIndex++) {
             var speedMarkerSpec = actualSpeedWarningMarkers[speedMarkerIndex];
             var speedVideoPiece = null;
-            var speedSourceSegment = null;
+            var speedSourceSegment = null, markerPlannedRange = null;
             for (var speedPieceIndex = 0; speedPieceIndex < sourceSegments.length; speedPieceIndex++) {
                 if (Number(sourceSegments[speedPieceIndex]._PlanSegmentIndex) === Number(speedMarkerSpec.SegmentIndex)) {
                     speedVideoPiece = videoPieces[speedPieceIndex];
@@ -2546,15 +2564,15 @@ $._PVS.executePlan = function (planPath) {
                 if (!speedVideoPiece || !speedSourceSegment) throw new Error("Could not map V1 clip marker to sentence segment " + speedMarkerSpec.SegmentIndex + ".");
                 var markerOutputStartFrame = speedSourceSegment.NewStartFrame === undefined ? Number(speedSourceSegment.NewStart) * fps : Number(speedSourceSegment.NewStartFrame);
                 var markerOutputDurationFrames = speedSourceSegment.VisualDurationFrames === undefined ? durationFramesOf(speedVideoPiece) : Number(speedSourceSegment.VisualDurationFrames);
-                var markerPlannedRange = {
+                markerPlannedRange = {
                     outputStartFrame: markerOutputStartFrame,
                     outputEndFrame: markerOutputStartFrame + markerOutputDurationFrames
                 };
                 planOwnedClipMarker(speedVideoPiece, speedMarkerSpec, fps, clipMarkerGroups, markerPlannedRange);
             } catch (speedMarkerError) {
                 blockClipMarkerGroup(speedVideoPiece, clipMarkerGroups);
-                try { queueOwnedMarkerFallback(speedVideoPiece, speedMarkerSpec, fps, clipMarkerGroups, markerPlannedRange, speedMarkerError.message); }
-                catch (speedFallbackError) { markerFailures.push(speedMarkerError.message + "; " + speedFallbackError.message); }
+                try { recordUnattachedOwnedMarker(speedVideoPiece, speedMarkerSpec, fps, clipMarkerGroups, markerPlannedRange, speedMarkerError.message); }
+                catch (reportError) { markerFailures.push(speedMarkerError.message + "; " + reportError.message); }
             }
         }
         // One synchronous commit per source; pause/cancel only between groups.
@@ -2578,30 +2596,28 @@ $._PVS.executePlan = function (planPath) {
                         markerOwner.reviewEntry = null;
                         // Final review planning will see the restored source rows.
                     }
-                    var failedTargets = markerOwner.Group.fallbackTargets || [];
+                    var failedTargets = markerOwner.Group.markerTargets || [];
                     for (var ft = 0; ft < failedTargets.length; ft++) {
                         failedTargets[ft].reason = clipMarkerResult.failures.join("; ");
-                        ownedMarkerFallbacks.push(failedTargets[ft]);
+                        unattachedOwnedMarkers.push(failedTargets[ft]);
                     }
                     for (var cmf = 0; cmf < clipMarkerResult.failures.length; cmf++) {
                         var markerFailure = clipMarkerResult.failures[cmf];
-                        if ((!failedTargets.length && !markerOwner.Group.hasFallback) || /restoration|changed since preparation/i.test(markerFailure)) markerFailures.push(markerFailure);
+                        if ((!failedTargets.length && !markerOwner.Group.hasUnattached) || /restoration|changed since preparation/i.test(markerFailure)) markerFailures.push(markerFailure);
                     }
                 }
                 for (var ccf = 0; ccf < clipMarkerResult.colorFailures.length; ccf++) markerColorFailures.push(clipMarkerResult.colorFailures[ccf]);
             } catch (clipMarkerOwnerError) {
                 // Failure before a transaction starts still needs visible warnings.
-                var unreadableTargets = markerOwner.Group.fallbackTargets || [];
-                for (var ut = 0; ut < unreadableTargets.length; ut++) { unreadableTargets[ut].reason = clipMarkerOwnerError.message; ownedMarkerFallbacks.push(unreadableTargets[ut]); }
-                if (markerRestorationFailures.length || (!unreadableTargets.length && !markerOwner.Group.hasFallback)) markerFailures.push("Marker source " + markerOwnerIndex + ": " + clipMarkerOwnerError.message);
+                var unreadableTargets = markerOwner.Group.markerTargets || [];
+                for (var ut = 0; ut < unreadableTargets.length; ut++) { unreadableTargets[ut].reason = clipMarkerOwnerError.message; unattachedOwnedMarkers.push(unreadableTargets[ut]); }
+                if (markerRestorationFailures.length || (!unreadableTargets.length && !markerOwner.Group.hasUnattached)) markerFailures.push("Marker source " + markerOwnerIndex + ": " + clipMarkerOwnerError.message);
             }
         }
         try {
-            var ownedFallbackResult = commitOwnedMarkerFallbacks(workingSequence, plannedEndFrame / fps, fps);
-            ownedMarkerSequenceFallbackCount = ownedFallbackResult.count;
-            for (var off = 0; off < ownedFallbackResult.failures.length; off++) markerFailures.push(ownedFallbackResult.failures[off]);
-            for (var ocf = 0; ocf < ownedFallbackResult.colorFailures.length; ocf++) markerColorFailures.push(ownedFallbackResult.colorFailures[ocf]);
-        } catch (ownedFallbackError) { markerFailures.push("Sequence marker fallback: " + ownedFallbackError.message); }
+            var rulerCleanup = cleanLegacyOwnedRulerMarkers(workingSequence, plannedEndFrame / fps, fps);
+            for (var off = 0; off < rulerCleanup.failures.length; off++) markerFailures.push(rulerCleanup.failures[off]);
+        } catch (rulerCleanupError) { markerFailures.push("Legacy ruler cleanup: " + rulerCleanupError.message); }
         var reviewIssues = asArray(plan.reviewMarkers).slice(0);
         function addNativeReview(startFrame, endFrame, reason, severity) {
             var start = Math.max(0, Math.min(startFrame, plannedEndFrame - 1));
@@ -2637,7 +2653,7 @@ $._PVS.executePlan = function (planPath) {
                 undoEarlyReview(ro);
             }
         }
-        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview, voiceReservations:voiceReservations});
+        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview, voiceReservations:voiceReservations, rulerJournal:rulerJournal});
         var captionFile = new File(plan.captionSrtPath);
         var captionCreated = false;
         var captionTemporaryBinRemoved = false;
@@ -2763,11 +2779,8 @@ $._PVS.executePlan = function (planPath) {
             maxVoiceMappingStartErrorFrames: maxVoiceMappingStartErrorFrames,
             maxVoiceMappingEndErrorFrames: maxVoiceMappingEndErrorFrames,
             fillCount: fillClips.length,
-            markerCount: markerCount + ownedMarkerSequenceFallbackCount + reviewMarkerStats.reviewMarkerCount,
+            markerCount: markerCount + reviewMarkerStats.reviewMarkerCount,
             clipMarkerCount: markerCount + reviewMarkerStats.reviewMarkerClipCount,
-            sequenceMarkerCount: ownedMarkerSequenceFallbackCount + (reviewMarkerStats.reviewMarkerSequenceFallbackCount || 0),
-            ownedMarkerSequenceFallbackCount: ownedMarkerSequenceFallbackCount,
-            ownedMarkerSequenceFallbacks: ownedMarkerFallbacks,
             markerPlacementMode: "clip-project-item-planned-source-range-verified",
             clipMarkerFailureCount: markerFailures.length,
             clipMarkerFailures: markerFailures,
@@ -2823,6 +2836,12 @@ $._PVS.executePlan = function (planPath) {
     }
     report.cleanupError = cleanupError;
     for (var reviewStatKey in reviewMarkerStats) if (reviewMarkerStats.hasOwnProperty(reviewStatKey)) report[reviewStatKey] = reviewMarkerStats[reviewStatKey];
+    for (var um = 0; um < unattachedOwnedMarkers.length; um++) {
+        var missingMarker = unattachedOwnedMarkers[um];
+        missingMarker.cueLabel = $._PVS._reviewCueLabel({}, missingMarker.start, missingMarker.end, plan.captions).replace(/: $/, "");
+    }
+    report.unattachedMarkers = reviewMarkerStats.unattachedMarkers.concat(unattachedOwnedMarkers);
+    report.unattachedMarkerCount = report.unattachedMarkers.length;
     if (reviewMarkerStats.reviewMarkerFailureCount) report.ok = false;
     if (cleanupError !== "") report.ok = false;
     if (!report.ok) restorePreOwners();

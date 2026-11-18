@@ -22,9 +22,11 @@ for(const [stored,expected] of [[null,true],["true",true],["false",false]])asser
 const soundSettings=fixture();soundSettings.api.setSound(false);assert.equal(soundSettings.storage.get("pvs.notificationSound"),"false");assert.equal(soundSettings.api.sound(),false);
 const routine=fixture();routine.api.begin("edit");
 const fallback=fixture();fallback.api.begin("edit");
-fallback.api.markers({ownedMarkerSequenceFallbackCount:1,ownedMarkerSequenceFallbacks:[{start:1,end:2,name:"VOICE SYNC - Kiem tra toc do",reason:"Clip source mapping unavailable"}]},[]);
-assert(fallback.controls.log.textContent.includes("1 marker tốc độ/căn voice trên thước timeline (dự phòng)"),"#1 fallback count must be logged");
+fallback.api.markers({unattachedMarkerCount:1,unattachedMarkers:[{start:1,end:2,kind:"VOICE SYNC - Kiem tra toc do",reason:"Clip source mapping unavailable"}]},[]);
+assert(fallback.controls.log.textContent.includes("Không gắn được marker lên clip"),"#1 fallback count must be logged");
 assert(fallback.controls.log.textContent.includes("Clip source mapping unavailable"),"#1 fallback reason must be logged");
+fallback.api.finish("Edit","Done");
+assert(fallback.controls.workflowNoticeMessage.textContent.includes("1 cảnh báo chưa gắn được marker lên clip."));
 routine.api.log("DTW_DIAGNOSTIC warning with PRIVATE_TRANSCRIPT", "warn");
 routine.api.warning("CPU recovered successfully");routine.api.warning("Cleanup file only");
 routine.api.context().startedAt=Date.now()-600000;
