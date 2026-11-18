@@ -218,6 +218,20 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
   if(process.argv.includes("--marker-precommit"))process.exit(0);
 }
 function issue55Failures() {
+  // An empty plan can first touch earlier review markers during final cleanup.
+  const empty=fixture(1), emptyBank=empty.voice.getMarkers();
+  empty.plan.reviewMarkers=[];
+  vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(empty.plan)+";};",empty.context);
+  Object.assign(emptyBank.createMarker(2),{name:"VOICE SYNC - Can kiem tra",
+    comments:"old\n[PremiereVoiceSync:review-marker:v2:edit:previous]",end:2.5,colorIndex:4});
+  const emptyBefore=markerRows(emptyBank).map(row=>row.slice(1));
+  empty.seq.createCaptionTrack=function(){
+    assert.equal(emptyBank.items.length,0);
+    throw Error("caption after empty review cleanup");
+  };
+  const emptyReport=finishTrial(empty,"no-delay").report;
+  assert(!emptyReport.ok && emptyReport.error.includes("caption after empty review cleanup"));
+  assert.deepStrictEqual(markerRows(emptyBank).map(row=>row.slice(1)),emptyBefore);
   // A rerun may start with every planned marker already correct. Native review
   // can still change this owner before a failed postcheck.
   const seed=issue55Fixture(()=>fixture(1)),rerun=issue55Fixture(()=>fixture(1));
@@ -235,12 +249,13 @@ function issue55Failures() {
     function stale(seconds, guid, review) {
       const m = bank.createMarker(seconds);
       Object.assign(m,{guid,name:review?"VOICE SYNC - Can kiem tra":"VOICE SYNC - Kiem tra can voice",
-        comments:review?"x\n[PremiereVoiceSync:review-marker:v2:edit:seq]":"old\n[PremiereVoiceSync:owned-marker:v1]",colorIndex:2});
+        comments:review?"x\n[PremiereVoiceSync:review-marker:v2:edit:previous]":"old\n[PremiereVoiceSync:owned-marker:v1]",colorIndex:2});
       let start=seconds,end=seconds+0.25;
       Object.defineProperty(m,"start",{get:()=>({seconds:start}),set(v){if(bank.failMove)throw Error("restore move failed");assert(v<=end);start=v;}});
       Object.defineProperty(m,"end",{get:()=>end,set(v){assert(v>=start);end=v;}});
     }
     stale(1.5,"moved-review",true);
+    stale(4,"surplus-review",true);
     for(let n=0;n<7;n++)stale(1.7+n/10,"stale-"+n,false);
     const before=markerRows(bank),manual=bank.items.find(m=>m.guid==="manual"),originals=bank.items.slice();
     let reappeared;
@@ -265,7 +280,13 @@ function issue55Failures() {
     if(["stop","manual-edit","restore-failure"].includes(fault))progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));
     else {
       while(!progress.done)progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
-      if(fault==="late-stop"){assert(progress.result.ok);progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));}
+      if(fault==="late-stop"){
+        assert(progress.result.ok);
+        assert(moved.comments.endsWith("[PremiereVoiceSync:review-marker:v2:edit:seq]"));
+        assert(bank.items.includes(moved));
+        assert(!bank.items.some(m=>m.guid==="surplus-review"));
+        progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));
+      }
     }
     assert(!progress.result.ok,fault);
     assert.strictEqual(bank.items.find(m=>m.guid==="manual"),manual);

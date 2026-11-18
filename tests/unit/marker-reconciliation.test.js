@@ -197,13 +197,38 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const v=voice();v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
     const r=invoke(v);assert.equal(r.reviewMarkerClipCount,1);assert(Math.abs(Number(v.source.values[0].end)-15.3)<1e-7);
   });
+  test("shared voice replaces the previous sequence review set",()=>{
+    const v=voice(), name="VOICE SYNC - Can kiem tra";
+    const oldTag="[PremiereVoiceSync:review-marker:v2:captions:A%20%2F%201]";
+    v.source.marker({seconds:1,name:"manual",comments:oldTag});
+    v.source.marker({seconds:2,name:"VOICE SYNC - Kiem tra can voice",comments:"[PremiereVoiceSync:owned-marker:v1]"});
+    for(const comments of ["manual","[PremiereVoiceSync:owned-marker:v1]","[PremiereVoiceSync:review-marker:v2:edit:A]",
+      "[PremiereVoiceSync:review-marker:v2:captions:]","[PremiereVoiceSync:review-marker:v2:captions:A:B]",
+      "[PremiereVoiceSync:review-marker:v2:captions:A%Z1]"])v.source.marker({seconds:3,name,comments});
+    const before=state(v.source);
+    v.timeline.seq.sequenceID="A / 1";
+    invoke(v);
+    const original=v.source.values[v.source.values.length-1];
+    v.timeline=fixture();
+    v.timeline.seq.sequenceID="B";
+    v.timeline.marker({seconds:2,name,comments:oldTag});
+    const ruler=state(v.timeline);
+    invoke(v);
+    assert.equal(v.source.values.length,before.length+1,"two sequences share one review set");
+    assert(original.comments.endsWith("[PremiereVoiceSync:review-marker:v2:captions:B]"));
+    assert(v.source.values.includes(original),"matching source position keeps its marker");
+    v.timeline.seq.sequenceID="C";
+    invoke(v,[]);
+    assert.deepStrictEqual(state(v.source),before);
+    assert.deepStrictEqual(state(v.timeline),ruler);
+  });
   test("scoped rerun and empty cleanup",()=>{
     const v=voice(),name="VOICE SYNC - Can kiem tra",tag="[PremiereVoiceSync:review-marker:v2:captions:seq36]";
     v.timeline.marker({seconds:2,name,comments:"legacy\n"+"[PremiereVoiceSync:review-marker:v1:captions]"});
     for(const comments of [tag,"[PremiereVoiceSync:review-marker:v1:captions]","[PremiereVoiceSync:review-marker:v2:edit:seq36]","[PremiereVoiceSync:review-marker:v2:captions:other]","manual"])
       v.source.marker({seconds:14,name,comments});
-    assert.equal(invoke(v).reviewMarkerClipCount,1);assert.equal(v.timeline.values.length,0);assert.equal(v.source.values.length,5);
-    invoke(v,[]);assert.equal(v.source.values.length,4);assert(v.source.values.some(m=>m.comments==="manual"));
+    assert.equal(invoke(v).reviewMarkerClipCount,1);assert.equal(v.timeline.values.length,0);assert.equal(v.source.values.length,4);
+    invoke(v,[]);assert.equal(v.source.values.length,3);assert(v.source.values.some(m=>m.comments==="manual"));
   });
   test("same media across clips clamps to largest overlap at first clip",()=>{
     const v=voice(1.1);v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;

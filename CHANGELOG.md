@@ -2,6 +2,10 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
+## Chưa phát hành
+
+- Chạy lại Auto edit hoặc Tạo phụ đề trên cùng nguồn voice sẽ thay bộ marker review của lần chạy trước cùng chức năng, kể cả khi dùng sequence mới.
+
 ## 2.20.93 — 2026-11-18
 
 Prerelease, chưa nghiệm thu trên Premiere; 2.20.91 vẫn là stable. Giảm các lần "nghỉ" khi dựng timeline: bỏ chia đợt, sắp xếp clip nhanh hơn, marker ghi trước khi cắt và dời thay vì xóa/tạo. [Ghi chú phát hành](docs/releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md).

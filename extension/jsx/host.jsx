@@ -997,16 +997,23 @@ $._PVS._markerTools = (function () {
         }
         return true;
     }
-    function snapshotOwned(g, rows, reviewTag) {
+    function sourceReviewOwner(workflow) {
+        // Source markers are shared across sequences. Each workflow replaces its own warnings.
+        var tagPattern = new RegExp("\\[PremiereVoiceSync:review-marker:v2:" + workflow + ":(?:[A-Za-z0-9_.!~*'()-]|%[0-9A-F]{2})+\\]");
+        return function (row) {
+            return row.type === "Comment" && row.name === "VOICE SYNC - Can kiem tra" && tagPattern.test(row.comments);
+        };
+    }
+    function snapshotOwned(g, rows, ownsReview) {
         var scoped = [];
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
-            if (owned(g, row) || (reviewTag && row.type === "Comment" && row.name === "VOICE SYNC - Can kiem tra" && row.comments.indexOf(reviewTag) >= 0)) scoped.push(row);
+            if (owned(g, row) || (ownsReview && ownsReview(row))) scoped.push(row);
         }
         return scoped;
     }
-    function reversible(g, reviewTag) {
-        var rows = snapshotOwned(g, g.before, reviewTag);
+    function reversible(g, ownsReview) {
+        var rows = snapshotOwned(g, g.before, ownsReview);
         for (var i = 0; i < rows.length; i++) if (rows[i].end === null || rows[i].color === null) return false;
         return true;
     }
@@ -1206,7 +1213,7 @@ $._PVS._markerTools = (function () {
         }
         return finishResult();
     }
-    return { group: group, available: available, add: add, commit: commit, restore: restore, reversible: reversible,
+    return { sourceReviewOwner: sourceReviewOwner, group: group, available: available, add: add, commit: commit, restore: restore, reversible: reversible,
         resetGroup: resetGroup, read: read, fingerprint: fingerprint, snapshotOwned: snapshotOwned, restoredRows: restoredRows };
 }());
 
@@ -1328,10 +1335,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         var scope = [];
         for (var sr = 0; sr < ranges.length; sr++) scope.push({ start: Number(ranges[sr].start), end: Number(ranges[sr].end) });
         var tools = $._PVS._markerTools, owners = [], mappings = [], fallback = [], sequenceGroup = null;
-        function sourceOwned(row) {
-            // v1 review markers existed only on the sequence ruler.
-            return String(row.name || "") === name && tag !== legacyTag && String(row.comments || "").indexOf(tag) >= 0;
-        }
+        var sourceOwned = tools.sourceReviewOwner(workflow);
         // Snapshot every current voice source, including those with no desired
         // issue, so empty reruns clean stale scoped warnings too. No display IDs.
         for (var vi = 0; voiceItems && vi < voiceItems.length; vi++) {
@@ -1567,8 +1571,8 @@ $._PVS.executePlan = function (planPath) {
                 restoreEntries(owner.journal);
                 var rows = markerTools.read(collection);
                 if (retry && !markerTools.restoredRows(owner.snapshot, rows, owner.journal)) throw new Error("Marker restoration: source snapshot differs after retry.");
-                var actual = markerTools.snapshotOwned(owner.Group, rows, owner.reviewTag);
-                var expected = markerTools.snapshotOwned(owner.Group, owner.snapshot, owner.reviewTag);
+                var actual = markerTools.snapshotOwned(owner.Group, rows, owner.ownsReview);
+                var expected = markerTools.snapshotOwned(owner.Group, owner.snapshot, owner.ownsReview);
                 if (!markerTools.restoredRows(expected, actual, owner.journal)) throw new Error("Marker restoration: source snapshot differs.");
             } catch (error) {
                 if (!markerRestorationFailures.length || markerRestorationFailures[markerRestorationFailures.length - 1] !== error.message) markerRestorationFailures.push(error.message || String(error));
@@ -1900,6 +1904,17 @@ $._PVS.executePlan = function (planPath) {
     function commitFinalReview(clipOwner) {
         var owner = ownerByKey[clipOwner.key];
         if (owner && owner.trackChanges) guardOwner(owner, clipOwner.group.before);
+        // Empty or deferred plans can first replace old review markers in this pass.
+        // Snapshot the review group here, after unrelated clip-marker commits.
+        else if (markerTools.snapshotOwned(clipOwner.group, clipOwner.group.before).length) {
+            if (!markerTools.reversible(clipOwner.group)) {
+                clipOwner.group.blocked = true;
+            } else {
+                owner = { ProjectItem: clipOwner.item, Group: clipOwner.group, snapshot: clipOwner.group.before,
+                    trackChanges: true, journal: [], index: owner ? owner.index : -1 };
+                preOwners.push(owner);
+            }
+        }
         var result = markerTools.commit(clipOwner.group, null, owner && owner.trackChanges ? owner.journal : null);
         if (owner && result.failures.length === 0) owner.expected = clipOwner.group.after;
         if (owner && owner.trackChanges && result.failures.length) {
@@ -2062,10 +2077,10 @@ $._PVS.executePlan = function (planPath) {
             var preOwner = cleanupOwners[preOwnerIndex], preGroup = preOwner.Group;
             preOwner.index = preOwnerIndex; preOwner.journal = [];
             preOwner.expected = preGroup.before;
-            preOwner.reviewTag = "[PremiereVoiceSync:review-marker:v2:edit:" + encodeURIComponent(String(originalId)) + "]";
+            preOwner.ownsReview = markerTools.sourceReviewOwner("edit");
             preOwner.snapshot = preGroup.before;
             ownerByKey[projectItemKey(preOwner.Item)] = preOwner;
-            preOwner.eligible = projectedPieces && !preOwner.picture && !preGroup.blocked && markerTools.reversible(preGroup, preOwner.reviewTag);
+            preOwner.eligible = projectedPieces && !preOwner.picture && !preGroup.blocked && markerTools.reversible(preGroup, preOwner.ownsReview);
             var preClipTiming = null;
             if (preOwner.eligible) {
                 preOwners.push(preOwner);
