@@ -25,6 +25,37 @@ delete/create trừ GUID; executor measured/unmeasured và các profile cùng
 native mutations. **Nghiệm thu native và mức tăng tốc sau sửa pending**;
 probe chỉ dịch start khi end còn ở bên phải, chưa thử vượt end cũ trên host.
 
+## Cache key sort clip, issue #51 (17/11/2026)
+
+Trace native 2.20.92 do user cung cấp: chuẩn bị sau Cắt V1–A1 có 260
+clipItems, 2 sort/17.028 comparator, 34.316 lượt đọc `start.seconds`
+(propertyReadMs 2.522, sortMs 2.641, workMs 2.757); hậu kiểm có
+1 sort/8.514 comparator, 17.028 lượt đọc và sortMs 1.390. Ba sort
+`videoPieces`, `audioPieces`, `coverageItems` nay đọc key một lần/item,
+sort bằng cùng phép trừ rồi ghi về cùng mảng. Counter #45 vẫn đo key reads
+và comparator, comparator chỉ đọc key JavaScript. `sortMs` nay đo sort trên
+key; lượt đọc key trước sort nằm trong `propertyReadMs`/`workMs`.
+Mock so thứ tự/cặp so sánh
+kể cả ties và NaN/Infinity; mutations/actions/report khớp bản trước sửa,
+reads giảm. Chưa đo mức tăng tốc trên Premiere; **native pending**.
+
+Khảo sát stage `Chuẩn bị sau Cập nhật marker nguồn` (workMs 4.975 nhưng
+chỉ 1.141 ticks reads/46 ms): `commitOwnedMarkerFallbacks` vẫn snapshot và
+commit marker thước timeline, kể cả để dọn marker cũ khi không có fallback
+mới. Vòng review V1/A1 gọi `getLinkedItems()` mỗi cặp, đọc collection và
+`nodeId` liên kết, gọi `readSpeedPercent` → `_speedFactor` → `getSpeed()`
+cho V1/A1 (giữ short-circuit), ngoài các mép clip đã đếm. Sau đó
+`_applyReviewMarkers` quét mọi voice item: đọc ProjectItem/identity,
+speed/reverse/nest/components/time-remap, bốn mép seconds để mapping;
+snapshot/reconcile marker từng nguồn và thước timeline. Khi cần, transaction
+có create, name/comments/end/color writes, đọc kiểm chứng, delete và bù trừ.
+Các helper dùng chung ngoài `executePlan` không được instrument đầy đủ;
+`markerCommit` của stage owner trước đó không bao gồm các transaction review
+này. Chi phí bridge của `getLinkedItems`/`getSpeed`, mapping voice và marker
+read-back/write có thể chiếm phần lớn thời gian còn lại; trace hiện tại chưa
+đủ để gán ms cho từng phần. Check/rebind/snapshot có timing riêng, không
+quy chúng vào `workMs` này. Chỉ khảo sát mã, không đổi hành vi/counter/marker.
+
 ## Chi phí marker voice, issue #49 (16/11/2026)
 
 2.20.92 có một host call `Cập nhật marker nguồn` 25.192 ms (một owner A2,

@@ -12,8 +12,8 @@ function parser() {
     return exports;
   }
 }
-// Instrument existing access points only. In particular, leave native sort
-// comparisons intact so the trace can measure their repeated property reads.
+// Instrument existing access points only, including cached sort key reads and
+// comparisons, without adding native access.
 function measurePrepare(code) {
   const wrapped = "function measured(){\n" + code + "\n}", ast = parser().parse(wrapped, { ecmaVersion: 5 });
   function property(node, name) { return node && node.type === "MemberExpression" && !node.computed && node.property.name === name; }

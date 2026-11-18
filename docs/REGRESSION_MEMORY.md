@@ -50,6 +50,46 @@
   cũ và thời gian sau sửa. Không chạy Premiere/commit/push/build release/cài
   đặt; không sửa runtime/dist/AppData. Tự rà diff, không review độc lập.
 
+## Issue #51 — Đọc key bắt đầu clip một lần khi sort (17/11/2026)
+
+- **Bằng chứng/nguyên nhân.** Trace native 2.20.92 do user cung cấp: chuẩn bị
+  sau Cắt V1–A1 có 260 clipItems, 2 sort, 17.028 comparator, 34.316 lượt đọc
+  `start.seconds`, propertyReadMs 2.522, sortMs 2.641, workMs 2.757. Chuẩn bị
+  hậu kiểm có 1 sort, 8.514 comparator, 17.028 lượt đọc, sortMs 1.390.
+  Comparator cũ đọc hai property Premiere mỗi lần so sánh.
+- **Invariant/sửa.** Sort trên key đọc một lần mỗi item; cùng thứ tự; không
+  đổi native mutation. Helper ES3 cục bộ `sortItemsByStart` tạo `{item,key}`,
+  sort bằng đúng `a.key - b.key`, ghi lại cùng mảng. Đổi đủ ba chỗ:
+  `videoPieces`, `audioPieces` sau cắt và `coverageItems` khi hậu kiểm.
+  Không thêm tie-break hoặc chuẩn hóa NaN/Infinity; giữ collection/filter,
+  các check, snapshot, rebind, hậu kiểm và `_markerTools`. Generator tự đưa
+  helper vào executor; counter vẫn đo key reads, sort và comparator.
+- **Regression trước sửa.** Mock production sort 260 item đỏ: 3.502 lượt đọc
+  cho 1.751 comparator; log `_local/cache-sort-keys/red.log`. Test host và
+  executor kiểm identity mảng, item identity/thứ tự và chuỗi cặp comparator
+  so với phép sort cũ trong cùng runtime: rỗng, một item, distinct, ties,
+  sorted/reverse, nhiều ties, NaN, ±Infinity, ±0 và giá trị qua `Number()`.
+  Sau sửa đúng một lượt đọc/item, comparator không đọc Premiere.
+- **Đối chiếu hành vi.** `diagnostic-executor.test.js` so 16 tổ hợp fixture/
+  profile direct/baseline/fast/no-delay với comparator cũ; mutations cùng
+  tham số/thứ tự, actions và report giữ nguyên, native reads giảm. Đã chạy
+  thêm với source nguyên trạng tại bc7f81a lưu trước sửa; log
+  `_local/cache-sort-keys/targeted.log`. Digest có/không counter vẫn khớp
+  trong cùng runtime, không khóa hash. No-delay mutations vẫn bằng baseline.
+- **Khảo sát riêng, không sửa.** Stage sau Cập nhật marker nguồn còn gọi
+  `commitOwnedMarkerFallbacks`, duyệt kiểm liên kết/speed V1/A1 và gọi
+  `_applyReviewMarkers`. Đây là các native calls/marker transactions không
+  được bao trọn bởi counter property của helper được generator chép.
+  Chi tiết trong `PERFORMANCE_REVIEW.md`; chưa có số đo tách từng call.
+- **Kết quả.** Targeted mocks, Acorn ES3 host/executor, syntax main/security,
+  generator `--check` và `git diff --check` đạt. Standard suite đạt **72 nhóm/
+  132 script PowerShell parse**, exit 0; log `_local/cache-sort-keys/suite.log`,
+  TEMP/TMP trong thư mục `temp` cùng chỗ. Sáu Windows integration skipped:
+  InstallerLifecycle, InstallRollback, PanelRegistry, NotificationShortcut,
+  NativeNotifications, IncidentNotifications. Tự rà diff, không có review độc
+  lập. **Native pending**; không chạy Premiere, commit/push/build/install;
+  không sửa runtime/dist/AppData.
+
 ## Issue #49 — Tách chi phí từng thao tác marker (16/11/2026)
 
 - **Bằng chứng/thiếu số đo.** Lượt 2.20.92 ngày 16/11: một owner A2 voice,
