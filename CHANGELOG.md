@@ -4,6 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
+- Dựng theo voice giữ timeline và marker đã ghi khi bấm Dừng hoặc gặp lỗi. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả (#90).
 - Thêm probe dành cho dev để xem dự đoán ghi lại marker nguồn hình và đo hành vi dời marker điểm trên sequence ProjectItem (#75). Probe chỉ đọc đã chạy trên Sông Congo: sau một lượt dựng, cả 19 marker hình được giữ nguyên; lượt dời mỗi lần chạy đến từ marker cũ trong bản lưu. Lượt chạy lại thật xác nhận: 0 dời, 0 ghi end, bước cập nhật marker nguồn 0,64 s.
 
 ## 2.20.98 — 2026-11-19

@@ -672,6 +672,7 @@
     var context = runContext;
     if (context.impact === "changed" || context.impact === "unknown") recoveryContext = context;
     var message = context.impact === "unchanged" ? "Đã dừng theo yêu cầu. Timeline chưa bị thay đổi bởi tác vụ này." : "Các thay đổi đã thực hiện chưa được hoàn tác. Kiểm tra hoặc khôi phục timeline trước khi chạy lại.";
+    if (context.workflow === "edit" && context.impact !== "unchanged") message = "Timeline và marker được giữ đến bước đã thực hiện. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
     status(message, "warn");
     showWorkflowNotice("Đã dừng tác vụ", message, "warn", { kind: "cancelled", code: "WORKFLOW_CANCELLED", impact: context.impact, stage: context.cancelStage || context.stage, details: context.warnings.join("\n") });
   }
@@ -719,6 +720,7 @@
     if (/WORKFLOW_PAUSE_STATE_UNAVAILABLE/.test(raw)) message = "Không xác minh được trạng thái để tạm dừng/tiếp tục an toàn. Tác vụ đã dừng; xem chi tiết để kiểm tra.";
     if (context.impact === "changed") message = "Tác vụ dừng khi timeline hoặc Project đã thay đổi. Kiểm tra hoặc khôi phục bản đã lưu trước khi chạy lại.";
     if (context.impact === "unknown") message = "Chưa xác minh được kết quả của thao tác vừa chạy. Kiểm tra timeline, phụ đề và trạng thái audio trước khi chạy lại.";
+    if (context.workflow === "edit" && (context.impact === "changed" || context.impact === "unknown")) message = "Tác vụ dừng do lỗi. Timeline và marker được giữ đến bước đã thực hiện. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
     var fieldId = null;
     if (!fatal && context.impact === "unchanged" && context.stage === "preflight") fieldId = error && error.pvsInputField || (/SRT/i.test(raw) ? context.workflow === "captions" ? "captionSrtCandidates" : "srtCandidates" : null);
     log(raw, "error");
@@ -760,7 +762,7 @@
   function saveRecoveryJournal() {
     try {
       var context = recoveryContext || runContext;
-      if (context) localStorage.setItem("pvs.recovery.v1", JSON.stringify({ workflow: context.workflow, at: Date.now(), audioRecoveryPath: context.audioRecoveryPath || null, markerSession: context.markerSession || null, markerManualReview: !!context.markerManualReview }));
+      if (context) localStorage.setItem("pvs.recovery.v1", JSON.stringify({ workflow: context.workflow, at: Date.now(), audioRecoveryPath: context.audioRecoveryPath || null, editSession: context.editSession || null }));
       else if (localStorage.removeItem) localStorage.removeItem("pvs.recovery.v1");
       return true;
     } catch (ignoreRecoveryStorage) {
@@ -772,9 +774,8 @@
     if (state.workflowBusy || hostPending || enginePending) return;
     var recovery = recoveryContext;
     var manualCaptionReview = recovery && recovery.workflow === "captions" && recovery.captionCount && JSON.parse(recovery.captionCount).count === null;
-    if (recovery && (recovery.restored || recovery.markerManualReview || manualCaptionReview)) {
+    if (recovery && (recovery.restored || manualCaptionReview)) {
       var recoveryMessage = recovery.restored ? "Lần chạy trước chưa được xác nhận an toàn." : "Chương trình không tự xác minh được phụ đề sau lỗi.";
-      if (recovery.markerManualReview) recoveryMessage = "Không xác minh được khôi phục marker nguồn. Hãy đối chiếu marker trên từng ProjectItem voice với bản project trước khi dựng.";
       var approved = await confirmWorkflowNotice("Đã kiểm tra hoặc khôi phục timeline?", recoveryMessage + " Chỉ tiếp tục sau khi thao tác cũ kết thúc và bạn đã kiểm tra timeline, phụ đề cùng trạng thái audio.", "Đã kiểm tra — Xác minh", "Để sau");
       if (!approved) return;
     }
@@ -782,13 +783,9 @@
     try {
       if (recovery) {
         if (recovery.workflow === "edit") {
-          if (recovery.markerSession && !recovery.markerManualReview) {
-            var interrupted = await evalHost('typeof $._PVS.abortDiagnosticEdit === "function" ? $._PVS.abortDiagnosticEdit(' + jsxString(recovery.markerSession) + ') : $._PVS._result({ok:false,error:"DIAGNOSTIC_SESSION_NOT_FOUND"})');
-            if (!interrupted.result || (interrupted.result.markerRestorationFailures || []).length) {
-              recovery.markerManualReview = true; saveRecoveryJournal();
-              throw new Error("Chưa xác minh được marker nguồn sau gián đoạn. " + (interrupted.result ? interrupted.result.markerRestorationFailures.join("; ") : interrupted.error));
-            }
-            recovery.markerSession = null; saveRecoveryJournal();
+          if (recovery.editSession) {
+            await closeDiagnosticEdit(recovery.editSession);
+            recovery.editSession = null; saveRecoveryJournal();
           }
           var sequence = await scanSequence();
           if (!recovery.restored && JSON.stringify(sequence) !== recovery.baseline) throw new Error("Template chưa trở lại trạng thái trước lần dựng lỗi. Hãy Undo hoặc mở lại template đã lưu và kiểm tra lại.");
@@ -1161,7 +1158,8 @@
   }
   function postcheckError(result) {
     var reasons = [];
-    var validationLimit = Number((result.settings && result.settings.validationToleranceFrames) === undefined ? 1 : result.settings.validationToleranceFrames);
+    var tolerance = result.settings && result.settings.validationToleranceFrames;
+    var validationLimit = tolerance === undefined ? 1 : Number(tolerance);
     var largestStartError = Math.max(Number(result.maxVideoStartErrorFrames || 0), Number(result.maxAudioStartErrorFrames || 0), Number(result.maxVoiceStartErrorFrames || 0));
     var largestPairError = Math.max(Number(result.maxPairStartErrorFrames || 0), Number(result.maxPairEndErrorFrames || 0));
     if (largestStartError > validationLimit) reasons.push("sai lệch điểm bắt đầu lớn nhất " + largestStartError + " frame");
@@ -1186,14 +1184,16 @@
     if (result.captionCreated === false) reasons.push("không tạo được caption track");
     if (result.captionTemporaryBinRemoved === false || Number(result.captionProjectItemCountAfter || 0) !== Number(result.captionProjectItemCountBefore || 0)) reasons.push("file caption tạm vẫn còn trong Project");
     if (result.unrelatedPreserved === false) reasons.push("element ngoài phạm vi đã thay đổi");
-    return reasons.length ? "Hậu kiểm không đạt: " + reasons.join("; ") + "." : (result.error || "Hậu kiểm timeline không đạt.");
+    if (result.error) return [result.error].concat(reasons).join("; ");
+    return reasons.length ? "Hậu kiểm không đạt: " + reasons.join("; ") + "." : "Hậu kiểm timeline không đạt.";
   }
   var hostReadyPromise = null;
   function evalRaw(script) {
     return new Promise(function (resolve, reject) {
-      if (script.indexOf("abortDiagnosticEdit") < 0 && script.indexOf("abortCaptionAudioExport") < 0) throwIfStopRequested();
+      var closing = script.indexOf("abortDiagnosticEdit") >= 0 || script.indexOf("abortCaptionAudioExport") >= 0 || script.indexOf("acceptDiagnosticEdit") >= 0;
+      if (!closing) throwIfStopRequested();
       if (!window.__adobe_cep__) { reject(new Error("Hãy mở panel bên trong Premiere Pro.")); return; }
-      if (runContext && runContext.fatal && script.indexOf("abortDiagnosticEdit") < 0 && script.indexOf("abortCaptionAudioExport") < 0) { reject(new Error("Giao diện đã gặp lỗi; dừng trước thao tác kế tiếp để kiểm tra kết quả.")); return; }
+      if (runContext && runContext.fatal && !closing) { reject(new Error("Giao diện đã gặp lỗi; dừng trước thao tác kế tiếp để kiểm tra kết quả.")); return; }
       hostPending++;
       try { window.__adobe_cep__.evalScript(script, function (raw) {
         hostPending--; if (runContext) runContext.lastProgress = Date.now(); updateIncidentActions();
@@ -1649,6 +1649,11 @@
     if (!state.performanceChoice) return;
     chooseWorkflowNotice(healthy);
   }
+  async function closeDiagnosticEdit(token) {
+    var response = await evalHost('typeof $._PVS.abortDiagnosticEdit === "function" ? $._PVS.abortDiagnosticEdit(' + jsxString(token) + ') : $._PVS._result({ok:false,error:"DIAGNOSTIC_SESSION_NOT_FOUND"})');
+    if (!response.result && response.error !== "DIAGNOSTIC_SESSION_NOT_FOUND") throw new Error(response.error || "Chưa đóng được phiên dựng.");
+    return response;
+  }
   async function executeStagedPlan(planPath, pauseAtStages, fastProfile, workflow, metrics, noDelay) {
     await waitForWorkflowPause();
     await ensureHostLoaded();
@@ -1677,21 +1682,7 @@
       if (metrics) metrics.linkTimeline(path.basename(tracePath));
       log("Nhật ký hiệu năng chỉ lưu tên bước/thời gian, không có lời nói hay đường dẫn media: " + tracePath, "muted");
     } catch (ignoreTraceCreate) { disableTrace(); }
-    var began = false, finished = false;
-    function finishMarkerSession(result, returningReport) {
-      if (!runContext) return;
-      if (!result) {
-        runContext.impact = "unknown";
-        throw new Error("Chưa xác minh được khôi phục marker nguồn sau khi dừng.");
-      }
-      if ((result.markerRestorationFailures || []).length) {
-        runContext.impact = "unknown";
-        saveRecoveryJournal();
-        if (returningReport) return;
-        throw new Error("Khôi phục marker nguồn chưa đầy đủ. " + result.markerRestorationFailures.join("; "));
-      }
-      runContext.markerSession = null; saveRecoveryJournal();
-    }
+    var began = false, finished = false, executionError = null;
     function record(value) {
       if (traceDisabled) return;
       try {
@@ -1705,8 +1696,8 @@
       if (!begun.ok) throw new Error(begun.error || "Không khởi tạo được phiên chẩn đoán.");
       began = true;
       if (runContext) {
-        runContext.markerSession = token;
-        if (!saveRecoveryJournal()) throw new Error("Chưa lưu được nhật ký khôi phục marker nguồn.");
+        runContext.editSession = token;
+        if (!saveRecoveryJournal()) throw new Error("Chưa lưu được nhật ký kiểm tra timeline sau gián đoạn.");
       }
       var nextCall = begun.nextCall;
       var nextStage = begun.nextStage;
@@ -1732,12 +1723,11 @@
           record({ type: "finish", ok: !!(response.result && response.result.ok), timings: response.timings || [] });
           if (!response.result) throw new Error("Chẩn đoán không trả về hậu kiểm.");
           if (response.result.ok) {
-            throwIfStopRequested();
             var accepted = await evalHost("$._PVS.acceptDiagnosticEdit(" + jsxString(token) + ")");
-            if (!accepted.ok) throw new Error("Chưa xác nhận được kết quả dựng.");
+            if (!accepted.ok) throw new Error(accepted.error || "Chưa xác nhận được kết quả dựng.");
+            if (runContext && runContext.cancelRequested) log("Yêu cầu Dừng đến sau khi dựng xong, giữ kết quả.", "muted");
           }
           finished = true;
-          finishMarkerSession(response.result, true);
           return response.result;
         }
         if (!response.ok) throw new Error(response.error || "Chẩn đoán dừng trước khi hoàn tất.");
@@ -1753,26 +1743,31 @@
           throwIfStopRequested();
           record({ type: "user-observation", checkpoint: response.checkpoint, previewHealthy: healthy });
           if (!healthy) {
-            var aborted = await evalHost("$._PVS.abortDiagnosticEdit(" + jsxString(token) + ")");
-            finished = true;
-            finishMarkerSession(aborted.result);
-            record({ type: "stopped", timings: aborted.timings || [] });
             throw new Error("Đã dừng tại bước " + response.checkpoint + " do Preview/Play bị đơ. Timeline mới dựng một phần; không lưu kết quả này. Hãy Undo hoặc mở lại bản đã lưu.");
           }
         }
       }
+    } catch (error) {
+      executionError = error;
+      throw error;
     } finally {
       if (state.performanceChoice) closeWorkflowNotice();
       state.performanceChoice = null;
       if (began && !finished) {
         try {
-          var abortResult = await evalHost("$._PVS.abortDiagnosticEdit(" + jsxString(token) + ")");
+          var abortResult = await closeDiagnosticEdit(token);
           if (runContext && abortResult.result && typeof abortResult.result.timelineMutated === "boolean") runContext.impact = abortResult.result.timelineMutated ? "changed" : "unchanged";
+          record({ type: "stopped", timings: abortResult.timings || [] });
+          finished = true;
         } catch (abortError) {
           if (runContext) runContext.impact = "unknown";
-          throw new Error("Chưa xác minh được khôi phục marker nguồn. " + abortError.message);
+          if (executionError) throw new Error((executionError.message || String(executionError)) + "; " + (abortError.message || String(abortError)));
+          throw abortError;
         }
-        finishMarkerSession(abortResult.result);
+      }
+      if (finished && runContext) {
+        runContext.editSession = null;
+        saveRecoveryJournal();
       }
     }
   }
@@ -2449,7 +2444,7 @@
   function loadRecoveryJournal() {
     try {
       var recovery = JSON.parse(localStorage.getItem("pvs.recovery.v1") || "null");
-      if (recovery && /^(edit|captions)$/.test(recovery.workflow)) recoveryContext = { workflow: recovery.workflow, restored: true, impact: "unknown", audioRecoveryPath: recovery.audioRecoveryPath || null, markerSession: recovery.markerSession || null, markerManualReview: !!recovery.markerManualReview };
+      if (recovery && /^(edit|captions)$/.test(recovery.workflow)) recoveryContext = { workflow: recovery.workflow, restored: true, impact: "unknown", audioRecoveryPath: recovery.audioRecoveryPath || null, editSession: recovery.editSession || null };
     } catch (ignoreRecoveryJournal) {}
   }
   function wire() {

@@ -170,6 +170,15 @@ marker review 17 → 6.
   Congo ba lượt, project thứ hai một lượt, 0 lỗi marker). Package và tag `v2.20.98` giữ nguyên (`e5bd29f`); chỉ đổi
   `docs/releases/2.20.98.json` (channel stable, nativeAcceptance accepted), tài liệu trạng thái và nhãn release trên GitHub.
   Giới hạn: phần sửa #83 mới kiểm trên một project.
+- Quyết định user 19/11: khi Dừng hoặc lỗi, **giữ timeline và marker đến bước đã làm**, bỏ hẳn bước tự khôi phục marker của
+  #56 (user chưa từng yêu cầu khôi phục). Issue #90, branch `fix/keep-partial-markers`, chưa commit. Phép thử mock trên 42 fixture ×
+  4 executor: 0 ca tệ hơn so với khôi phục, trừ 4 ca `transient-surplus` user chấp nhận (Dừng ngay sau khi ghi trước marker review
+  thì còn một marker review cũ đến lượt dựng sau). Giữ phần bù trong từng nhóm ghi (172/172 lỗi tiêm được bù) và phần đảo marker
+  ghi trước khi ánh xạ voice lệch trong lượt vẫn chạy tiếp. Panel đặt lỗi gốc lên đầu; Dừng đến sau khi bước cuối xong thì giữ kết
+  quả và báo hoàn tất. Bộ chuẩn đạt 79 nhóm. Native pending.
+- Còn mở: comments 21 marker review bị ghi lại mỗi lượt (0,47 s). Log không giữ comments cũ nên chưa chốt. Mock fixture 11 cho
+  một cơ chế có thể là nguyên nhân: ghi chú review được ghi trước khi biết cảnh báo phát sinh sau dựng, rồi bị đảo lại và ghi lại
+  ở lượt sau. Fixture 10 có 14 lần dời lại mỗi lượt do ánh xạ speed 1.0/1.1. Cần issue riêng.
 
 ## Việc còn lại (14/11/2026)
 
