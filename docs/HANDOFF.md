@@ -1,6 +1,6 @@
 # Bàn giao kỹ thuật Premiere Voice Sync
 
-Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo, 16/11/2026 khi chuẩn bị 2.20.92, 18/11/2026 khi chuẩn bị 2.20.93, 2.20.94, 2.20.95 và 2.20.96. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
+Ảnh chụp ngày 05/11/2026 cho Claude Code, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo, 16/11/2026 khi chuẩn bị 2.20.92, 18/11/2026 khi chuẩn bị 2.20.93, 2.20.94, 2.20.95, 2.20.96 và 2.20.97. Bắt đầu tại `F:\Tools\Premiere Voice Sync`, đọc [CLAUDE.md](../CLAUDE.md) (nạp [AGENTS.md](../AGENTS.md)), rồi đọc tài liệu này. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
 
 ## Git, bản phát hành và bản cài
 
@@ -130,6 +130,11 @@ marker review 17 → 6.
   ghi trước bình thường. #73 thêm số đo chỉ trong executor có đo. Chuẩn bị 2.20.96 (bản chẩn đoán,
   không đổi hành vi) để user chạy Dựng theo voice một lần và đọc các trường `preKey`,
   `reviewOwners`, `sourceOwnerFound`, `ownerKnown`.
+- Lượt 2.20.96 (18/11 23:42) chỉ ra nguyên nhân: khoá review `path`, khoá nguồn `node:000f42bc`.
+  ExtendScript gộp biểu thức điều kiện lồng không ngoặc từ trái sang (phép thử native: `a ? "N" : b ? "P" : "E"`
+  ra "P"). #76 sửa (hàm khoá chung `$._PVS._projectItemKey`, thêm ngoặc, test tĩnh). Chuẩn bị 2.20.97; việc kế:
+  user chạy Dựng theo voice để thấy 21 marker review ghi trước khi cắt. Để sau: #75 (19 marker hình bị
+  dời/ghi lại mỗi lượt, ~7,8 s).
 
 ## Việc còn lại (14/11/2026)
 

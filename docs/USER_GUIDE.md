@@ -1,4 +1,4 @@
-# Hướng dẫn Premiere Voice Sync 2.20.96
+# Hướng dẫn Premiere Voice Sync 2.20.97
 
 ## Khi báo lỗi
 
@@ -17,6 +17,8 @@ từ, không khác số và chỉ có một ứng viên cue/chuỗi cue liên ti
 trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ước lượng
 vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
 vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
+
+**2.20.97:** Marker review được ghi trước khi cắt như thiết kế, nên bước cập nhật marker sau dựng nhanh hơn. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.97.md).
 
 **2.20.96:** Bản chẩn đoán: dựng và ghi marker giống hệt 2.20.95, chỉ ghi thêm số đo vào nhật ký để tìm vì sao marker review chưa được ghi trước khi cắt. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.96.md).
 
