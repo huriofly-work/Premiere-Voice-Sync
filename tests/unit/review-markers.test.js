@@ -12,7 +12,7 @@ const build = (report, plan) => JSON.parse(JSON.stringify(ui.buildReviewMarkers(
 {
   const context = vm.createContext({ $: { _PVS: {} } });
   vm.runInContext(fs.readFileSync(path.join(root, "extension/jsx/host.jsx"), "utf8"), context);
-  const tag = "[PremiereVoiceSync:review-marker:v2:edit:s]", failures = [];
+  const tag = "[PremiereVoiceSync:review-marker:v3:edit]", failures = [];
   function comments(issues, initial = []) {
     const values = initial.map(m => markerBounds(m, m.start.seconds, m.end));
     const markers = { getFirstMarker: () => values[0] || null, getNextMarker: m => values[values.indexOf(m) + 1] || null,

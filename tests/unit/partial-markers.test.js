@@ -6,7 +6,7 @@ const { host, diagnostic, markerReferenceCases, markerReferenceFixture, finishTr
   require("./diagnostic-executor.test");
 
 const ownedTag = "[PremiereVoiceSync:owned-marker:v1]";
-const reviewTag = /\[PremiereVoiceSync:review-marker:v2:([^:]+):[^\]]+\]/;
+const reviewTag = /\[PremiereVoiceSync:review-marker:(?:v2:([^:\]]+):[^\]]+|v3:([^:\]]+))\]/;
 const fault = "A1_INJECTED_FAULT";
 const stopped = "DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE";
 const profiles = ["direct", "baseline", "fast", "no-delay"];
@@ -71,7 +71,7 @@ function kind(row) {
   const comments = row.comments || "";
   if (comments.includes(ownedTag)) return row.name;
   const review = comments.match(reviewTag);
-  return review ? "review:" + review[1] : null;
+  return review ? "review:" + (review[1] || review[2]) : null;
 }
 
 function protectedKind(row) {

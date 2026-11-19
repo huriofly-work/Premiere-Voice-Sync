@@ -249,12 +249,36 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const ruler=state(v.timeline);
     invoke(v);
     assert.equal(v.source.values.length,before.length+1,"two sequences share one review set");
-    assert(original.comments.endsWith("[PremiereVoiceSync:review-marker:v2:captions:B]"));
+    assert(original.comments.endsWith("[PremiereVoiceSync:review-marker:v3:captions]"));
     assert(v.source.values.includes(original),"matching source position keeps its marker");
     v.timeline.seq.sequenceID="C";
     invoke(v,[]);
     assert.deepStrictEqual(state(v.source),before);
     assert.deepStrictEqual(state(v.timeline),ruler);
+  });
+  test("review tag has no sequence ID; other sequences rerun without writes",()=>{
+    const v=voice(), writes=()=>v.source.events.filter(e=>e[0]!=="create").length;
+    invoke(v);
+    const marker=v.source.values[0];
+    assert(marker.comments.endsWith("\n[PremiereVoiceSync:review-marker:v3:captions]"),marker.comments);
+    assert(!/seq36/.test(marker.comments),"the sequence ID stays out of the notes");
+    v.source.events.length=0; v.timeline.seq.sequenceID="another sequence";
+    invoke(v);
+    assert.equal(writes(),0,"same notes on another sequence write nothing: "+JSON.stringify(v.source.events));
+    assert.equal(v.source.values.length,1); assert.equal(v.source.values[0],marker);
+  });
+  test("v2 review tags with a sequence ID migrate once to v3",()=>{
+    const v=voice(); invoke(v);
+    const marker=v.source.values[0], notes=marker.comments.split("\n")[0];
+    marker.comments=notes+"\n[PremiereVoiceSync:review-marker:v2:captions:old%20seq]";
+    v.source.marker({seconds:14,name:"VOICE SYNC - Can kiem tra",comments:notes+"\n[PremiereVoiceSync:review-marker:v2:edit:old]"});
+    v.source.events.length=0; v.timeline.seq.sequenceID="new";
+    invoke(v);
+    assert.equal(v.source.values[0],marker,"the migrated marker keeps its GUID");
+    assert.equal(marker.comments,notes+"\n[PremiereVoiceSync:review-marker:v3:captions]");
+    assert(v.source.values.some(m=>m.comments.endsWith("review-marker:v2:edit:old]")),"other workflow untouched");
+    v.source.events.length=0; invoke(v);
+    assert.deepStrictEqual(v.source.events,[],"second run after migration writes nothing");
   });
   test("scoped rerun and empty cleanup",()=>{
     const v=voice(),name="VOICE SYNC - Can kiem tra",tag="[PremiereVoiceSync:review-marker:v2:captions:seq36]";
@@ -289,7 +313,7 @@ for (const [captions, expected] of [[[{Index:20,Start:1,End:1.5},{Index:21,Start
   const native = fixture();
   const result = run(native, [{start:1,end:2,reason:"hở hình 3 frame – kiểm tra"}], captions);
   assert.equal(result.reviewMarkerCount, 1); assert.equal(result.reviewMarkerFailureCount, 0);
-  assert.equal(native.values[0].comments, expected + "\n[PremiereVoiceSync:review-marker:v2:captions:s]");
+  assert.equal(native.values[0].comments, expected + "\n[PremiereVoiceSync:review-marker:v3:captions]");
 }
 
 // Reuse the same native marker, including duration/GUID; identical reruns write nothing.

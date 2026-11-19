@@ -386,7 +386,7 @@ function issue55Failures() {
       while(!progress.done)progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
       if(fault==="late-stop"){
         assert(progress.result.ok);assert.equal(ruler.items.length,1);
-        assert(moved.comments.endsWith("[PremiereVoiceSync:review-marker:v2:edit:seq]"));
+        assert(moved.comments.endsWith("[PremiereVoiceSync:review-marker:v3:edit]"));
         assert(bank.items.includes(moved));
         assert(!bank.items.some(m=>m.guid==="surplus-review"));
         finalWriteState=markerRows(bank);
@@ -1004,7 +1004,7 @@ for (const compact of [false, true]) for (const profile of ["stable", "baseline"
   } else vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
   const result = profile === "stable" ? JSON.parse(f.api.executePlan("fixture")) : finishTrial(f,profile).report;
   assert.equal(result.reviewMarkerFailureCount, 0);
-  assert.equal(f.voice.getMarkers().items[0].comments, "Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra\n[PremiereVoiceSync:review-marker:v2:edit:seq]");
+  assert.equal(f.voice.getMarkers().items[0].comments, "Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra\n[PremiereVoiceSync:review-marker:v3:edit]");
 }
 for(const make of [()=>fixture(65,false,true),()=>fixture(6,false,false,1,true),()=>cueFixture(6),()=>editedFixture(true,true)]){
   const full=make(),compact=make(),staged=make();
