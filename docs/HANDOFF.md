@@ -168,6 +168,7 @@ Chạy tại root bằng Windows PowerShell. Máy có Windows PowerShell 5.1 và
 | Hồi quy | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/Run-Tests.ps1 -NoWindowsIntegration`; dùng TEMP/TMP trong `_local/` khi sandbox chặn temp hệ thống. |
 | Syntax và mô phỏng JS | `node --check extension/js/main.js`, `node --check extension/js/security.js`, `node tests/unit/speed-merge-host.js`, `node tools/Build-DiagnosticExecutor.js --check`. |
 | Metadata | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Verify-GitHubDistribution.ps1`. |
+| Đổi version | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Set-Version.ps1 -Version <X.Y.Z>` đổi mọi chuỗi version nhúng; thêm `-Check` để chỉ kiểm. Changelog, metadata release và ghi chú vẫn sửa tay. |
 
 Sáu nhóm bỏ qua bởi `-NoWindowsIntegration` gồm `Test-InstallerLifecycle.ps1`, `Test-InstallRollback.ps1`, `Test-PanelRegistry.ps1`, `Test-NotificationShortcut.ps1`, `Test-NativeNotifications.ps1`, `Test-IncidentNotifications.ps1`. CI chạy trên mọi pull request: job `changes` xem PR có đổi code không; PR chỉ đổi Markdown/`docs/` (trừ `docs/releases/*.json`) thì job `regression-tests` được bỏ qua (GitHub tính là đạt). Từ 14/11/2026 ruleset `Protect main` bắt buộc hai check `changes` và `regression-tests` của GitHub Actions; đổi tên một trong hai job thì phải sửa ruleset cùng lúc, nếu không mọi PR bị chặn. Native import/playback/timing/marker và hành vi lúc dừng cần kiểm riêng trên Premiere với user.
 
