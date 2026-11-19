@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "version": "2.20.98",
   "tag": "v2.20.98",
-  "channel": "prerelease",
-  "nativeAcceptance": "pending-user-test",
+  "channel": "stable",
+  "nativeAcceptance": "accepted",
   "package": {
     "sha256": "EB980481B92C14E479091A4EF922C00A2783F8EC638804B894E2AD8494C5308D",
     "bytes": 1535385961,
@@ -49,11 +49,33 @@
   "issues": [
     82
   ],
+  "installation": {
+    "status": "installed-and-verified",
+    "installedAt": "2026-11-19",
+    "installedFiles": 66,
+    "userDataFilesUnchanged": 4594,
+    "registryWritesSkipped": true,
+    "projectActionsPerformed": false,
+    "forcedApplicationClose": false
+  },
   "knownLimitations": [
-    "Not run in Premiere yet.",
+    "Acceptance rests on two real projects; the review-marker pre-commit and the voice projection compare (#83) ran on one of them (three runs). Other templates, frame rates and speeds are not yet checked.",
     "Why restore verification reported 'Original marker fields differ.' on 2.20.97 is not reproduced; the error now names the field if it happens again.",
-    "V1 picture markers are still moved and end-rewritten on every run (about 7.8 s); tracked in issue #75.",
+    "Opening a project saved with markers from before 2.20.94 migrates them once: on the Sông Congo saved copy, 19 V1 picture markers moved and end-rewritten (about 14 s). A rerun with current markers writes none (#75).",
+    "The review-marker pre-commit rewrites the comments of its 21 markers on every run (about 0.5 s, no moves); cause not investigated.",
     "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
     "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
-  ]
+  ],
+  "acceptance": {
+    "date": "2026-11-19",
+    "by": "user",
+    "premiere": "26.2.2",
+    "basis": "User installed 2.20.98, ran Auto edit on two real projects, checked the timelines and confirmed the markers; asked to promote to stable/Latest.",
+    "runEvidence": [
+      "Sông Congo, 2026-11-19 14:17 (from an older saved copy): ok=true, voiceProjection 100 pieces compared, firstMismatch=null, max input delta about 80 ticks; 21 review markers on voice clips, 0 unattached, 0 marker failures; timeline 70.3 s.",
+      "Second project, 2026-11-19 14:31: ok=true, timeline 13.6 s, 50 voice / 51 picture cues, 119 captions, 5 speed markers, 0 failures; no review markers, so the #83 path did not run.",
+      "Sông Congo, 2026-11-19 15:20 (from the saved copy) and 15:35 (rerun on an unedited template copy): both ok=true; 15:35 voiceProjection firstMismatch=null over 100 pieces, 21 review markers, 40 clip markers, 0 failures, 0 unattached; picture markers 0 moves and 0 end writes; timeline steps 62.1 s."
+    ],
+    "promotion": "Published as a prerelease on 2026-11-19, promoted to stable/Latest on the user's request the same day."
+  }
 }

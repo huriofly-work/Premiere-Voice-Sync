@@ -18,7 +18,7 @@ trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ư�
 vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
 vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
 
-**2.20.98:** Bản vá cho 2.20.97. Dựng theo voice không còn trả marker review đã ghi trước khi cắt về như cũ chỉ vì Premiere làm tròn vị trí nguồn của clip đổi tốc độ. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.98.md).
+**2.20.98:** Bản vá cho 2.20.97. Dựng theo voice không còn trả marker review đã ghi trước khi cắt về như cũ chỉ vì Premiere làm tròn vị trí nguồn của clip đổi tốc độ. Đã chạy thật trên Premiere 26.2.2 ngày 19/11/2026 với hai project; là bản stable. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.98.md).
 
 **2.20.97:** Marker review được ghi trước khi cắt như thiết kế. Lượt chạy thật ngày 19/11/2026 hỏng sau khi cắt, nên không dùng 2.20.97 cho Dựng theo voice; dùng 2.20.98. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.97.md).
 

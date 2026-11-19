@@ -8,7 +8,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## 2.20.98 — 2026-11-19
 
-Prerelease; chưa chạy trên Premiere; 2.20.91 vẫn là stable. Bản vá cho 2.20.97: không dùng 2.20.97 cho Dựng theo voice. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.98.md).
+Stable/Latest từ 19/11/2026: công bố prerelease, user chạy thật trên Premiere 26.2.2 với hai project (Sông Congo ba lượt, 0 lỗi marker) rồi nâng stable cùng ngày. Bản vá cho 2.20.97: không dùng 2.20.97 cho Dựng theo voice. [Ghi chú phát hành](docs/releases/notes/REVIEW_MARKERS_2.20.98.md).
 
 - Sửa lỗi Dựng theo voice khôi phục marker đã ghi trước khi cắt vì sai khác làm tròn tick ở in point của clip đổi tốc độ (#82).
 - Báo cáo ghi độ lệch ánh xạ voice (`voiceProjection`). Lỗi khôi phục marker nêu trường lệch và giá trị.

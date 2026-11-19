@@ -1,9 +1,10 @@
 # Phát hành và ghi chú phiên bản
 
 Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_RESTART_2026-11-14.md));
-bản public đầu tiên là 2.20.91 (stable, user chạy thật ngày 15/11/2026); 2.20.92,
-2.20.93, 2.20.94, bản vá 2.20.95, bản chẩn đoán 2.20.96, 2.20.97 và bản vá 2.20.98 là prerelease; 2.20.95 và 2.20.96 đã chạy thật trên Premiere ngày
-18/11/2026, 2.20.97 hỏng khi chạy thật ngày 19/11/2026, 2.20.98 chưa chạy thật (2.20.93/2.20.94/2.20.97 có lỗi marker). Trong lịch
+bản public đầu tiên là 2.20.91 (stable đến 19/11/2026, user chạy thật ngày 15/11/2026); 2.20.92,
+2.20.93, 2.20.94, bản vá 2.20.95, bản chẩn đoán 2.20.96 và 2.20.97 là prerelease; 2.20.95 và 2.20.96 đã chạy thật trên Premiere ngày
+18/11/2026, 2.20.97 hỏng khi chạy thật ngày 19/11/2026 (2.20.93/2.20.94/2.20.97 có lỗi marker). Bản vá 2.20.98 công bố
+prerelease ngày 19/11/2026, user chạy thật với hai project rồi nâng lên stable/Latest cùng ngày. Trong lịch
 sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
 2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 
