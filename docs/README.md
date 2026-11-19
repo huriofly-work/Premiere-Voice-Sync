@@ -31,8 +31,9 @@ bản public đầu tiên là stable [2.20.91](releases/notes/REVIEW_MARKERS_2.2
 [2.20.94](releases/notes/REVIEW_MARKERS_2.20.94.md) và bản vá
 [2.20.95](releases/notes/REVIEW_MARKERS_2.20.95.md); 2.20.95 đã chạy thật ngày 18/11/2026;
 [2.20.96](releases/notes/REVIEW_MARKERS_2.20.96.md) chỉ thêm số đo chẩn đoán, đã chạy thật;
-[2.20.97](releases/notes/REVIEW_MARKERS_2.20.97.md) sửa lỗi ghi trước marker review, chưa chạy thật;
-2.20.93/2.20.94 có lỗi dời marker, không dùng cho Dựng theo voice. Trước đó stable là 2.20.25 và
+[2.20.97](releases/notes/REVIEW_MARKERS_2.20.97.md) sửa lỗi ghi trước marker review nhưng hỏng khi chạy thật;
+bản vá [2.20.98](releases/notes/REVIEW_MARKERS_2.20.98.md) chưa chạy thật;
+2.20.93/2.20.94/2.20.97 có lỗi marker, không dùng cho Dựng theo voice. Trước đó stable là 2.20.25 và
 prerelease gần nhất là [2.20.90](releases/notes/ASR_TURBO_2.20.90.md). Nghiên cứu cue-first, chọn model ASR và Qwen đã đóng
 ngày 13/11/2026; mã, test và báo cáo của chúng đã gỡ khỏi repo (chỉ còn trong
 bản sao lưu lịch sử repo cũ, ngoài GitHub). Không coi test/CI hoặc việc sắp xếp này là nghiệm thu native.

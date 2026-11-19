@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.98",
+  "tag": "v2.20.98",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "EB980481B92C14E479091A4EF922C00A2783F8EC638804B894E2AD8494C5308D",
+    "bytes": 1535385961,
+    "filename": "Premiere-Voice-Sync-2.20.98-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 77,
+    "powershellScriptsParsed": 138,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "packagedHostAndExecutorMatchSource": true,
+    "baselineNativeRun": {
+      "note": "2.20.97 Auto edit on the user's Sông Congo project, 2026-11-19 08:36. The reason for this release, not a measurement of it.",
+      "outcome": "failed",
+      "preCommitReviewMarkers": 21,
+      "preCommitMilliseconds": 751,
+      "failure": "sameVoiceProjection returned false after the cuts; restore verification reported 'Original marker fields differ.' twice; ok=false, timelineMutated=true."
+    },
+    "nativeProbes": [
+      "Premiere 26.2.2, 2026-11-19, read-only Probe-MarkerRestore.jsx restore-projection on the built sequence (30 fps, 101 A2 clips at speed 1.1): start and end on the frame grid for 101/101 clips; inPoint off the grid for 100/101 clips by up to about 80 ticks; outPoint off by up to about 2 ticks.",
+      "Premiere 26.2.2, 2026-11-19, Probe-MarkerRestore.jsx restore-run and restore-journal on the real voice ProjectItem with the host marker tools (tagged markers only, no Save): every case restored exactly, Vietnamese multi-line comments matched character by character, and cleanup left the original 59 markers."
+    ],
+    "mockEvidence": [
+      "tests/unit/diagnostic-executor.test.js VOICE_PROJECTION_SPEED_DIVIDED_TICKS_OK: a speed-1.1 mock with tick-rounded source positions entered restoration on 2.20.97 (input delta about -1 tick) and does not after the fix.",
+      "VOICE_PROJECTION_TOLERANCE_OK: a half-tick input difference is accepted; input, start or end differences beyond the tolerance still restore; speed stays exact."
+    ]
+  },
+  "changes": [
+    "sameVoiceProjection accepts start/end within one tick and input within 1/1000 frame; speed, source key and piece count stay exact (#83, closes #82).",
+    "The report records voiceProjection (pieces compared, first mismatch, max absolute tick delta per field), and marker restoration errors name the differing fields."
+  ],
+  "pullRequests": [
+    83
+  ],
+  "issues": [
+    82
+  ],
+  "knownLimitations": [
+    "Not run in Premiere yet.",
+    "Why restore verification reported 'Original marker fields differ.' on 2.20.97 is not reproduced; the error now names the field if it happens again.",
+    "V1 picture markers are still moved and end-rewritten on every run (about 7.8 s); tracked in issue #75.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}
