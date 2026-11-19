@@ -156,6 +156,16 @@ marker review 17 → 6.
   119 caption, 5 marker tốc độ, 0 lỗi. User xác nhận timeline đúng. Project không có cảnh báo review nên không đi qua
   ghi trước marker và phép so ánh xạ voice (#83): đây là bằng chứng luồng dựng chung, chưa phải lần thử thứ hai của bản
   sửa. "Cập nhật marker nguồn" 0,7 s với 5 marker.
+- Issue #75 (19/11, branch `perf/picture-marker-probe`): probe chỉ đọc mới `tools/probes/Probe-PictureMarkerPlan.jsx`, và
+  `Probe-MarkerMoveEnd.jsx` thêm chế độ cho nest. User chạy lại Sông Congo trên 2.20.98 từ bản lưu cũ (15:20, không Save):
+  nhóm hình lại dời 19 + ghi end 19 (14,3 s), review ghi trước dời 21. Probe ngay sau đó trên kết quả: 130 clip V1 dùng
+  một nest, 19/19 marker là điểm đúng frame giữa, dự đoán 19 giữ / 0 dời / 0 ghi end. Kết luận: 14,1 s của lượt 2.20.98
+  là bước đổi marker cũ trong bản lưu (nhiều khả năng có từ trước 2.20.94), không phải lỗi so sánh; project mới hoặc bản
+  đã lưu sau một lượt dựng sẽ không tốn phần này. Probe ghi nest chưa chạy vì không cần.
+- Lượt chạy lại thật 19/11 15:35 (2.20.98, cùng project chưa Save, sequence template chưa dựng; lượt 15:30 trên sequence đã
+  dựng dừng ở bước kiểm template): `ok=true`, nhóm hình 0 dời / 0 ghi end (49 ms), "Cập nhật marker nguồn" 0,64 s (lượt đổi
+  marker cũ: 14,6 s), tổng các bước timeline 62,1 s (72,5 s). Xác nhận nguyên nhân #75. Còn nhỏ: ghi trước marker review vẫn
+  ghi lại comments của 21 marker mỗi lượt (0,47 s, 0 dời), chưa rõ vì sao comments khác.
 
 ## Việc còn lại (14/11/2026)
 

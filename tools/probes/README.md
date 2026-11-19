@@ -59,6 +59,49 @@ node tools/probes/run-probe.js move-cleanup $probeDoc $probeItem $probeTag probe
 | [0, 0] | start = -0.5 | [-0.5, -0.5] |
 | [0, 0] | end = 0.5 | [0, 0.5] |
 
+## Kiểm tra ghi lại marker nguồn hình — issue #75
+
+Trace 2.20.98 ghi 19 lượt dời start và 19 lượt ghi end trên nhóm marker hình. Hai phép đo dưới đây giúp kiểm tra vị trí marker đang có và cách ProjectItem của nest xử lý một lần ghi start.
+
+**Kết quả ngày 19/11/2026** (Premiere 26.2.2, host panel 2.20.98, sequence Sông Congo vừa dựng xong và chưa Save, 30 fps):
+
+- Lượt Dựng theo voice ngay trước đó chạy từ bản lưu cũ. Bước "Cập nhật marker nguồn" của nhóm hình vẫn dời 19 marker và ghi end 19 lần (14,3 s). Ghi trước marker review cũng dời 21 marker và ghi lại comments của chúng.
+- `picture-plan 0` trên kết quả: 130 clip V1 dùng chung một nest (timebase 8.467.200.000, 30 fps). Cả 19 marker hình là marker điểm và nằm đúng frame giữa (lệch lớn nhất khoảng 1,7e-10 frame). Dự đoán: 19 `keep`, 0 `move`, 0 `endWrite`, 0 marker dư. Speed của các clip từ khoảng 46% đến 158%.
+- Kết luận: chạy lại trên kết quả vừa dựng sẽ không phải dời marker hình. Lượt dời và ghi end là bước đổi marker cũ trong bản lưu, nhiều khả năng vì bản lưu có từ trước luật "marker điểm ở giữa đoạn" của 2.20.94 (chưa đối chiếu thời điểm lưu). Probe ghi trên nest vì vậy chưa cần chạy. Dữ liệu ở `_local/probe-picture-plan-20261119.json`.
+- Lượt chạy lại thật (15:35, cùng project chưa Save, sequence template chưa dựng, nest đã mang marker của lượt trước) xác nhận dự đoán: nhóm hình 19 marker, 0 dời, 0 ghi end, commit 49 ms; "Cập nhật marker nguồn" 0,64 s thay vì 14,6 s.
+
+Dùng cấu hình debug/Node 22+ bên dưới khi user đã cho phép chạy. Mở sequence cần kiểm tra. Lệnh `picture-plan` chỉ đọc track video theo index bắt đầu từ 0 (V1 là 0).
+
+```powershell
+node tools/probes/run-probe.js 8099 load (Resolve-Path tools/probes/Probe-PictureMarkerPlan.jsx).Path
+node tools/probes/run-probe.js 8099 picture-plan 0
+```
+
+- Mỗi clip có `index`, `name`, `projectItemNodeId`, `isSequence`, `start`, `end`, `inPoint`, `outPoint`, `speed.raw` và `speed.factor` chuẩn hóa theo host. Mỗi mốc có giây và ticks gốc nếu Premiere trả về. `timebase` là số tick mỗi frame, `fps` tính từ timebase. `nest` ghi timebase/fps của sequence nguồn tìm theo nodeId. `nest: null` trên sequence ProjectItem nghĩa là chưa đọc được timebase nguồn.
+- Mỗi marker hình có tên, GUID, hai biên và `isPoint` (so ticks nếu đọc được cả hai biên). `timelineSeconds` là start ánh xạ lên timeline. `insideClipRange` dùng khoảng nửa mở từ start đến end. `distanceToMiddleFrames` là vị trí đã ánh xạ trừ `middleOutputFrame`, tính theo frame của sequence ngoài. `nestGridDeltaTicks` và `outerGridDeltaTicks` so start **nguồn** với frame gần nhất trên mỗi lưới. `timelineGridDeltaTicks` so start **đã ánh xạ** với lưới ngoài. Số 0 nghĩa là trùng lưới, `null` nghĩa là thiếu dữ liệu. Phép tính delta timeline dùng giây nên có thể lẻ tick.
+- `desiredSourceSeconds` là frame giữa ánh xạ bằng công thức của host. `verify` ghi riêng hai biên có nằm trong vùng hay không, end có sát start trong nửa dung sai hay không, start có cách mục tiêu không quá nửa frame nguồn hay không, và kết quả chung. `nearMatch` dùng khoảng cách nhỏ hơn `0.25/fps` so với mục tiêu giữa.
+- `targetSourceSeconds` là vị trí `point()` chọn khi xét các marker đang có. `commitSourceSeconds` là vị trí sau `add()`, có thể trùng vị trí marker cũ (`snappedToStoredPosition`). `commitNearMatch` cho biết marker đang xét có khớp tại vị trí đó. `predictedAction` là `keep`, `move`, `endWrite` hoặc `null` kèm `reason`. Với `move`, việc ghi thêm end phụ thuộc vào giá trị Premiere trả về sau khi dời start. `markerToolsSource` cho biết `point()` và `add()` chạy từ host đã nạp hay bản sao có test đối chiếu. `mappingSource` cho biết nguồn của hàm ánh xạ.
+- `summary` đếm dự đoán theo cặp clip/marker và ghi độ lệch tuyệt đối lớn nhất ở `maxAbsDelta`. Nest dùng chung một bộ marker cho nhiều clip, nên mỗi clip chỉ liệt kê marker rơi vào vùng của clip đó; `outsideClip` đếm số cặp đã bỏ qua. Marker hình không rơi vào clip nào trên track nằm ở `unmatchedPictureMarkers` (đếm ở `summary.unmatchedPictureMarkers`): đây là marker dư mà bước ghi có thể ghép với một yêu cầu rồi dời đi. `sequenceOwners` và tổng `otherOwnedMarkers` đếm theo ProjectItem. Probe chỉ trả tổng cho tên marker căn voice/review, không xuất ghi chú. `markerReadError` cho biết collection nào chưa đọc được.
+
+Mỗi dự đoán dùng một yêu cầu tại khoảng timeline hiện tại của clip, với tên và comments của marker đang xét để thử nhánh snap. Kết quả vì vậy phụ thuộc vào giả định metadata giữ nguyên. Có thể so hai JSON theo `documentId`, `sequenceId`, nodeId, GUID, ticks và frame giữa để xem trạng thái marker hoặc clip đã đổi qua các lần mở/chạy. Probe không có `NewStartFrame`, `VisualDurationFrames` hoặc danh sách yêu cầu của lần Auto edit tiếp theo. Clip reverse hoặc time remap không đọc được sẽ thiếu dự đoán.
+
+Phép thử ghi dùng **nest trong project bỏ đi**. ProjectItem dùng chung marker với các clip lấy cùng nguồn, kể cả khi duplicate sequence ngoài. Chọn nest đủ dài cho các vị trí thử (khoảng 17 giây nếu collection trống, xa hơn nếu các vị trí đầu đã có marker).
+
+```powershell
+node tools/probes/run-probe.js 8099 load (Resolve-Path tools/probes/Probe-MarkerMoveEnd.jsx).Path
+node tools/probes/run-probe.js 8099 move-list probe-tagged-nest
+$probeDoc = '<documentId>'
+$probeItem = '<nodeId>'
+$probeTag = '[PremiereVoiceSync:marker-move-end:v1]'
+node tools/probes/run-probe.js 8099 move-run $probeDoc $probeItem $probeTag probe-tagged-nest
+# Chi chay lenh don neu con marker mang tag va da duoc phep.
+node tools/probes/run-probe.js 8099 move-cleanup $probeDoc $probeItem $probeTag probe-tagged-nest
+```
+
+- `move-list probe-tagged-nest` liệt kê sequence ProjectItem với `isSequence: true`. Lượt ghi yêu cầu đúng documentId, nodeId, tag và scope, đồng thời cần đọc được timebase nest. Scope thường `probe-tagged-only` dành cho media như trước.
+- Ba case dời start từ marker điểm mới thêm theo 0,37 frame, 1,37 frame và đúng một frame của nest. `created` là hai biên sau khi tạo. `initial` là hai biên trước khi dời start. Mỗi `steps` ghi `requested` theo giây, `requestedTicks` quy đổi, lỗi ghi/đọc và start/end đọc lại theo giây/ticks. So `requestedGridDeltaTicks` với `startGridDeltaTicks` để xem có làm tròn không. So start/end với `initial` để xem end có dời theo start không. Các delta lưới bằng 0 nghĩa là trùng frame, `null` nghĩa là Premiere chưa cung cấp ticks cho biên đó.
+- Probe từ chối đo khi còn tag cũ. Probe chỉ sửa marker mới sau khi gắn và đọc lại tag. Trong `finally` probe dọn marker mới có đúng tag và kiểm tra toàn bộ collection so với ảnh chụp ban đầu (`cleanup.verified`). Marker không tag được giữ để kiểm tra thủ công. `move-cleanup` chỉ dọn đúng tag và đối chiếu phần còn lại với trạng thái ngay trước lệnh dọn. Không Save/Undo. Sau lỗi hoặc timeout, chờ host trả quyền điều khiển và kiểm tra marker trước khi gọi tiếp.
+
 ## Kiểm tra lệch ánh xạ voice và khôi phục marker — 2.20.97
 
 `Probe-MarkerRestore.jsx` dùng cấu hình debug/Node 22+ bên dưới.
