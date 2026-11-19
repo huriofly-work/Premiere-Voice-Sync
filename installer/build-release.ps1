@@ -1,4 +1,4 @@
-param([string]$Version = '2.20.97')
+param([string]$Version = '2.20.98')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest

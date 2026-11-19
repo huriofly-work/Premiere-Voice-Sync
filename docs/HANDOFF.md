@@ -1,6 +1,6 @@
 # Bàn giao kỹ thuật Premiere Voice Sync
 
-Ảnh chụp ngày 05/11/2026 để bàn giao, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo, 16/11/2026 khi chuẩn bị 2.20.92, 18/11/2026 khi chuẩn bị 2.20.93, 2.20.94, 2.20.95, 2.20.96 và 2.20.97. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
+Ảnh chụp ngày 05/11/2026 để bàn giao, viết lại ngày 13/11/2026 sau khi phát hành 2.20.90 và dọn các hướng đã đóng, cập nhật 14/11/2026 sau khi khởi tạo lại repo, 16/11/2026 khi chuẩn bị 2.20.92, 18/11/2026 khi chuẩn bị 2.20.93, 2.20.94, 2.20.95, 2.20.96 và 2.20.97, 19/11/2026 khi chuẩn bị 2.20.98. [Maintainer briefing](MAINTAINER_BRIEFING.md) có bản đồ chi tiết hơn.
 
 ## Git, bản phát hành và bản cài
 
@@ -140,8 +140,9 @@ marker review 17 → 6.
   Đã cài lại 2.20.96. Issue #82, branch `fix/marker-restore-drift`. Probe `Probe-MarkerRestore.jsx` đo trên project
   thật, không Save: điểm vào nguồn của clip speed 110% lệch lưới frame tới khoảng 80 tick, còn mép timeline đúng
   frame. Đã sửa: `input` được lệch tối đa 1/1000 frame (user duyệt), `start`/`end` tối đa 1 tick. Lỗi khôi phục (giả
-  thuyết B) chưa tái hiện được qua `restore-run` và `restore-journal`; câu lỗi giờ nêu trường lệch. Việc kế: PR, bản
-  2.20.98, user chạy Dựng theo voice trên Sông Congo. Nghiệm thu native pending.
+  thuyết B) chưa tái hiện được qua `restore-run` và `restore-journal`; câu lỗi giờ nêu trường lệch. PR #83 đã merge;
+  chuẩn bị 2.20.98 (bản vá). Việc kế: user chạy Dựng theo voice trên Sông Congo và xem `voiceProjection` trong báo
+  cáo (`firstMismatch` phải là `null`). Nghiệm thu native pending.
 
 ## Việc còn lại (14/11/2026)
 
