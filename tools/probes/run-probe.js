@@ -10,7 +10,14 @@ function literal(value) {
 function scriptFor(args) {
     const [command, ...rest] = args;
     if (command === "cost-list" && rest.length === 0) return "$._PVSMarkerWriteCostProbe.list()";
-    if (command === "move-list" && rest.length === 0) return "$._PVSMarkerMoveEndProbe.list()";
+    if (command === "move-list") {
+        if (rest.length && (rest.length !== 1 || rest[0] !== "probe-tagged-nest")) throw Error("Usage: move-list [probe-tagged-nest]");
+        return `$._PVSMarkerMoveEndProbe.list(${rest.map(literal).join(",")})`;
+    }
+    if (command === "picture-plan") {
+        if (rest.length !== 1 || !/^\d+$/.test(rest[0]) || !Number.isSafeInteger(Number(rest[0]))) throw Error("Usage: picture-plan <videoTrackIndex>");
+        return `$._PVSPictureMarkerPlanProbe.read(${Number(rest[0])})`;
+    }
     if (command === "restore-list" && rest.length === 0) return "$._PVSMarkerRestoreProbe.list()";
     if (command === "restore-projection") {
         if (rest.length !== 1 || !/^\d+$/.test(rest[0]) || !Number.isSafeInteger(Number(rest[0]))) throw Error("Usage: restore-projection <audioTrackIndex>");
