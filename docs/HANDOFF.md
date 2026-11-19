@@ -140,9 +140,18 @@ marker review 17 → 6.
   Đã cài lại 2.20.96. Issue #82, branch `fix/marker-restore-drift`. Probe `Probe-MarkerRestore.jsx` đo trên project
   thật, không Save: điểm vào nguồn của clip speed 110% lệch lưới frame tới khoảng 80 tick, còn mép timeline đúng
   frame. Đã sửa: `input` được lệch tối đa 1/1000 frame (user duyệt), `start`/`end` tối đa 1 tick. Lỗi khôi phục (giả
-  thuyết B) chưa tái hiện được qua `restore-run` và `restore-journal`; câu lỗi giờ nêu trường lệch. PR #83 đã merge;
-  chuẩn bị 2.20.98 (bản vá). Việc kế: user chạy Dựng theo voice trên Sông Congo và xem `voiceProjection` trong báo
-  cáo (`firstMismatch` phải là `null`). Nghiệm thu native pending.
+  thuyết B) chưa tái hiện được qua `restore-run` và `restore-journal`; câu lỗi giờ nêu trường lệch. PR #83 đã merge.
+- 2.20.98 (PR #85, tag `v2.20.98` tại `e5bd29f`, ZIP 1.535.385.961 byte, SHA-256 `EB980481…5308D`) công bố prerelease
+  19/11, cài bằng `dist/Install-Verified-2.20.98-20261119.ps1` (66 file panel đúng hash, 4.594 file dữ liệu không đổi;
+  panel 2.20.96 sao lưu ở `dist/_install-2.20.98-20261119T043810Z/previous-panel`). Release 2.20.97 có thêm cảnh báo
+  không dùng cho Dựng theo voice.
+- Lượt 2.20.98 trên Sông Congo (19/11 14:17, từ bản lưu cũ nên có đổi marker cũ) **xong**: `ok=true`, 0 lỗi marker,
+  21 marker review gắn clip voice, 0 chưa gắn. `voiceProjection`: 100 đoạn đã so, `firstMismatch=null`, lệch lớn nhất
+  `start`/`end` 0 tick, `input` khoảng 80 tick (ngưỡng khoảng 8.467). Ghi trước marker review 0,86 s. Timeline 70,3 s
+  (2.20.96: 63,3 s): "Cập nhật marker nguồn" 14,1 s (2.20.96: 8,5 s), bước sau đó 3,3 s (6,2 s), khoảng nghỉ ngoài
+  script giữa các lệnh cắt dài hơn khoảng 1–1,6 s mỗi lần. Chưa rõ phần 14,1 s gồm gì vì executor thường không ghi chi
+  tiết. User xem timeline và xác nhận marker đúng (nghiệm thu, một project); vẫn là prerelease. Việc kế: đo một
+  lượt không phải đổi marker cũ để biết thời gian thật; tìm phần 14,1 s (có thể gộp với #75); chưa nâng stable.
 
 ## Việc còn lại (14/11/2026)
 
