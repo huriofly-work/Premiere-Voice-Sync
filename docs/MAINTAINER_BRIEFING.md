@@ -9,7 +9,7 @@ for detail. Not verified by running Premiere: nothing here is native acceptance.
 ## What the product is
 
 A Windows Adobe Premiere Pro CEP panel (id `com.premierevoicesync.local`, runtime
-2.20.98, stable/Latest since 2026-11-19 after the user's real runs on two projects). Two workflows share one alignment core:
+2.20.98, last stable the user tested; stable/Latest since 2026-11-19 after the user's real runs on two projects). Two workflows share one alignment core:
 
 - **Dựng theo voice (Auto edit):** from a template (one V1/A1 nest, A2 voice chapters)
   and a Vietnamese SRT, align the new voice to SRT cues and rebuild picture/audio
