@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "version": "2.20.97",
+  "tag": "v2.20.97",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending-user-test",
+  "package": {
+    "sha256": "A7459B18B767AC296A88980BEF1D653A37039D22E7C2C8B3467F7AF38F3F9F7A",
+    "bytes": 1535383571,
+    "filename": "Premiere-Voice-Sync-2.20.97-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "regressionGroupsPassed": 75,
+    "powershellScriptsParsed": 135,
+    "externalWindowsIntegrationGroupsSkipped": 6,
+    "zipEntries": 78,
+    "packageChecksumsVerified": true,
+    "packagedHostAndExecutorMatchSource": true,
+    "baselineNativeRun": {
+      "note": "2.20.96 diagnostic Auto edit on the user's Sông Congo project, 2026-11-18 23:42. The reason for this release, not a measurement of it.",
+      "outcome": "succeeded",
+      "preCommitMarkerWrites": 0,
+      "reviewOwnerKey": "path",
+      "registeredSourceKeys": ["node:000f42bb", "node:000f42bc"],
+      "postReviewOwnerIndex": -1,
+      "reviewCommitMilliseconds": 4814,
+      "pictureOwnerCommitMilliseconds": 7758
+    },
+    "nativeProbes": [
+      "Premiere 2026, 2026-11-18, read-only evalScript through the panel: a ? \"N\" : b ? \"P\" : \"E\" returns \"P\" (V8 returns \"N\"); the host key expression returns path: for the real voice ProjectItem although nodeId is set.",
+      "Premiere 26.2.2, 2026-11-18, read-only Probe-StaleTrackItem.jsx: 0/100 key mismatches for TrackItems kept across host calls."
+    ],
+    "mockEvidence": [
+      "tests/unit/es3-nested-ternary.test.js rejects unparenthesized nested conditionals in every ExtendScript source; red on 2.20.96 at 7 locations, green after the fix.",
+      "Measured and unmeasured executors keep identical native calls across 42 fixtures and four executor modes."
+    ]
+  },
+  "changes": [
+    "Every marker owner takes its source key from $._PVS._projectItemKey, so review markers are written before the cuts (#76, closes #72).",
+    "Nested conditionals in the host and the generated executor are parenthesized; the 'several clips match' unattached reason is reported correctly."
+  ],
+  "pullRequests": [
+    76
+  ],
+  "issues": [
+    72
+  ],
+  "knownLimitations": [
+    "Not run in Premiere yet; the time saved by writing review markers before the cuts has not been measured.",
+    "V1 picture markers are still moved and end-rewritten on every run (about 7.8 s); tracked in issue #75.",
+    "Six Windows integration groups (installer lifecycle, rollback, panel registry, notification shortcut, native and incident notifications) were not run for this build; no clean-account install test or antivirus scan was recorded.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}
