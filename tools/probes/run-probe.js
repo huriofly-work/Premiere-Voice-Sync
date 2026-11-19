@@ -11,6 +11,11 @@ function scriptFor(args) {
     const [command, ...rest] = args;
     if (command === "cost-list" && rest.length === 0) return "$._PVSMarkerWriteCostProbe.list()";
     if (command === "move-list" && rest.length === 0) return "$._PVSMarkerMoveEndProbe.list()";
+    if (command === "restore-list" && rest.length === 0) return "$._PVSMarkerRestoreProbe.list()";
+    if (command === "restore-projection") {
+        if (rest.length !== 1 || !/^\d+$/.test(rest[0]) || !Number.isSafeInteger(Number(rest[0]))) throw Error("Usage: restore-projection <audioTrackIndex>");
+        return `$._PVSMarkerRestoreProbe.projection(${Number(rest[0])})`;
+    }
     if (command === "stale-capture") {
         if (rest.length !== 1 || !/^\d+$/.test(rest[0])) throw Error("Usage: stale-capture <audioTrackIndex>");
         return `$._PVSStaleTrackItemProbe.capture(${Number(rest[0])})`;
@@ -20,6 +25,10 @@ function scriptFor(args) {
     if (["move-run", "move-cleanup"].includes(command)) {
         if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: move-run|move-cleanup <documentId> <nodeId> <tag> <scope>");
         return `$._PVSMarkerMoveEndProbe.${command === "move-run" ? "run" : "cleanup"}(${rest.map(literal).join(",")})`;
+    }
+    if (["restore-run", "restore-journal", "restore-cleanup"].includes(command)) {
+        if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: restore-run|restore-journal|restore-cleanup <documentId> <nodeId> <tag> probe-tagged-only");
+        return `$._PVSMarkerRestoreProbe.${command.slice("restore-".length)}(${rest.map(literal).join(",")})`;
     }
     if (["cost-run", "cost-cleanup"].includes(command)) {
         const max = command === "cost-run" ? 5 : 4;

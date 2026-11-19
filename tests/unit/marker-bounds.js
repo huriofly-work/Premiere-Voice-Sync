@@ -21,3 +21,8 @@ module.exports = function markerBounds(marker, start, end = start, timeEnd = fal
     });
     return marker;
 };
+
+module.exports.speedDividedTime = function speedDividedTime(sourceTicks, speed) {
+    const ticks = Math.round(sourceTicks / speed);
+    return { ticks: String(ticks), seconds: ticks / 254016000000 };
+};

@@ -135,6 +135,14 @@ marker review 17 → 6.
   user chạy Dựng theo voice để thấy 21 marker review ghi trước khi cắt. Để sau: #75 (19 marker hình bị
   dời/ghi lại mỗi lượt, ~7,8 s).
 
+- Lượt 2.20.97 (19/11 08:36) **hỏng** sau khi cắt: 21 marker review đã ghi trước khi cắt (751 ms), nhưng phép so
+  ánh xạ voice báo lệch nên tool khôi phục marker, rồi bước tự kiểm sau khôi phục báo `Original marker fields differ.`
+  Đã cài lại 2.20.96. Issue #82, branch `fix/marker-restore-drift`. Probe `Probe-MarkerRestore.jsx` đo trên project
+  thật, không Save: điểm vào nguồn của clip speed 110% lệch lưới frame tới khoảng 80 tick, còn mép timeline đúng
+  frame. Đã sửa: `input` được lệch tối đa 1/1000 frame (user duyệt), `start`/`end` tối đa 1 tick. Lỗi khôi phục (giả
+  thuyết B) chưa tái hiện được qua `restore-run` và `restore-journal`; câu lỗi giờ nêu trường lệch. Việc kế: PR, bản
+  2.20.98, user chạy Dựng theo voice trên Sông Congo. Nghiệm thu native pending.
+
 ## Việc còn lại (14/11/2026)
 
 - Trước bản 2.20.91 (bản public đầu): toàn văn GPL v3 của FFmpeg đã nằm trong repo ở `licenses/GPL-3.0.txt` (tải một lần từ gnu.org ngày 14/11/2026, SHA-256 `3972dc97…6986`, test khóa hash) và có trong allowlist của gói; chưa build ZIP để xem file thật nằm trong gói. File LICENSE gốc của whisper.cpp v1.9.1 cũng đã đi kèm ở `licenses/whisper.cpp-LICENSE.txt` (SHA-256 `94f29bbe…010d`, test khóa hash). User quyết ngày 15/11/2026: **không** đính kèm mã nguồn FFmpeg vào GitHub Release, chỉ trỏ link ffmpeg.org/gyan.dev như trong `THIRD_PARTY_NOTICES.md`.
