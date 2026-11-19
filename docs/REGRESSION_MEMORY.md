@@ -1,5 +1,15 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #96 — Ba loại marker trong 3.0.0 (19/11/2026)
+
+- **Quyết định.** Video trên nest V1 nhận tốc độ, gộp hình và hậu kiểm V1/A1. Voice trên file voice nhận cảnh báo căn voice và lệch vị trí A2. Caption nhận toàn bộ `plan.reviewMarkers`. Tạo phụ đề lấy track đã dùng đầu tiên có clip giao với cảnh báo. Dựng theo voice hoàn tất theo thứ tự Tạo caption → Hậu kiểm → Gắn marker → Báo cáo. Mỗi ProjectItem được đối chiếu một lần, nest trước, rồi các nguồn voice. Dành chỗ Voice trước Caption.
+- **Quyền sở hữu.** Chỉ nhận Comment có đúng tên và thẻ riêng ở dòng cuối. `VOICE SYNC - Video` dùng `[PremiereVoiceSync:video]`, `VOICE SYNC - Voice` dùng `[PremiereVoiceSync:voice]`, `VOICE SYNC - Caption` dùng `[PremiereVoiceSync:caption:edit]` hoặc `[PremiereVoiceSync:caption:captions]` theo chức năng. Chạy lại chỉ dọn bộ Caption của chức năng đang chạy. Bỏ nhận tên/thẻ 2.20.x, nhận diện marker thiếu thẻ, chuyển đổi thẻ và mọi đường dọn marker trên thước.
+- **Bất biến.** Chọn lát clip, gộp khoảng chồng hoặc chạm theo cùng loại rồi lấy frame giữa. Cảnh báo khe hở nằm ngoài clip dùng frame mép của lát liền trước. Điểm trùng dùng frame trống gần nhất trong đoạn. Nếu không đọc được ánh xạ hoặc không có chỗ, báo cảnh báo chưa gắn được và giữ marker dư của loại đó trên ProjectItem để xử lý lại. Lỗi ghi thuộc tính được bù theo ProjectItem. Giữ nguyên marker thủ công và marker của workflow khác.
+- **Hồi quy.** `git show c7ccb92:<file>` nạp host và executor cũ vào VM. 14 ca fps/speed/reverse/remap và 2 ca phân loại hậu kiểm đều đỏ trên bản cũ và xanh sau sửa. Mock dùng timebase Premiere ở 23.976, 24, 25, 29.97 và 60 fps, voice 90% và 150%. Clip A2 reverse/time remap liệt kê Voice và Caption chưa gắn được. 42 fixture × 4 executor giữ hash timeline và hash đối số chỉnh timeline đã ghi. Mọi lượt chạy lại đối chiếu ghi 0 lần. Log ở `_local/three-marker-kinds/`.
+- **Kết quả kiểm thử.** Ma trận ngắt và lỗi ghi có 0 `partial-worse`, 0 `transient-surplus` và khôi phục đủ 172/172 lỗi ghi end. Bộ chuẩn đạt 79 nhóm, parse 140 file PowerShell, bỏ qua sáu nhóm tích hợp Windows. Executor khớp nguồn sinh, kiểm cú pháp JavaScript và ES3 đạt.
+
+Native Premiere pending
+
 ## Issue #94 — Ghi marker một lần sau hậu kiểm (19/11/2026)
 
 - **Quyết định.** Dựng V1/A1, dồn A2, tạo caption và dọn bin trước khi kiểm timeline, số ProjectItem caption, clip cần giữ và In/Out của nest. Dùng lát A2 cuối để gắn marker kế hoạch và review native. Bỏ ghi trước, nhật ký ghi trước, so khớp dự phóng và hoàn tác khi phát sinh cảnh báo. Đóng giả thuyết B của 2.20.97 vì nhánh hoàn tác do lệch dự phóng đã bị gỡ.

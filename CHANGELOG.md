@@ -4,9 +4,12 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
+- Gắn ba loại marker. Video để kiểm tra hình và A1, Voice để kiểm tra căn lời, Caption để rà chữ và mốc hiển thị (#96).
+- Sau khi tạo caption và hậu kiểm, Dựng theo voice gắn marker trong một bước rồi báo cáo. Mỗi chức năng cập nhật bộ Caption của riêng mình.
+- Marker 2.20.x cần được xóa thủ công một lần hoặc dùng template sạch khi chuyển lên 3.0.0.
+
 - Dựng theo voice ghi marker một lần sau hậu kiểm. Chạy lại giữ nguyên marker đã đúng, còn lượt dựng trên project lớn có thể chậm hơn một chút. Không tạo được caption thì vẫn gắn marker hình và voice, chỉ bỏ marker caption, và panel báo rõ lỗi caption. Thông báo khi Dừng hoặc lỗi nói rõ marker chỉ được gắn ở bước cuối.
 
-- Thẻ cuối ghi chú của marker review không còn chứa mã sequence: `[PremiereVoiceSync:review-marker:v3:<chức năng>]` thay cho `…:v2:<chức năng>:<mã sequence>]`. Chạy trên sequence khác với cùng nội dung cảnh báo không còn ghi lại comments của mọi marker review. Lần chạy đầu sau khi cập nhật đổi thẻ cũ một lần, không tạo thêm marker (#92).
 - Dựng theo voice giữ timeline và marker đã ghi khi bấm Dừng hoặc gặp lỗi. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả (#90).
 - Thêm probe dành cho dev để xem dự đoán ghi lại marker nguồn hình và đo hành vi dời marker điểm trên sequence ProjectItem (#75). Probe chỉ đọc đã chạy trên Sông Congo: sau một lượt dựng, cả 19 marker hình được giữ nguyên; lượt dời mỗi lần chạy đến từ marker cũ trong bản lưu. Lượt chạy lại thật xác nhận: 0 dời, 0 ghi end, bước cập nhật marker nguồn 0,64 s.
 

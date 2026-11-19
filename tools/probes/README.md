@@ -70,7 +70,7 @@ Trace 2.20.98 ghi 19 lượt dời start và 19 lượt ghi end trên nhóm mark
 - Kết luận: chạy lại trên kết quả vừa dựng sẽ không phải dời marker hình. Lượt dời và ghi end là bước đổi marker cũ trong bản lưu, nhiều khả năng vì bản lưu có từ trước luật "marker điểm ở giữa đoạn" của 2.20.94 (chưa đối chiếu thời điểm lưu). Probe ghi trên nest vì vậy chưa cần chạy. Dữ liệu ở `_local/probe-picture-plan-20261119.json`.
 - Lượt chạy lại thật (15:35, cùng project chưa Save, sequence template chưa dựng, nest đã mang marker của lượt trước) xác nhận dự đoán: nhóm hình 19 marker, 0 dời, 0 ghi end, commit 49 ms; "Cập nhật marker nguồn" 0,64 s thay vì 14,6 s.
 
-Dùng cấu hình debug/Node 22+ bên dưới khi user đã cho phép chạy. Mở sequence cần kiểm tra. Lệnh `picture-plan` chỉ đọc track video theo index bắt đầu từ 0 (V1 là 0).
+Dùng cấu hình debug/Node 22+ bên dưới khi user đã cho phép chạy. Mở sequence cần kiểm tra. Lệnh `picture-plan` chỉ đọc track video theo index bắt đầu từ 0 (V1 là 0). Phiên bản cho 3.0.0 nhận marker Video theo tên và thẻ mới.
 
 ```powershell
 node tools/probes/run-probe.js 8099 load (Resolve-Path tools/probes/Probe-PictureMarkerPlan.jsx).Path

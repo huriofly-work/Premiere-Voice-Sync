@@ -40,7 +40,7 @@ function preflight(activeAtEnd, failOpen) {
   };
   const context = { $: { _PVS: {} }, app: { project } };
   vm.runInNewContext(source, context);
-  context.$._PVS._readJsonFile = () => ({ schemaVersion: 8, sequenceId: "wrong", segments: [] });
+  context.$._PVS._readJsonFile = () => ({ schemaVersion: 8, sequenceId: "wrong", segments: [], reviewMarkers: [] });
   const report = JSON.parse(context.$._PVS.executePlan("mock-plan.json"));
   assert.strictEqual(report.ok, false);
   assert.strictEqual(report.timelineMutated, false);

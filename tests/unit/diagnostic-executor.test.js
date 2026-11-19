@@ -13,25 +13,18 @@ if (require.main !== module) {
   module.exports = { host, diagnostic, markerReferenceCases, markerReferenceFixture, finishTrial, issue55State, setSources(h, d) { fixtureHost=h; fixtureExecutor=d; } };
   return;
 }
-assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
-// Run explicitly before the legacy assertions to capture the pre-fix failure.
-{
-  const f=fixture(1),clip=f.seq.videoTracks[0].clips[0];
-  // Extract the real production planner, without running timeline mutations.
-  const begin=host.indexOf("    function readSpeedPercent(item)"),end=host.indexOf("    try {\n        noteNative(\"before\", \"read-plan\")",begin);
-  vm.runInContext(host.slice(begin,end),f.context);
-  clip.start=time(300);clip.end=time(360);clip.inPoint=time(600);clip.outPoint=time(660);clip.speed=1.45;
-  f.context.item=clip;
-  vm.runInContext('var groups={};prepareClipMarkerGroup({Item:item,Ranges:[{start:29,end:31.9}]},groups,30);planOwnedClipMarker(item,{Name:"VOICE SYNC - Kiem tra toc do",Comments:"145%",ColorIndex:1},30,groups);var committed=$._PVS._markerTools.commit(groups[projectItemKey(item)]);',f.context);
-  assert.equal(f.context.committed.count,1,"145% marker must land inside real source range");
-  const m=f.nested.getMarkers().items[0];assert(Math.abs(m.start.seconds-30.45)<1e-7);assert(Math.abs(Number(m.end)-30.45)<1e-7);
-  console.log("SPEED_REAL_SOURCE_RANGE_OK:145%");if(process.argv.includes("--voice-marker-regression"))process.exit(0);
+if (!process.argv.slice(2).length || process.argv.includes("--three-marker-kinds") || process.argv.includes("--three-marker-baseline")) {
+  checkThreeMarkerKinds();
+  if (process.argv.slice(2).length) process.exit(0);
 }
+assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
 function tracks(items) { Object.defineProperty(items,"numTracks",{get(){return this.length;}}); return items; }
 function time(frame) { return { ticks:String(frame*TPF),seconds:frame/30 }; }
-function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false, observe=false, {nativeWrappers=false, nativeVoiceSourceTicks=false}={}) {
+function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, seedWarnings=false, trace=false, observe=false, {nativeWrappers=false, nativeVoiceSourceTicks=false, timebase=TPF, voiceMapping=""}={}) {
   let nextId=0;
+  const TPF=timebase, fps=254016000000/TPF;
+  function time(frame) { return {ticks:String(frame*TPF),seconds:frame/fps}; }
   const actions=[],nativeRows=[];let qeReads=0;
   function markers(){
     const values=[];
@@ -41,12 +34,13 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   const voice={nodeId:"voice",getMarkers:markers};
   nested.getMarkers=(()=>{const m=markers();return ()=>m;})();
   voice.getMarkers=(()=>{const m=markers();return ()=>m;})();
-  if(oldMarkers){
-    for(const item of [nested,voice])item.getMarkers().items.push(
-      markerBounds({name:"VOICE SYNC - Kiem tra toc do",comments:"Sentence cues 1-1: actual speed=140.000%, warning range=70-130%"},1),
-      markerBounds({name:"VOICE SYNC - Kiem tra toc do",comments:"My manual note"},2),
-      markerBounds({name:"VOICE SYNC - Da gop hinh",comments:"old merge\n[PremiereVoiceSync:owned-marker:v1]"},count*120/30+100)
-    );
+  if(seedWarnings){
+    const bank=nested.getMarkers();
+    for (const [seconds,comments,colorIndex] of [[1,"old speed\n[PremiereVoiceSync:video]",1],
+        [2,"My manual note",4],[count*120/fps+100,"surplus\n[PremiereVoiceSync:video]",4]]) {
+      Object.assign(bank.createMarker(seconds),{name:"VOICE SYNC - Video",comments,colorIndex});
+    }
+    actions.length=0;
   }
   const seq={sequenceID:"seq",timebase:TPF,markers:markers(),videoTracks:tracks([{clips:collection([])}]),audioTracks:tracks([{clips:collection([])},{clips:collection([])}])};
   function clip(name,track,start,end,sourceIn,sourceOut,projectItem){
@@ -59,12 +53,14 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   const segments=[];let outputFrame=0,voiceFrame=0;
   for(let i=0;i<count;i++){
     const duration=i%3===0?100:i%3===1?150:120;
-    segments.push({Kind:"retime",SourceDuration:4,SourceStart:i*4,SourceEnd:(i+1)*4,SourceStartFrame:i*120,SourceEndFrame:(i+1)*120,NewStart:outputFrame/30,NewEnd:(outputFrame+duration)/30,NewStartFrame:outputFrame,VisualDurationFrames:duration,OutputDurationFrames:duration,AppliedSpeedPercent:120/duration*100,OriginalVoiceStartFrame:voiceFrame,OriginalVoiceEndFrame:voiceFrame+duration,NewVoiceStartFrame:outputFrame,FirstTargetCue:i+1,LastTargetCue:i+1});
+    segments.push({Kind:"retime",SourceDuration:120/fps,SourceStart:i*120/fps,SourceEnd:(i+1)*120/fps,SourceStartFrame:i*120,SourceEndFrame:(i+1)*120,NewStart:outputFrame/fps,NewEnd:(outputFrame+duration)/fps,NewStartFrame:outputFrame,NewVoiceStart:outputFrame/fps,VisualDurationFrames:duration,OutputDurationFrames:duration,AppliedSpeedPercent:120/duration*100,OriginalVoiceStartFrame:voiceFrame,OriginalVoiceEndFrame:voiceFrame+duration,NewVoiceStartFrame:outputFrame,FirstTargetCue:i+1,LastTargetCue:i+1});
     outputFrame+=duration;voiceFrame+=duration+(withGaps && i<count-1 ? 6 : 0);
   }
   clip("Nest",seq.videoTracks[0],0,count*120,0,count*120,nested);
   clip("Nest",seq.audioTracks[0],0,count*120,0,count*120,nested);
   const originalVoice=clip("Voice",seq.audioTracks[1],0,voiceFrame,0,voiceFrame,voice);originalVoice.speed=voiceSpeed;
+  if (voiceMapping === "reverse") originalVoice.isSpeedReversed=()=>true;
+  if (voiceMapping === "remap") originalVoice.components=[{matchName:"Time Remapping",properties:[{isTimeVarying:()=>true}]}];
   if (nativeVoiceSourceTicks) originalVoice.outPoint=speedDividedTime(voiceFrame*TPF*voiceSpeed-2,voiceSpeed);
   // Preserved tail moves first and must remain identical across both paths.
   clip("End screen",seq.videoTracks[0],count*120,count*120+60,0,60,{nodeId:"end"});
@@ -75,6 +71,8 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     const oldEnd=Number(item.end.ticks)/TPF,oldOut=item.outPoint;
     const sourceCut=Number(item.inPoint.ticks)/TPF+(frame-Number(item.start.ticks)/TPF);
     const other=clip(item.name,track,frame,oldEnd,sourceCut,Number(oldOut.ticks)/TPF,item.projectItem);other.speed=item.speed;
+    if (item.isSpeedReversed) other.isSpeedReversed=item.isSpeedReversed;
+    if (item.components) other.components=item.components;
     item.end=time(frame);item.outPoint=time(sourceCut);
     if (nativeVoiceSourceTicks && item.projectItem===voice) {
       // Model the measured whole-tick readback after each speed-divided cut.
@@ -84,8 +82,8 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     }
     track.clips.sort((a,b)=>Number(a.start.ticks)-Number(b.start.ticks));
   }
-  function tcFrames(tc){const v=tc.split(":").map(Number);return ((v[0]*3600+v[1]*60+v[2])*30)+v[3];}
-  function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);const oldSpeed=c.speed;c.inPoint=time(Number(c.inPoint.ticks)/TPF*oldSpeed/factor);c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
+  function tcFrames(tc){const v=tc.split(":").map(Number);return ((v[0]*3600+v[1]*60+v[2])*Math.round(fps))+v[3];}
+  function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);const oldSpeed=c.speed;c.inPoint=time(Number(c.inPoint.ticks)/TPF*oldSpeed/factor);c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration)+(seq.speedDurationOffset ? seq.speedDurationOffset(c,isVideo) : 0));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
   const rootItem={children:collection([]),nodeId:"root",createBin(){actions.push(["createBin"]);const bin={nodeId:"bin",children:collection([]),deleteBin(){actions.push(["deleteBin"]);rootItem.children.splice(rootItem.children.indexOf(bin),1);return true;}};rootItem.children.push(bin);return bin;}};
   seq.createCaptionTrack=function(){actions.push(["captionTrack"]);return true;};
   // Expose fresh TrackItems only at the host boundary. The mock keeps its raw arrays.
@@ -118,8 +116,8 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   const hostSequence = nativeWrappers ? view(seq, (value, key) =>
     key === "videoTracks" || key === "audioTracks" ? view(value, readTrack) : value) : seq;
   const project={activeSequence:hostSequence,rootItem,openSequence(){actions.push(["openSequence"]);},importFiles(paths,a,bin){actions.push(["importCaption"]);bin.children.push({nodeId:"srt",getMediaPath(){return paths[0];}});return true;},save(){throw Error("MUST_NOT_SAVE");}};
-  const plan={schemaVersion:8,sequenceId:"seq",frameRate:30,mainVideoSourceEnd:count*4,plannedMainVideoEnd:outputFrame/30,plannedMainVideoEndFrame:outputFrame,voiceTrackIndex:1,voiceClips:[{name:"Voice",end:voiceFrame/30}],linkedAudio:[{name:"Nest"}],segments,captionSrtPath:"fixture.srt",captions:segments.map(()=>({})),summary:{captionCueCount:count},speedWarningMinPercent:90,speedWarningMaxPercent:110,markers:[]};
-  if(oldMarkers)plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"Sentence cues 1-1 needs review",ColorIndex:1});
+  const plan={schemaVersion:8,sequenceId:"seq",frameRate:fps,mainVideoSourceEnd:count*120/fps,plannedMainVideoEnd:outputFrame/fps,plannedMainVideoEndFrame:outputFrame,voiceTrackIndex:1,voiceClips:[{name:"Voice",end:voiceFrame/fps}],linkedAudio:[{name:"Nest"}],segments,captionSrtPath:"fixture.srt",captions:segments.map(()=>({})),summary:{captionCueCount:count},speedWarningMinPercent:90,speedWarningMaxPercent:110,markers:[],reviewMarkers:[]};
+  if(seedWarnings)plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Voice",Comments:"căn voice – nghe lại",ColorIndex:1});
   if(merged){
     assert(!withGaps);
     plan.mainVideoSourceEndFrame=count*120;plan.speedMergeTrial="adjacent-speed-v2";plan.editBoundaryTrial="dtw-additive-v1";
@@ -169,15 +167,141 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
   return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,nativeMutations,api:context.$._PVS,get qeReads(){return qeReads;}};
 }
+function checkThreeMarkerKinds() {
+  const baseline=process.argv.includes("--three-marker-baseline"), errors=[];
+  if (baseline) {
+    const {execFileSync}=require("child_process");
+    fixtureHost=execFileSync("git",["show","c7ccb92:extension/jsx/host.jsx"],{cwd:root,encoding:"utf8"});
+    fixtureExecutor=execFileSync("git",["show","c7ccb92:extension/jsx/diagnostic-executor.jsx"],{cwd:root,encoding:"utf8"});
+  }
+  const cases=[
+    ["23.976",10594584000,0.9],["24",10584000000,1.5],["25",10160640000,1],
+    ["29.97",8475667200,0.9],["60",4233600000,1.5],
+    ["25 reverse",10160640000,0.9,"reverse"],["60 remap",4233600000,1.5,"remap"]
+  ];
+  for (const [label,timebase,speed,voiceMapping] of cases) for (const profile of ["direct","no-delay"]) {
+    const make=()=>{
+      const f=fixture(1,false,false,speed,false,false,false,true,{timebase,voiceMapping});
+      const fps=f.plan.frameRate;
+      f.plan.captions=[{Index:1,Start:0,End:100/fps}];
+      f.plan.markers=[{Owner:"A2",SegmentIndex:0,Comments:"kiểm tra căn voice"}];
+      f.plan.reviewMarkers=[{start:0,end:100/fps,reason:"timing ước lượng – nghe lại",captionIndex:1}];
+      f.plan.settings={validationToleranceFrames:1,maxCoverageGapFrames:0};
+      vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
+      const manual=f.voice.getMarkers().createMarker(8);
+      Object.assign(manual,{guid:"manual",name:"VOICE SYNC - Voice",comments:"ghi chú riêng",colorIndex:6,end:8.2});
+      const otherCaption=f.voice.getMarkers().createMarker(9);
+      Object.assign(otherCaption,{guid:"captions",name:"VOICE SYNC - Caption",comments:"giữ bộ Tạo phụ đề\n[PremiereVoiceSync:caption:captions]",colorIndex:3,end:9.2});
+      return f;
+    };
+    const run=f=>profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
+    try {
+      const f=make(), manual=markerRows(f.voice.getMarkers()), fps=f.plan.frameRate;
+      const tools=f.api._markerTools, commit=tools.commit, committed=[];
+      tools.commit=function(group) {
+        committed.push(group.collection);
+        return commit.apply(this,arguments);
+      };
+      const result=run(f);
+      assert(result.report.ok,JSON.stringify(result.report));
+      for (const track of [f.seq.videoTracks[0],...f.seq.audioTracks]) {
+        assert.equal(Number(track.clips[0].start.ticks),0);
+        assert.equal(Number(track.clips[0].end.ticks),100*timebase);
+      }
+      const rows=issue55State(f);
+      function point(bank,kind,tag,frame,scale) {
+        const matches=rows[bank].filter(row=>row[3]==="VOICE SYNC - "+kind && row[4].endsWith("\n[PremiereVoiceSync:"+tag+"]"));
+        assert.equal(matches.length,1,kind+" on correct ProjectItem");
+        const [,start,end]=matches[0];
+        assert(Math.abs(start-frame/fps*scale)<1e-7,kind+" at frame "+frame);
+        assert.equal(end,start);
+      }
+      point(0,"Video","video",50,1.2);
+      if (voiceMapping) {
+        assert.deepStrictEqual(result.report.unattachedMarkers.map(m=>m.kind).sort(),["VOICE SYNC - Caption","VOICE SYNC - Voice"]);
+        assert.deepStrictEqual(rows[1],manual);
+      } else {
+        point(1,"Voice","voice",50,speed);
+        point(1,"Caption","caption:edit",51,speed);
+        assert.deepStrictEqual(rows[1].filter(row=>row[0]==="manual" || row[0]==="captions"),manual);
+        assert.equal(result.report.unattachedMarkerCount,0);
+      }
+      if (profile==="no-delay") {
+        const names=[...new Set(result.timings.map(t=>t.stage))];
+        assert.deepStrictEqual(names.slice(names.indexOf("Tạo caption")),["Tạo caption","Hậu kiểm","Gắn marker","Báo cáo"]);
+      }
+      assert.equal(committed.length,2);
+      assert.notEqual(committed[0],committed[1]);
+      assert(result.report.captionCreated && result.report.captionTemporaryBinRemoved);
+      assert.equal(f.seq.audioTracks[1].clips[0].speed,speed);
+      const repeat=make();
+      [repeat.nested.getMarkers(),repeat.voice.getMarkers()].forEach((bank,i)=>{
+        bank.items.length=0;
+        for(const [guid,start,end,name,comments,type,colorIndex] of rows[i]) {
+          Object.assign(bank.createMarker(start),{guid,end,name,comments,type,colorIndex});
+        }
+      });
+      repeat.nativeMutations.length=0;
+      assert(run(repeat).report.ok);
+      const markerWrites=repeat.nativeMutations.filter(([op,method,field])=>
+        op==="call" ? ["createMarker","deleteMarker","setColorByIndex"].includes(method) :
+          method===null && ["start","end","name","comments"].includes(field));
+      assert.deepStrictEqual(markerWrites,[]);
+      assert.deepStrictEqual(issue55State(repeat),rows);
+      console.log("THREE_MARKER_KINDS_OK "+label+" "+profile+" speed="+speed+" writes=0");
+    } catch (error) {
+      errors.push(label+" "+profile+" "+error.message);
+    }
+  }
+  for (const profile of ["direct","no-delay"]) {
+    try { checkNativeMarkerKinds(profile); }
+    catch (error) { errors.push(profile+" native classification "+error.message); }
+  }
+  if (errors.length) throw Error(errors.join("\n"));
+}
+function checkNativeMarkerKinds(profile) {
+  // Inject a speed duration mismatch on the first V1 piece and several final
+  // timeline readbacks. The post-check runs before any marker commit.
+  const f=fixture(3);
+  f.seq.speedDurationOffset=(clip,isVideo)=>isVideo && Number(clip.start.ticks)===0 ? -3 : 0;
+  const createCaption=f.seq.createCaptionTrack;
+  f.seq.createCaptionTrack=function() {
+    const video=f.seq.videoTracks[0].clips, audio=f.seq.audioTracks[0].clips, voice=f.seq.audioTracks[1].clips;
+    audio[0].start=time(3);
+    video[0].end=time(95);
+    video[1].getLinkedItems=()=>[];
+    audio[1].getSpeed=()=>null;
+    audio[2].end=time(365);
+    voice[0].start=time(3);
+    return createCaption.apply(this,arguments);
+  };
+  const r=profile==="direct"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
+  assert(!r.ok);
+  assert(r.captionCreated);
+  const picture=f.nested.getMarkers().items;
+  for (const reason of ["V1/A1 lệch vị trí kế hoạch","mép V1/A1 lệch nhau","chưa xác minh liên kết V1/A1",
+      "không đọc được speed","hở hình","độ dài sau speed chưa khớp","đuôi hình/tiếng lệch kế hoạch"]) {
+    assert(picture.some(m=>m.name==="VOICE SYNC - Video" && m.comments.toLowerCase().includes(reason.toLowerCase())),reason);
+    assert(!f.voice.getMarkers().items.some(m=>m.comments.toLowerCase().includes(reason.toLowerCase())),reason+" must stay on V1");
+  }
+  const voice=f.voice.getMarkers().items;
+  assert.equal(voice.length,1);
+  assert.equal(voice[0].name,"VOICE SYNC - Voice");
+  assert(voice[0].comments.includes("voice lệch vị trí kế hoạch") || voice[0].comments.includes("Voice lệch vị trí kế hoạch"));
+  assert.equal(voice[0].colorIndex,1);
+  assert.equal(r.captionMarkerCount,0);
+  assert.equal(r.unattachedMarkerCount,0);
+  console.log("NATIVE_WARNING_KINDS_OK "+profile+" Video=7 Voice=1");
+}
 // Preserve seeded identities for move and steady-rerun checks.
 function issue55Fixture(make) {
   const f = make(), markers = f.voice.getMarkers();
   f.plan.reviewMarkers = [{start:0,end:0.8,reason:"rà cue"}];
   for (let i = 0; i < f.plan.segments.length; i++) {
-    if (f.plan.segments[i].Kind === "retime") f.plan.markers.push({Owner:"A2",SegmentIndex:i,Name:"VOICE SYNC - Kiem tra can voice",Comments:"check "+i,ColorIndex:4});
+    if (f.plan.segments[i].Kind === "retime") f.plan.markers.push({Owner:"A2",SegmentIndex:i,Name:"VOICE SYNC - Voice",Comments:"check "+i,ColorIndex:4});
   }
   const old = markers.createMarker(0);
-  Object.assign(old,{guid:"old",name:"VOICE SYNC - Kiem tra can voice",comments:"old\n[PremiereVoiceSync:owned-marker:v1]",end:0.5,colorIndex:4});
+  Object.assign(old,{guid:"old",name:"VOICE SYNC - Voice",comments:"old\n[PremiereVoiceSync:voice]",end:0.5,colorIndex:4});
   const foreign = markers.createMarker(1);
   Object.assign(foreign,{guid:"manual",type:"Chapter",name:"chapter",comments:"manual",end:1.1,colorIndex:3});
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
@@ -251,16 +375,16 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
       assert.strictEqual(result.report[field],true,field);
     assert.equal(result.report.captionProjectItemCountAfter,result.report.captionProjectItemCountBefore);
     const evidence={markers:digest(issue55State(f).map(rows=>rows.map(row=>row.slice(1)))),timeline:digest(timeline)};
-    if(f.plan.markers.some(m=>m.Comments==="Sentence cues 1-1 needs review")){
-      const voiceRows=markerRows(f.voice.getMarkers()).filter(r=>r[3]==="VOICE SYNC - Kiem tra can voice");
-      assert(voiceRows.some(r=>r[4].includes("Sentence cues 1-1 needs review\ncheck 0")));
+    if(f.plan.markers.some(m=>m.Comments==="căn voice – nghe lại")){
+      const voiceRows=markerRows(f.voice.getMarkers()).filter(r=>r[3]==="VOICE SYNC - Voice");
+      assert(voiceRows.some(r=>r[4].includes("Căn voice – nghe lại\nCheck 0")));
     }
     if(index===2){
-      const rows=markerRows(f.voice.getMarkers()),review=rows.filter(r=>r[3]==="VOICE SYNC - Can kiem tra");
+      const rows=markerRows(f.voice.getMarkers()),review=rows.filter(r=>r[3]==="VOICE SYNC - Caption");
       assert.equal(review.length,1);
       assert(review[0][4].includes("First") && review[0][4].includes("Second"));
-      const voice=rows.find(r=>r[3]==="VOICE SYNC - Kiem tra can voice");
-      assert(voice[4].includes("check 0\nsecond voice reason"));
+      const voice=rows.find(r=>r[3]==="VOICE SYNC - Voice");
+      assert(voice[4].includes("Check 0\nSecond voice reason"));
       assert(Math.abs(voice[1]-50/30*0.9)<1e-8);
       assert(Math.abs(review[0][1]-51/30*0.9)<1e-8);
     }
@@ -302,14 +426,12 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
   if(process.argv.includes("--marker-reference"))process.exit(0);
 }
 function markerFailureCases() {
-  const nonCaptionRows=f=>issue55State(f).slice(0,-1).map(rows=>rows.filter(r=>r[3]!=="VOICE SYNC - Can kiem tra"));
+  const nonCaptionRows=f=>issue55State(f).slice(0,-1).map(rows=>rows.filter(r=>r[3]!=="VOICE SYNC - Caption"));
   let succeeded=null;
   for(const failCaption of [false,true]){
     const f=markerReferenceFixture(()=>fixture(6),0);
     const ruler=f.seq.markers;
-    for(const [i,name,tag] of [[0,"manual","note"],[1,"VOICE SYNC - Can kiem tra","review-marker:v2:edit:seq"],[2,"VOICE SYNC - Kiem tra toc do","owned-marker:sequence:v1:seq"]]){
-      Object.assign(ruler.createMarker(i),{name,comments:"[PremiereVoiceSync:"+tag+"]",end:i+0.25,colorIndex:2});
-    }
+    Object.assign(ruler.createMarker(0),{name:"manual",comments:"note",end:0.25,colorIndex:2});
     const before=issue55State(f);
     if(failCaption) f.seq.createCaptionTrack=()=>{throw Error("injected caption failure");};
     const report=finishTrial(f,"no-delay").report;
@@ -322,7 +444,7 @@ function markerFailureCases() {
       assert.deepStrictEqual(nonCaptionRows(f),succeeded,"Caption failure still writes picture and voice markers");
       assert.notDeepStrictEqual(issue55State(f),before,"Caption failure no longer skips the marker stage");
     }else {
-      assert.deepStrictEqual(markerRows(ruler),before[before.length-1].slice(0,1));
+      assert.deepStrictEqual(markerRows(ruler),before[before.length-1]);
       succeeded=nonCaptionRows(f);
     }
   }
@@ -330,18 +452,20 @@ function markerFailureCases() {
   // can still change this owner before a failed postcheck.
   const seed=issue55Fixture(()=>fixture(1)),rerun=issue55Fixture(()=>fixture(1));
   assert(JSON.parse(seed.api.executePlan("fixture")).ok);
-  const bank=rerun.voice.getMarkers();
+  const bank=rerun.nested.getMarkers();
   bank.items.length=0;
-  for(const m of seed.voice.getMarkers().items)Object.assign(bank.createMarker(m.start.seconds),m);
+  for(const m of seed.nested.getMarkers().items)Object.assign(bank.createMarker(m.start.seconds),m);
   const snapshot=markerRows(bank);
+  const voiceBefore=markerRows(seed.voice.getMarkers());
   rerun.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
   const failed=finishTrial(rerun,"no-delay").report;
   assert(!failed.ok && failed.linkMismatchCount===1,JSON.stringify(failed));
-  assert.notDeepStrictEqual(markerRows(bank),snapshot,"Failed postcheck keeps the final review changes");
+  assert.notDeepStrictEqual(markerRows(bank),snapshot,"Failed postcheck keeps the Video marker changes");
+  assert.deepStrictEqual(markerRows(rerun.voice.getMarkers()),voiceBefore);
   for(const profile of ["baseline","fast","no-delay"]){
     const f=issue55Fixture(()=>chapterFixture(true)),before=issue55State(f);
     let r=JSON.parse(f.api.beginDiagnosticEdit("fixture","owners",profile));
-    while(!r.done && !f.voice.getMarkers().items.some(m=>m.comments.includes("check 0")))r=JSON.parse(f.api.advanceDiagnosticEdit("owners",r.nextCall));
+    while(!r.done && !f.voice.getMarkers().items.some(m=>m.comments.includes("Check 0")))r=JSON.parse(f.api.advanceDiagnosticEdit("owners",r.nextCall));
     assert.equal(r.nextStage,"Gắn marker");
     assert.equal(f.secondVoice.getMarkers().items.length,0);
     assert(f.actions.some(a=>a[0]==="captionTrack"));
@@ -413,7 +537,7 @@ for(const [count,gaps,voiceSpeed,merged] of [[6,false,1,true],[65,false,1,false]
   assert.deepStrictEqual(actual.report,expected.report);
   const stages=actual.timings.filter(t=>!["Gắn marker"].includes(t.stage));
   assert(stages.every(t=>t.complete),"No-delay must complete every loop stage in one host call, except marker owners.");
-  for(const label of ["Cắt V1–A1 linked","Bỏ hình–A1 theo SRT đã lược","Tăng speed V1–A1","Dồn vị trí V1–A1","Giảm speed V1–A1","Đối chiếu mép V1–A1","Cắt voice A2","Bỏ lát khoảng lặng A2","Dồn voice A2","Chuẩn bị marker voice","Chuẩn bị marker tốc độ"])assert.equal(stages.filter(t=>t.stage===label).length,1,label);
+  for(const label of ["Cắt V1–A1 linked","Bỏ hình–A1 theo SRT đã lược","Tăng speed V1–A1","Dồn vị trí V1–A1","Giảm speed V1–A1","Đối chiếu mép V1–A1","Cắt voice A2","Bỏ lát khoảng lặng A2","Dồn voice A2"])assert.equal(stages.filter(t=>t.stage===label).length,1,label);
 }
 console.log("NO_DELAY_STAGE_PARITY_OK:one-call-per-loop;native-set-call-mutations-equal-baseline;marker-owner-boundary-preserved");
 // Freeze time to isolate iteration caps, then advance it beyond every budget
@@ -487,7 +611,7 @@ for(const profile of ["baseline","fast","no-delay"]){
     if(mode==="speed-unreadable")f.seq.videoTracks[0].clips[0].getSpeed=()=>null;
     if(mode==="voice-unreadable" || mode==="voice-readback"){
       if(mode==="voice-unreadable")f.seq.audioTracks[1].clips[0].getSpeed=()=>null;
-      f.plan.markers=[{Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"listen",ColorIndex:4}];
+      f.plan.markers=[{Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Voice",Comments:"listen",ColorIndex:4}];
     }
     if(mode==="nest-readback"){
       f.nested.isSequence=()=>true;
@@ -504,8 +628,8 @@ for(const profile of ["baseline","fast","no-delay"]){
     assert(result.ok,JSON.stringify(result));
     assert.equal(f.seq.markers.items.length,0);
     assert.equal(result.unattachedMarkerCount,result.unattachedMarkers.length);
-    const owned=result.unattachedMarkers.filter(row=>row.kind!=="VOICE SYNC - Can kiem tra");
-    assert.equal(owned.length,1);assert(owned[0].reason);assert(owned[0].end>owned[0].start);
+    const owned=result.unattachedMarkers.filter(row=>row.kind!=="VOICE SYNC - Caption");
+    assert(owned.length>=1);assert(owned[0].reason);assert(owned[0].end>owned[0].start);
     assert.equal(result.clipMarkerCount,result.markerCount);
     passed++;
   }catch(e){failures.push(profile+" "+mode+": "+e.message);}}
@@ -521,22 +645,22 @@ for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65,1
   const stableReport=JSON.parse(stable.api.executePlan("fixture")),result=finishTrial(trial,profile);
   assert(stableReport.ok,JSON.stringify(stableReport));assert(result.report.ok,JSON.stringify(result.report));
   assert.deepStrictEqual(result.report,stableReport);assert.deepStrictEqual(trial.actions,stable.actions);
-  assert.strictEqual(result.report.clearedClipMarkerCount,2);
+  assert.strictEqual(result.report.clearedClipMarkerCount,2-Math.min(2,result.report.videoMarkerCount));
   assert.strictEqual(result.report.mergeClipMarkerCount,Math.floor(count/2));
   const markers=trial.nested.getMarkers().items;
   assert(markers.some(m=>m.comments==="My manual note"));
   assert(!markers.some(m=>m.start.seconds===1));
-  assert(markers.some(m=>m.comments.startsWith("old merge")),"Out-of-scope source marker preserved.");
+  assert(!markers.some(m=>m.comments.startsWith("surplus")),"Surplus owned Video marker reconciled.");
   for(const visual of trial.plan.visualSegments.filter(v=>v.MemberSegmentIndices.length===2)){
     const found=markers.filter(m=>m.start.seconds>=visual.SourceStart-1e-6&&m.start.seconds<visual.SourceEnd-1e-6&&/đã gộp hình/i.test(m.comments));
     assert.strictEqual(found.length,1,"Every merged group owns exactly one marker, even within thresholds.");
     const middleFrame=Math.round((visual.NewStartFrame+visual.NewEndFrame)/2);
     const expectedSource=visual.SourceStart+(middleFrame-visual.NewStartFrame)/30*visual.AppliedSpeedPercent/100;
     assert(Math.abs(found[0].start.seconds-expectedSource)<1e-6);assert.equal(found[0].end,found[0].start.seconds);
-    assert(found[0].comments.includes("[PremiereVoiceSync:owned-marker:v1]"));
+    assert(found[0].comments.includes("[PremiereVoiceSync:video]"));
     assert.strictEqual(found[0].colorIndex,visual.AppliedSpeedPercent<90?3:visual.AppliedSpeedPercent>110?1:6);
   }
-  assert.strictEqual(trial.voice.getMarkers().items.find(m=>m.name==="VOICE SYNC - Kiem tra can voice").colorIndex,4);
+  assert.strictEqual(trial.voice.getMarkers().items.find(m=>m.name==="VOICE SYNC - Voice").colorIndex,4);
   assert.strictEqual(result.report.clipMarkerColorFailureCount,0);
   if(count===6)assert.strictEqual(result.report.speedWarningSentenceCount,1,"Merged markers are not all speed warnings.");
 }
@@ -544,7 +668,7 @@ const colored=fixture(6,false,false,1,false,true),coloredResult=finishTrial(colo
 assert(coloredResult.report.ok);
 assert(colored.nested.getMarkers().items.some(m=>m.colorIndex===1),"Fast speed uses red.");
 assert(colored.nested.getMarkers().items.some(m=>m.colorIndex===3),"Slow speed uses orange.");
-const failedColor=fixture(6,false,false,1,true,true);
+const failedColor=fixture(6,false,false,1,true);
 const bank=failedColor.nested.getMarkers(),create=bank.createMarker;
 bank.createMarker=function(seconds){const m=create.call(this,seconds);m.setColorByIndex=function(){throw Error("NATIVE_COLOR_FAILED");};return m;};
 const colorReport=finishTrial(failedColor,"fast").report;
@@ -667,7 +791,7 @@ f=fixture(6);f.plan.reviewMarkers=[{start:0,end:1,reason:"review"}];delete f.seq
 vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
 const markerFailure=finishTrial(f,"no-delay").report;assert(markerFailure.ok);assert(markerFailure.captionCreated);assert.equal(markerFailure.unattachedMarkerCount,1);
 f=fixture(1);f.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
-const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,1);assert(f.voice.getMarkers().items[0].comments.startsWith("Chưa xác minh liên kết V1/A1 – kiểm tra\n"));assert.equal(f.voice.getMarkers().items[0].colorIndex,1);
+const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,0);assert(f.nested.getMarkers().items[0].comments.includes("Chưa xác minh liên kết V1/A1 – kiểm tra"));assert.equal(f.nested.getMarkers().items[0].colorIndex,1);
 for(const profile of ["baseline","fast","no-delay"]){
   f=fixture(1);f.seq.failSpeed=true;
   const nativeFailure=finishTrial(f,profile).report;
@@ -803,8 +927,8 @@ for(const compact of [false,true])for(const profile of ["stable","baseline","fas
   const markers=f.nested.getMarkers().items;
   assert.equal(markers.length,color===null?0:1);assert.equal(result.speedWarningSentenceCount,markers.length);assert.equal(result.plannedSpeedWarningSentenceCount,markers.length);
   if(color!==null){
-    assert.equal(markers[0].name,"VOICE SYNC - Kiem tra toc do");assert.equal(markers[0].colorIndex,color);
-    assert.equal(markers[0].comments,"Cue 12–13: tốc độ hình "+percent+"% (ngưỡng 70–130%) – kiểm tra\n[PremiereVoiceSync:owned-marker:v1]");
+    assert.equal(markers[0].name,"VOICE SYNC - Video");assert.equal(markers[0].colorIndex,color);
+    assert.equal(markers[0].comments,"Cue 12–13: tốc độ hình "+percent+"% (ngưỡng 70–130%) – kiểm tra\n[PremiereVoiceSync:video]");
     assert(markers[0].start.seconds>=0&&markers[0].start.seconds<4,"Marker stays inside the same V1 source range.");
     assert.equal(f.voice.getMarkers().items.length,0);
   }
@@ -836,7 +960,8 @@ for (const compact of [false, true]) for (const profile of ["stable", "baseline"
   } else vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
   const result = profile === "stable" ? JSON.parse(f.api.executePlan("fixture")) : finishTrial(f,profile).report;
   assert.equal(result.reviewMarkerFailureCount, 0);
-  assert.equal(f.voice.getMarkers().items[0].comments, "Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra\n[PremiereVoiceSync:review-marker:v3:edit]");
+  assert(f.nested.getMarkers().items[0].comments.includes("Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra"));
+  assert.equal(f.voice.getMarkers().items.length,0);
 }
 for(const make of [()=>fixture(65,false,true),()=>fixture(6,false,false,1,true),()=>cueFixture(6),()=>editedFixture(true,true)]){
   const full=make(),compact=make(),staged=make();
@@ -908,13 +1033,15 @@ for(const profile of ["baseline","fast","no-delay"]){
   const committed=sourceMarkerState(f,f.nested),actions=f.actions.length;
   JSON.parse(f.api.abortDiagnosticEdit("token"));assert.equal(f.actions.length,actions);assert.deepStrictEqual(sourceMarkerState(f,f.nested),committed);assert.deepStrictEqual(sourceMarkerState(f,f.voice),beforeVoice);
 
-  // A user modification between preparation and commit is not overwritten.
-  f=fixture(6,false,false,1,false,true);response=JSON.parse(f.api.beginDiagnosticEdit("fixture","token",profile));
+  // A user modification on the second owner after the first commit is preserved.
+  f=issue55Fixture(()=>fixture(6,false,false,1,false,true));response=JSON.parse(f.api.beginDiagnosticEdit("fixture","token",profile));
   do{response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);}while(response.nextStage!=="Gắn marker");
-  f.nested.getMarkers().items[0].comments="user changed while paused";
-  const manualState=sourceMarkerState(f,f.nested);
+  response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));
+  assert.equal(response.nextStage,"Gắn marker");
+  f.voice.getMarkers().items[0].comments="user changed while paused";
+  const manualState=sourceMarkerState(f,f.voice);
   while(!response.done)response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));
-  assert(!response.result.ok);assert(response.result.clipMarkerFailures.some(x=>x.includes("changed since preparation")));assert.deepStrictEqual(sourceMarkerState(f,f.nested),manualState);
+  assert(!response.result.ok);assert(response.result.clipMarkerFailures.some(x=>x.includes("changed since preparation")));assert.deepStrictEqual(sourceMarkerState(f,f.voice),manualState);
 }
 console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-old;plan-without-write;cancel-between-owners;marker-change-guard");
 // Exercise actual moves in measured/unmeasured executors and every scheduler.
@@ -923,11 +1050,12 @@ console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-
   function movedFixture(executor){
     const previous=fixtureExecutor;fixtureExecutor=executor;
     let f;try{f=fixture(6,false,false,1,true,false,false,true);}finally{fixtureExecutor=previous;}
-    f.plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Kiem tra can voice",Comments:"Sentence cues 1-1 needs review",ColorIndex:1});
+    f.plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Voice",Comments:"căn voice – nghe lại",ColorIndex:1});
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
     for(const item of [f.nested,f.voice]){
       const m=item.getMarkers().createMarker(1);const bounds=markerBounds({},1,1.25);
-      m.name="VOICE SYNC - Kiem tra toc do";m.comments="old\n[PremiereVoiceSync:owned-marker:v1]";m.setColorByIndex(4);
+      const kind=item===f.nested?"Video":"Voice";
+      m.name="VOICE SYNC - "+kind;m.comments="old\n[PremiereVoiceSync:"+kind.toLowerCase()+"]";m.setColorByIndex(4);
       Object.defineProperty(m,"start",{get:()=>bounds.start,set(v){bounds.start=v;f.actions.push(["markerStart",v]);}});
       Object.defineProperty(m,"end",{get:()=>bounds.end,set(v){bounds.end=v;f.actions.push(["markerEnd",v]);}});
     }

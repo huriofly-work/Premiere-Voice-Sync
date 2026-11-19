@@ -449,8 +449,8 @@ for ($i=0; $i -lt $groups.Count; $i++) {
     $hasLowRecognitionConfidence=@($recognitionCues | Where-Object {[double]$_.Confidence -lt $lowConfidenceThreshold}).Count -gt 0
     if ($hasRecoveredTiming -or $hasLowRecognitionConfidence) {
         $recognitionConfidence=if($recognitionCues.Count){($recognitionCues | Measure-Object Confidence -Minimum).Minimum}else{'not-applicable'}
-        $markerReason = if ($hasRecoveredTiming) { "recovered timestamp; confidence=$recognitionConfidence" } else { "confidence=$recognitionConfidence" }
-        $markers.Add([pscustomobject]@{Time=Round6 (From-Frame $newVoiceStartFrame);SegmentIndex=$retimeSegmentIndex;Owner='A2';Name='VOICE SYNC - Kiem tra can voice';Comments="Sentence cues $($g.FirstCue)-$($g.LastCue) $markerReason";ColorIndex=1})
+        $markerReason = if ($hasRecoveredTiming) { "mốc voice khôi phục (confidence=$recognitionConfidence) – nghe lại" } else { "căn voice chưa chắc (confidence=$recognitionConfidence) – nghe lại" }
+        $markers.Add([pscustomobject]@{SegmentIndex=$retimeSegmentIndex;Owner='A2';Comments=$markerReason})
     }
     $cursorFrame = $newEndFrame
     if ($i -lt $groups.Count-1) { Add-GapSegment ([int]$g.SourceEndFrame) ([int]$groups[$i+1].SourceStartFrame) }

@@ -3,9 +3,9 @@ const markerBounds=require("./marker-bounds");
 const assert=require("assert"),fs=require("fs"),path=require("path"),vm=require("vm");
 const source=fs.readFileSync(path.join(__dirname,"../../extension/jsx/host.jsx"),"utf8");
 const context=vm.createContext({$:{_PVS:{}}});vm.runInContext(source,context);
-const api=context.$._PVS._markerTools,apply=context.$._PVS._applyReviewMarkers;
-const tag="[PremiereVoiceSync:review-marker:v1:captions]";
-const owned=(seconds,note="old")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:note+"\n"+tag,color:4,end:seconds+0.25});
+const api=context.$._PVS._markerTools,apply=context.$._PVS._applyCaptionMarkers;
+const tag="[PremiereVoiceSync:caption:captions]";
+const owned=(seconds,note="old")=>({seconds,name:"VOICE SYNC - Caption",comments:note+"\n"+tag,color:4,end:seconds+0.25});
 function fixture(initial=[],onMarker=m=>m){
   let id=0;const values=[],events=[],faults={},reads={first:0,next:0};
   function marker(data){
@@ -33,10 +33,10 @@ function fixture(initial=[],onMarker=m=>m){
 }
 function state(f){return f.values.map(m=>({seconds:m.start.seconds,end:typeof m.end==="number"?m.end:m.end.seconds,name:m.name,comments:m.comments,color:m.getColorByIndex(),type:m.type})).sort((a,b)=>a.seconds-b.seconds);}
 function group(f){return api.group(f.collection,[{start:0,end:10}],m=>m.comments.includes(tag),0.5/30);}
-const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Can kiem tra",comments:comments+"\n"+tag,color:4});
+const desired=(seconds,comments="new")=>({seconds,name:"VOICE SYNC - Caption",comments:comments+"\n"+tag,color:4});
 function run(f,issues,captions){
   const clip={start:{seconds:0},end:{seconds:10},inPoint:{seconds:0},outPoint:{seconds:10},getSpeed:()=>1,projectItem:{nodeId:"voice",getMarkers:()=>f.collection}};
-  return apply({timebase:f.seq.timebase,sequenceID:"s"},issues,[{start:0,end:10}],"captions",captions,[clip]);
+  return apply({timebase:f.seq.timebase,sequenceID:"s"},issues,[{start:0,end:10}],captions,[clip]);
 }
 
 // Half-open spans, half-frame ties and collision search on the timeline grid.
@@ -154,7 +154,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const timeline=fixture();timeline.seq.sequenceID="review-fixes";
     const sources=ranges.map(()=>fixture());
     const clips=ranges.map(([start,end],i)=>({start:{seconds:start},end:{seconds:end},inPoint:{seconds:10},outPoint:{seconds:10+end-start},getSpeed:()=>1,projectItem:{nodeId:"source-"+i,getMarkers:()=>sources[i].collection}}));
-    const invoke=(issues=[{start:1.9,end:3.5,reason:"padded caption"}])=>apply(timeline.seq,issues,[{start:0,end:10}],"captions",null,clips);
+    const invoke=(issues=[{start:1.9,end:3.5,reason:"padded caption"}])=>apply(timeline.seq,issues,[{start:0,end:10}],null,clips);
     return {timeline,sources,clips,invoke};
   }
   for(const previousEnd of [1.8,2])test("#3 padding selects largest overlap, previous end="+previousEnd,()=>{
@@ -177,10 +177,6 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
       assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerCount,1);assert.equal(r.unattachedMarkerCount,2);
     });
   }
-  test("#6 v1 belongs to ruler only",()=>{
-    const v=setup([[1,4]]),legacy=owned(10.5);v.sources[0].marker(legacy);v.timeline.marker(owned(2));
-    v.invoke([]);assert.equal(v.sources[0].values.length,1,"Never clean v1 on ProjectItems");assert.equal(v.timeline.values.length,0);
-  });
   test("#7 shared speed normalization contract",()=>{
     const factor=context.$._PVS._speedFactor;assert.equal(typeof factor,"function");
     for(const [raw,expected] of [[1,1],[1.1,1.1],[110,1.1],[10,10],[10.1,10.1/100],[null,null],[undefined,null],["",null],[0,null],[-1,null],[NaN,null],[Infinity,null]])assert.equal(factor({getSpeed:()=>raw}),expected);
@@ -202,7 +198,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     return {source,timeline,clip};
   }
   const issue={start:15.079,end:16.079,reason:"timing ước lượng – kiểm mép"};
-  const invoke=(v,issues=[issue])=>apply(v.timeline.seq,issues,[{start:0,end:30}],"captions",null,[v.clip]);
+  const invoke=(v,issues=[issue])=>apply(v.timeline.seq,issues,[{start:0,end:30}],null,[v.clip]);
   for(const speed of [1,1.1,110])test("voice range speed "+speed,()=>{
     const v=voice(speed),r=invoke(v),factor=speed>10?speed/100:speed;
     assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.unattachedMarkerCount,0);
@@ -231,27 +227,27 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const v=voice();v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
     const r=invoke(v);assert.equal(r.reviewMarkerClipCount,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2))<1e-7);
   });
-  test("shared voice replaces the previous sequence review set",()=>{
-    const v=voice(), name="VOICE SYNC - Can kiem tra";
-    const oldTag="[PremiereVoiceSync:review-marker:v2:captions:A%20%2F%201]";
-    v.source.marker({seconds:1,name:"manual",comments:oldTag});
-    v.source.marker({seconds:2,name:"VOICE SYNC - Kiem tra can voice",comments:"[PremiereVoiceSync:owned-marker:v1]"});
-    for(const comments of ["manual","[PremiereVoiceSync:owned-marker:v1]","[PremiereVoiceSync:review-marker:v2:edit:A]",
-      "[PremiereVoiceSync:review-marker:v2:captions:]","[PremiereVoiceSync:review-marker:v2:captions:A:B]",
-      "[PremiereVoiceSync:review-marker:v2:captions:A%Z1]"])v.source.marker({seconds:3,name,comments});
-    const before=state(v.source);
-    v.timeline.seq.sequenceID="A / 1";
+  test("shared ProjectItem reconciles Caption for the active workflow only",()=>{
+    const v=voice();
+    const protectedMarkers=[
+      {seconds:1,name:"manual",comments:tag},
+      {seconds:2,name:"VOICE SYNC - Voice",comments:"[PremiereVoiceSync:voice]"},
+      {seconds:3,name:"VOICE SYNC - Caption",comments:"[PremiereVoiceSync:caption:edit]"},
+      {seconds:4,name:"VOICE SYNC - Caption",comments:"manual"},
+      {seconds:5,name:"VOICE SYNC - Caption",comments:tag+" text"},
+      {seconds:6,name:"VOICE SYNC - Caption",comments:tag,type:"Chapter"}
+    ];
+    for (const fields of protectedMarkers) v.source.marker(fields);
+    v.timeline.marker(owned(2));
+    const before=state(v.source), ruler=state(v.timeline);
+    v.source.marker(owned(10));
+    const original=v.source.values.at(-1);
+    assert.equal(invoke(v).captionMarkerCount,1);
+    assert(v.source.values.includes(original),"Reuse the prior GUID");
+    v.timeline.seq.sequenceID="another sequence";
+    v.source.events.length=0;
     invoke(v);
-    const original=v.source.values[v.source.values.length-1];
-    v.timeline=fixture();
-    v.timeline.seq.sequenceID="B";
-    v.timeline.marker({seconds:2,name,comments:oldTag});
-    const ruler=state(v.timeline);
-    invoke(v);
-    assert.equal(v.source.values.length,before.length+1,"two sequences share one review set");
-    assert(original.comments.endsWith("[PremiereVoiceSync:review-marker:v3:captions]"));
-    assert(v.source.values.includes(original),"matching source position keeps its marker");
-    v.timeline.seq.sequenceID="C";
+    assert.deepStrictEqual(v.source.events,[]);
     invoke(v,[]);
     assert.deepStrictEqual(state(v.source),before);
     assert.deepStrictEqual(state(v.timeline),ruler);
@@ -260,47 +256,26 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const v=voice(), writes=()=>v.source.events.filter(e=>e[0]!=="create").length;
     invoke(v);
     const marker=v.source.values[0];
-    assert(marker.comments.endsWith("\n[PremiereVoiceSync:review-marker:v3:captions]"),marker.comments);
+    assert(marker.comments.endsWith("\n[PremiereVoiceSync:caption:captions]"),marker.comments);
     assert(!/seq36/.test(marker.comments),"the sequence ID stays out of the notes");
     v.source.events.length=0; v.timeline.seq.sequenceID="another sequence";
     invoke(v);
     assert.equal(writes(),0,"same notes on another sequence write nothing: "+JSON.stringify(v.source.events));
     assert.equal(v.source.values.length,1); assert.equal(v.source.values[0],marker);
   });
-  test("v2 review tags with a sequence ID migrate once to v3",()=>{
-    const v=voice(); invoke(v);
-    const marker=v.source.values[0], notes=marker.comments.split("\n")[0];
-    marker.comments=notes+"\n[PremiereVoiceSync:review-marker:v2:captions:old%20seq]";
-    v.source.marker({seconds:14,name:"VOICE SYNC - Can kiem tra",comments:notes+"\n[PremiereVoiceSync:review-marker:v2:edit:old]"});
-    v.source.events.length=0; v.timeline.seq.sequenceID="new";
-    invoke(v);
-    assert.equal(v.source.values[0],marker,"the migrated marker keeps its GUID");
-    assert.equal(marker.comments,notes+"\n[PremiereVoiceSync:review-marker:v3:captions]");
-    assert(v.source.values.some(m=>m.comments.endsWith("review-marker:v2:edit:old]")),"other workflow untouched");
-    v.source.events.length=0; invoke(v);
-    assert.deepStrictEqual(v.source.events,[],"second run after migration writes nothing");
-  });
-  test("scoped rerun and empty cleanup",()=>{
-    const v=voice(),name="VOICE SYNC - Can kiem tra",tag="[PremiereVoiceSync:review-marker:v2:captions:seq36]";
-    v.timeline.marker({seconds:2,name,comments:"legacy\n"+"[PremiereVoiceSync:review-marker:v1:captions]"});
-    for(const comments of [tag,"[PremiereVoiceSync:review-marker:v1:captions]","[PremiereVoiceSync:review-marker:v2:edit:seq36]","[PremiereVoiceSync:review-marker:v2:captions:other]","manual"])
-      v.source.marker({seconds:14,name,comments});
-    assert.equal(invoke(v).reviewMarkerClipCount,1);assert.equal(v.timeline.values.length,0);assert.equal(v.source.values.length,4);
-    invoke(v,[]);assert.equal(v.source.values.length,3);assert(v.source.values.some(m=>m.comments==="manual"));
-  });
   test("same media across clips clamps to largest overlap at first clip",()=>{
     const v=voice(1.1);v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
     const next=Object.assign({},v.clip,{start:{seconds:15.8},end:{seconds:20},inPoint:{seconds:17},outPoint:{seconds:21.2}});
-    const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],"captions",null,[v.clip,next]);
+    const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],null,[v.clip,next]);
     assert.equal(r.reviewMarkerClipCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2)*1.1)<1e-7);
   });
-  test("unsupported rerun cleans scoped v2 only",()=>{
+  test("unsupported mapping retains the owned marker for retry",()=>{
     const v=voice();invoke(v);v.clip.isSpeedReversed=()=>true;
-    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,0);
+    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,1);
   });
   test("mixed supported and unsupported sources are reported",()=>{
     const v=voice(),other=Object.assign({},v.clip,{getSpeed:()=>NaN});
-    const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],"captions",null,[v.clip,other]);
+    const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],null,[v.clip,other]);
     assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,0);
   });
   console.log("VOICE_CLIP_REVIEW_CASES:passed="+checks+";failed="+failures.length);
@@ -313,7 +288,7 @@ for (const [captions, expected] of [[[{Index:20,Start:1,End:1.5},{Index:21,Start
   const native = fixture();
   const result = run(native, [{start:1,end:2,reason:"hở hình 3 frame – kiểm tra"}], captions);
   assert.equal(result.reviewMarkerCount, 1); assert.equal(result.reviewMarkerFailureCount, 0);
-  assert.equal(native.values[0].comments, expected + "\n[PremiereVoiceSync:review-marker:v3:captions]");
+  assert.equal(native.values[0].comments, expected + "\n[PremiereVoiceSync:caption:captions]");
 }
 
 // Reuse the same native marker, including duration/GUID; identical reruns write nothing.
@@ -377,52 +352,46 @@ console.log("MARKER_RECONCILIATION_OK:reuse;no-write-rerun;ownership;duration;sc
 
 // Actual clip coordinate adapter: request planning stays read-only; source scope
 // survives trimmed/pre-retimed clips; actual returned positions are rechecked.
-const helperStart=source.indexOf("    function projectItemKey(trackItem)");
-const helperEnd=source.indexOf("\n    try {\n",helperStart);
-assert(helperStart>=0&&helperEnd>helperStart,"Extract marker helpers before the executor's outer try block.");
-vm.runInContext(source.slice(helperStart,helperEnd),context);
-const clipTag="[PremiereVoiceSync:owned-marker:v1]";
-function clipFixture(){
-  const f=fixture([{seconds:9,name:"VOICE SYNC - Kiem tra toc do",comments:"old\n"+clipTag}]);
+const host=context.$._PVS;
+function clipFixture() {
+  const f=fixture([{seconds:9,name:"VOICE SYNC - Voice",comments:"old\n[PremiereVoiceSync:voice]"}]);
   const item={name:"source",projectItem:{nodeId:"shared",getMarkers:()=>f.collection},getSpeed:()=>2,inPoint:{seconds:2},outPoint:{seconds:6},start:{seconds:0},end:{seconds:4}};
-  const owner={Item:item,Ranges:[{start:4,end:12}]},groups={};context.prepareClipMarkerGroup(owner,groups,30);
-  return {...f,item,owner,groups};
+  const owners=[], index={};
+  host._addMarkerSource(owners,index,item,"voice");
+  return {...f,item,owners};
 }
-const clipSpec={Owner:"A2",Name:"VOICE SYNC - Kiem tra can voice",Comments:"review"};
-f=clipFixture();const oldClipState=state(f);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
+function prepareVoice(f) {
+  const index=host._prepareMarkerSources(f.owners,30,"edit"), stats=host._markerStats();
+  host._planClipMarkers(index,[f.item],[{piece:0,start:0,end:4,reason:"review",color:4}],"Voice","edit",30,[],stats);
+  return stats;
+}
+f=clipFixture();
+const oldClipState=state(f), originalVoice=f.values[0];
+let voiceStats=prepareVoice(f);
 assert.deepEqual(state(f),oldClipState);assert.equal(f.events.length,0);
-r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.deleted,0);assert.equal(r.timings.moves,1);assert.equal(r.timings.creates,0);assert.equal(f.values[0].start.seconds,8);assert.equal(state(f)[0].end,8);assert.equal(f.values[0].getColorByIndex(),4);
-// Reprepare simulates another run on the same input. Marker remains at 8s.
-f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
-r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[]);
-f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.faults.positionOffset=10;
-r=api.commit(f.owner.Group);assert(r.failures.length);assert.deepEqual(state(f),oldClipState);
-f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);context.blockClipMarkerGroup(f.item,f.groups);
-r=api.commit(f.owner.Group);assert(r.failures.length);assert.deepEqual(state(f),oldClipState);assert.equal(f.events.length,0);
-f=clipFixture();context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);
-assert.equal(f.owner.Group.desired.length,1,"Identical warnings on a repeated source do not duplicate.");
-// The host rounds both Time fields of the point to the same source instant.
-const rounded=f.values[0], roundedEnd=Object.getOwnPropertyDescriptor(rounded,"end");
-Object.defineProperty(rounded,"end",{get:roundedEnd.get,set:value=>roundedEnd.set(value+0.01)});
-f.faults.positionOffset=0.01;r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.equal(r.failures.length,0);
-f.groups={};context.prepareClipMarkerGroup(f.owner,f.groups,30);context.planOwnedClipMarker(f.item,clipSpec,30,f.groups);f.events.length=0;
-r=api.commit(f.owner.Group);assert.equal(r.count,1);assert.deepEqual(f.events,[],"Quantized source positions stay stable across reruns.");
-console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-write-rerun;wrong-native-position;blocked-group-retains-old;shared-source-dedup;quantized-source-rerun");
-// Owned V1/A2 ruler fallbacks reconcile only their tagged sequence/range.
-{
-  const timeline=fixture([{seconds:1,name:"manual",comments:"keep"}]);timeline.seq.sequenceID="owned-rerun";
-  const marker=timeline.marker({seconds:2,end:3,name:clipSpec.Name,comments:"[PremiereVoiceSync:owned-marker:sequence:v1:owned-rerun]"});
-  timeline.marker({seconds:4,name:clipSpec.Name,comments:"foreign\n[PremiereVoiceSync:owned-marker:sequence:v1:other]"});
-  timeline.marker({seconds:8,name:clipSpec.Name,comments:marker.comments});
-  r=context.cleanLegacyOwnedRulerMarkers(timeline.seq,6,30);assert.equal(r.count,0);assert.equal(timeline.values.length,3);assert(!timeline.values.includes(marker));
-  assert(timeline.values.some(m=>m.name==="manual"));assert(timeline.values.some(m=>m.start.seconds===8));
-  console.log("LEGACY_RULER_CLEANUP_OK");
+r=host._commitMarkerSource(f.owners[0],voiceStats,[]);
+assert.equal(r.count,1);assert.equal(r.timings.moves,1);assert.equal(r.timings.creates,0);
+assert.equal(f.values[0],originalVoice);assert.equal(f.values[0].start.seconds,8);assert.equal(state(f)[0].end,8);
+f.events.length=0;voiceStats=prepareVoice(f);host._commitMarkerSource(f.owners[0],voiceStats,[]);assert.deepEqual(f.events,[]);
+f=clipFixture();voiceStats=prepareVoice(f);f.faults.positionOffset=10;
+r=host._commitMarkerSource(f.owners[0],voiceStats,[]);assert(r.failures.length);assert.deepEqual(state(f),oldClipState);
+assert.equal(voiceStats.unattachedMarkers[0].kind,"VOICE SYNC - Voice");
 
-}
+// Read back a point rounded by the native collection, then keep it on rerun.
+f=clipFixture();
+f.values.length=0;
+const createRounded=f.collection.createMarker;
+f.collection.createMarker=seconds=>createRounded(seconds+0.01);
+voiceStats=prepareVoice(f);
+r=host._commitMarkerSource(f.owners[0],voiceStats,[]);
+assert.equal(r.count,1);assert.equal(r.failures.length,0);
+f.events.length=0;voiceStats=prepareVoice(f);host._commitMarkerSource(f.owners[0],voiceStats,[]);
+assert.deepEqual(f.events,[],"Quantized source positions stay stable across reruns.");
+console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-write-rerun;wrong-native-position;quantized-source-rerun");
 const main=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8");
 vm.runInContext(main.slice(main.indexOf("  function postcheckError(result)"),main.indexOf("  var hostReadyPromise =")),context);
 assert(context.postcheckError({clipMarkerFailureCount:1,clipMarkerFailures:["Marker restoration incomplete; inspect before retry."]}).includes("Marker restoration incomplete"),"Restoration details must reach the visible workflow error.");
-for (const workflow of ["edit", "captions"]) {
+{
   const source = fixture(), ruler = fixture();
   ruler.seq.sequenceID = "merge";
   const projectItem = {nodeId:"voice", getMarkers:()=>source.collection};
@@ -433,8 +402,8 @@ for (const workflow of ["edit", "captions"]) {
   const pieces = [piece(0, 3), piece(3, 5)];
   const issues = [[20,30],[0,12],[10,20],[10,20],[31,40],[80,90],[90,100]]
     .map(([start,end],i)=>({start:start/30,end:end/30,reason:"reason "+i,severity:i===2?"error":"warning"}));
-  const run = ()=>apply(ruler.seq,issues,[{start:0,end:5}],workflow,null,pieces);
-  assert.equal(run().reviewMarkerClipCount,4,workflow+" groups overlapping and touching spans per piece");
+  const run = ()=>apply(ruler.seq,issues,[{start:0,end:5}],null,pieces);
+  assert.equal(run().reviewMarkerClipCount,4,"Caption groups overlapping and touching spans per piece");
   const rows = state(source);
   assert.deepEqual(rows.map(m=>Math.round(m.seconds*30)),[15,36,85,95]);
   for(let i=0;i<4;i++) assert(rows[0].comments.toLowerCase().includes("reason "+i));
@@ -449,6 +418,6 @@ for (const workflow of ["edit", "captions"]) {
   assert.equal(manual.comments,"keep");
   // The same start can select different pieces when one warning crosses the cut.
   const crossCut=[{start:2.8,end:3,reason:"left"},{start:2.8,end:4,reason:"right"}];
-  assert.equal(apply(ruler.seq,crossCut,[{start:0,end:5}],workflow,null,pieces).reviewMarkerClipCount,2);
+  assert.equal(apply(ruler.seq,crossCut,[{start:0,end:5}],null,pieces).reviewMarkerClipCount,2);
   assert.deepEqual(state(source).filter(m=>m.name!=="manual").map(m=>Math.round(m.seconds*30)),[87,105]);
 }
