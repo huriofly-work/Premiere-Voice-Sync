@@ -598,6 +598,35 @@ function finishTrial(f,profile){
   assert.strictEqual(JSON.parse(api.diagnosticInfo()).active,false);
   return {report:r.result,checkpoints,calls,timings:r.timings};
 }
+if (!process.argv.slice(2).length) {
+  const f=issue55Fixture(()=>fixture(2,false,true)), api=f.api;
+  let result=JSON.parse(api.beginDiagnosticEdit("fixture","float-drift","no-delay"));
+  while (!result.done && result.nextStage !== "Cắt V1–A1 linked") {
+    result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));
+  }
+  assert(!result.done,"Voice projection and marker pre-commit must run before injecting drift.");
+  const clipMapping=api._clipMarkerMapping, restore=api._markerTools.restore;
+  let driftRestores=0;
+  api._clipMarkerMapping=function(item, allowNested) {
+    const mapping=clipMapping(item, allowNested);
+    if (mapping && item.projectItem===f.voice) mapping.input+=0.5/254016000000;
+    return mapping;
+  };
+  api._markerTools.restore=function(entries) {
+    if (entries.length) driftRestores++;
+    return restore(entries);
+  };
+  do {result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));} while (!result.done);
+  assert(result.result.ok,JSON.stringify(result.result));
+  assert.equal(driftRestores,1,"The original exact comparison still takes the journal restoration branch.");
+  const {piecesCompared, firstMismatch}=result.result.voiceProjection;
+  assert.equal(piecesCompared,1);
+  assert.deepStrictEqual(firstMismatch,{
+    pieceIndex:0, reason:"input", actual:0.5/254016000000, predicted:0,
+    deltaTicks:0.5, deltaFrames:0.5/254016000000*30
+  });
+  assert.deepStrictEqual(result.timings.find(t=>t.detail?.voiceProjection).detail.voiceProjection,result.result.voiceProjection);
+}
 function reviewOnlyFixture(nativeWrappers) {
   const f = fixture(65, false, true, 1.1, false, false, false, false, {nativeWrappers});
   f.plan.markers = [];

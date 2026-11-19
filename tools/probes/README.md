@@ -59,6 +59,37 @@ node tools/probes/run-probe.js move-cleanup $probeDoc $probeItem $probeTag probe
 | [0, 0] | start = -0.5 | [-0.5, -0.5] |
 | [0, 0] | end = 0.5 | [0, 0.5] |
 
+## Kiểm tra lệch ánh xạ voice và khôi phục marker — 2.20.97
+
+`Probe-MarkerRestore.jsx` **chưa chạy native**. Dùng cấu hình debug/Node 22+ bên dưới.
+Mở sequence cần đo rồi chạy lệnh chỉ đọc. Index audio bắt đầu từ 0 (A2 là 1).
+
+```powershell
+node tools/probes/run-probe.js load (Resolve-Path tools/probes/Probe-MarkerRestore.jsx).Path
+node tools/probes/run-probe.js restore-projection 1
+```
+
+- `restore-projection` đọc từng clip trên track đang chọn. `timebase` là số tick mỗi frame, `fps` tính từ timebase. Với `start`, `end`, `inPoint`, `outPoint`, kết quả có `seconds` và `ticks` Premiere trả về, `tickSeconds` đổi từ ticks, `frame` làm tròn từ seconds, và `frameSeconds` đổi lại từ frame. `deltaVsTicks` và `deltaVsRoundedFrameTicks` là độ lệch có dấu của `seconds` so với hai phép đổi, tính bằng tick. `speedSource` cho biết hệ số `speed` lấy từ hàm host hay bản sao.
+- Báo cáo Auto edit có `voiceProjection.piecesCompared` và `firstMismatch` khi bước so ánh xạ chạy. Chỉ số lát bắt đầu từ 0. `deltaTicks` và `deltaFrames` bằng giá trị đọc từ clip trừ dự đoán. Khi lệch khoá nguồn, khoá dạng đường dẫn hiển thị là `path`. `firstMismatch: null` nghĩa là mọi lát đã so đều khớp.
+
+Dùng project thử và media thử riêng cho phép đo ghi marker. Lấy `documentId` và `nodeId` từ `restore-list` rồi điền vào hai biến bên dưới. Với nguồn chưa có marker, các vị trí thử bắt đầu khoảng giây 41, cách nhau 6 giây. Media thử dài khoảng 65 giây đủ cho các vị trí mặc định. Nếu có marker sẵn gần vị trí thử, probe tìm vị trí xa hơn.
+
+```powershell
+node tools/probes/run-probe.js restore-list
+$probeDoc = '<documentId>'
+$probeItem = '<nodeId>'
+$probeTag = '[PremiereVoiceSync:marker-restore:v1]'
+node tools/probes/run-probe.js restore-run $probeDoc $probeItem $probeTag probe-tagged-only
+# Chi chay cleanup neu can don tag con sot.
+node tools/probes/run-probe.js restore-cleanup $probeDoc $probeItem $probeTag probe-tagged-only
+```
+
+- `restore-run` thử dời marker điểm, dời và đổi độ dài marker khoảng, xóa rồi tạo lại, và đổi màu. `requestedSeconds` là vị trí yêu cầu ban đầu. `prior` là giá trị Premiere đọc lại trước khi thay đổi, `modified` là trạng thái sau khi thay đổi và `actual` là trạng thái sau khôi phục. Theo thứ tự của host, ghi start trước rồi chỉ ghi end nếu end đọc lại còn khác. Khi tạo lại, ghi end nếu cần, rồi ghi name, comments và màu. `markerToolsSource` cho biết probe dùng hàm host đang nạp hay bản sao.
+- `differences` liệt kê từng trường lệch, kể cả lệch dưới một tick. Với comments chỉ ghi độ dài và vị trí ký tự khác đầu tiên, tính từ 0. `fingerprintMatches` so nội dung theo host. Marker tạo lại nhận GUID mới, ngoài phép so này.
+- Lệnh ghi chỉ dùng ProjectItem media khớp ID, tag và scope. Nếu còn marker mang tag từ lượt trước, lượt thử dừng. Khi kết thúc hoặc gặp lỗi, probe chỉ dọn marker mới có dòng đầu comments khớp tag và đối chiếu toàn bộ collection với ảnh chụp ban đầu. Nếu ghi tag thất bại thì marker chưa có tag được giữ để kiểm tra thủ công. `restore-cleanup` chỉ xóa marker mang đúng tag và kiểm tra các marker còn lại. Các lệnh ghi chỉ thao tác trên marker nguồn. Probe không Save/Undo.
+
+Mock (`tests/unit/probe-marker-restore.test.js`) kiểm tra cách đọc, thứ tự ghi và dọn trong mô hình giả lập. Hai giả thuyết về sai khác số thực và đọc lại marker vẫn chờ kết quả Premiere.
+
 ## Đo chi phí ghi marker — issue #49
 
 `Probe-MarkerWriteCost.jsx` là phép đo riêng, **chưa chạy native**. Không dùng

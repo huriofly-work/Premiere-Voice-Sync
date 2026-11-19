@@ -853,6 +853,32 @@ $._PVS._markerTools = (function () {
         }
         return values.sort().join("\n");
     }
+    function formatDifferenceValue(value) {
+        if (typeof value !== "string") return String(value);
+        return JSON.stringify(value.length > 48 ? value.slice(0, 48) + "..." : value);
+    }
+    function describeDifference(actual, prior) {
+        try {
+            if (!actual) return " Marker identity missing.";
+            var fields = ["seconds", "end", "name", "comments", "type", "color"], detail = [];
+            for (var i = 0; i < fields.length && detail.length < 3; i++) {
+                var field = fields[i], a = actual[field], b = prior[field];
+                if (a === b) continue;
+                if (field === "comments") {
+                    var first = 0, limit = Math.min(a.length, b.length);
+                    while (first < limit && a.charAt(first) === b.charAt(first)) first++;
+                    detail.push(field + " (actualLength=" + a.length + ", priorLength=" + b.length + ", firstDiffIndex=" + first + ")");
+                } else {
+                    var values = "actual=" + formatDifferenceValue(a) + ", prior=" + formatDifferenceValue(b);
+                    if ((field === "seconds" || field === "end") && typeof a === "number" && typeof b === "number") {
+                        values += ", deltaTicks=" + (a - b) * 254016000000;
+                    }
+                    detail.push(field + " (" + values + ")");
+                }
+            }
+            return detail.length ? " " + detail.join("; ") : "";
+        } catch (ignoreDetail) { return ""; }
+    }
     function inScope(group, seconds) {
         for (var i = 0; i < group.ranges.length; i++) if (seconds >= group.ranges[i].start && seconds < group.ranges[i].end) return true;
         return false;
@@ -972,7 +998,7 @@ $._PVS._markerTools = (function () {
                 // Preflight every affected identity before the first reverse write.
                 for (j = 0; j < entry.after.length; j++) {
                     current = lookup(rows, entry.after[j]);
-                    if (!current || fingerprint([current], false) !== fingerprint([entry.after[j]], false)) throw new Error("Marker changed since commit.");
+                    if (!current || fingerprint([current], false) !== fingerprint([entry.after[j]], false)) throw new Error("Marker changed since commit." + describeDifference(current, entry.after[j]));
                     for (var f = foreign.length - 1; f >= 0; f--) if (same(current, foreign[f])) foreign.splice(f, 1);
                 }
                 var occupied = index(foreign, entry.tolerance);
@@ -1009,11 +1035,11 @@ $._PVS._markerTools = (function () {
                 if (rows.length !== foreign.length + entry.before.length) throw new Error("Marker count differs.");
                 for (j = 0; j < foreign.length; j++) {
                     current = find(rows, foreign[j]);
-                    if (!current || fingerprint([current], false) !== fingerprint([foreign[j]], false)) throw new Error("Unrelated marker differs.");
+                    if (!current || fingerprint([current], false) !== fingerprint([foreign[j]], false)) throw new Error("Unrelated marker differs." + describeDifference(current, foreign[j]));
                 }
                 for (j = 0; j < entry.before.length; j++) {
                     prior = entry.before[j]; current = lookup(rows, prior);
-                    if (!current || fingerprint([current], false) !== fingerprint([prior], false)) throw new Error("Original marker fields differ.");
+                    if (!current || fingerprint([current], false) !== fingerprint([prior], false)) throw new Error("Original marker fields differ." + describeDifference(current, prior));
                 }
                 entries.splice(i, 1);
             } catch (error) {
@@ -1033,14 +1059,20 @@ $._PVS._markerTools = (function () {
         }
         return errors;
     }
-    function restoredRows(expected, actual, journal) {
-        if (expected.length !== actual.length) return false;
+    function restoredRows(expected, actual, journal, diagnostic) {
+        if (expected.length !== actual.length) {
+            if (diagnostic) diagnostic.detail = " Count (actual=" + actual.length + ", prior=" + expected.length + ").";
+            return false;
+        }
         var replacements = journal.replacements || [];
         for (var i = 0; i < expected.length; i++) {
             var identity = expected[i];
             for (var j = 0; j < replacements.length; j++) if (same(identity, replacements[j].old)) identity = replacements[j].fresh;
             var row = find(actual, identity);
-            if (!row || fingerprint([row], false) !== fingerprint([expected[i]], false)) return false;
+            if (!row || fingerprint([row], false) !== fingerprint([expected[i]], false)) {
+                if (diagnostic) diagnostic.detail = describeDifference(row, expected[i]);
+                return false;
+            }
         }
         return true;
     }
@@ -1651,7 +1683,7 @@ $._PVS.executePlan = function (planPath) {
     var reviewMarkerStats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, unattachedMarkers: [], unattachedMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     var pendingNativeReview = null;
     var markerTools = $._PVS._markerTools, markerRestorationFailures = [];
-    var preOwners = [], reviewTimings = [];
+    var preOwners = [], reviewTimings = [], voiceProjection = null;
     function restoreEntries(entries) {
         var errors = markerTools.restore(entries);
         for (var i = 0; i < errors.length; i++) markerRestorationFailures.push(errors[i]);
@@ -1673,11 +1705,11 @@ $._PVS.executePlan = function (planPath) {
                 var collection = owner.ProjectItem.getMarkers();
                 if (retry && markerTools.restoredRows(owner.snapshot, markerTools.read(collection), owner.journal)) continue;
                 restoreEntries(owner.journal);
-                var rows = markerTools.read(collection);
-                if (retry && !markerTools.restoredRows(owner.snapshot, rows, owner.journal)) throw new Error("Marker restoration: source snapshot differs after retry.");
+                var rows = markerTools.read(collection), diagnostic = { detail: "" };
+                if (retry && !markerTools.restoredRows(owner.snapshot, rows, owner.journal, diagnostic)) throw new Error("Marker restoration: source snapshot differs after retry." + diagnostic.detail);
                 var actual = markerTools.snapshotOwned(owner.Group, rows, owner.ownsReview);
                 var expected = markerTools.snapshotOwned(owner.Group, owner.snapshot, owner.ownsReview);
-                if (!markerTools.restoredRows(expected, actual, owner.journal)) throw new Error("Marker restoration: source snapshot differs.");
+                if (!markerTools.restoredRows(expected, actual, owner.journal, diagnostic)) throw new Error("Marker restoration: source snapshot differs." + diagnostic.detail);
             } catch (error) {
                 if (!markerRestorationFailures.length || markerRestorationFailures[markerRestorationFailures.length - 1] !== error.message) markerRestorationFailures.push(error.message || String(error));
             }
@@ -2000,13 +2032,33 @@ $._PVS.executePlan = function (planPath) {
         return phaseTiming(result, "pre", kind, index);
     }
     function sameVoiceProjection() {
-        if (!projectedPieces || speechPieces.length !== projectedPieces.length) return false;
+        voiceProjection = { piecesCompared: 0, firstMismatch: null };
+        function mismatch(index, reason, actual, predicted) {
+            var detail = { pieceIndex: index, reason: reason, actual: actual, predicted: predicted };
+            if (reason === "start" || reason === "end" || reason === "input") {
+                var delta = actual - predicted;
+                detail.deltaTicks = delta * 254016000000;
+                detail.deltaFrames = delta * fps;
+            }
+            voiceProjection.firstMismatch = detail;
+            return false;
+        }
+        if (!projectedPieces) return mismatch(null, "projection-missing", speechPieces.length, null);
+        if (speechPieces.length !== projectedPieces.length) return mismatch(null, "count", speechPieces.length, projectedPieces.length);
         for (var i = 0; i < speechPieces.length; i++) {
             var actual = $._PVS._clipMarkerMapping(speechPieces[i]), predicted = projectedPieces[i].mapping;
-            if (projectItemKey(speechPieces[i]) !== projectItemKey(projectedPieces[i])) return false;
+            var actualKey = projectItemKey(speechPieces[i]), predictedKey = projectItemKey(projectedPieces[i]);
+            voiceProjection.piecesCompared++;
+            if (actualKey !== predictedKey) {
+                // Path-derived keys can contain private source paths.
+                return mismatch(i, "key", actualKey.indexOf("path:") === 0 ? "path" : actualKey, predictedKey.indexOf("path:") === 0 ? "path" : predictedKey);
+            }
             if (!actual && !predicted) continue;
-            if (!actual || !predicted || actual.start !== predicted.start ||
-                actual.end !== predicted.end || actual.input !== predicted.input || actual.speed !== predicted.speed) return false;
+            if (!actual || !predicted) return mismatch(i, "mapping-missing", !!actual, !!predicted);
+            if (actual.start !== predicted.start) return mismatch(i, "start", actual.start, predicted.start);
+            if (actual.end !== predicted.end) return mismatch(i, "end", actual.end, predicted.end);
+            if (actual.input !== predicted.input) return mismatch(i, "input", actual.input, predicted.input);
+            if (actual.speed !== predicted.speed) return mismatch(i, "speed", actual.speed, predicted.speed);
         }
         return true;
     }
@@ -2855,5 +2907,6 @@ $._PVS.executePlan = function (planPath) {
         report.clipMarkerFailures = (report.clipMarkerFailures || []).concat(markerRestorationFailures);
         report.clipMarkerFailureCount = report.clipMarkerFailures.length;
     }
+    if (voiceProjection) report.voiceProjection = voiceProjection;
     return $._PVS._result(report);
 };

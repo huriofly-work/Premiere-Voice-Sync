@@ -1,5 +1,11 @@
 # Bộ nhớ hồi quy của project
 
+## 2.20.97 — Chẩn đoán lệch ánh xạ voice và lỗi khôi phục marker (19/11/2026)
+
+- **Dấu hiệu native.** Sau khi ghi trước marker review và cắt timeline trên Premiere 26.2.2, phép so ánh xạ đi vào nhánh khôi phục. Đọc lại marker báo `Original marker fields differ.` hai lần. Báo cáo có `ok=false`, `timelineMutated=true`. Chưa rõ lát hoặc trường nào thực sự lệch.
+- **Bất biến.** Giữ phép so tuyệt đối, thứ tự đọc clip, điều kiện và thứ tự ghi khôi phục. Báo cáo ghi lần lệch đầu tiên và độ lệch có dấu. Lỗi khôi phục giữ tiền tố cũ và nêu tối đa ba trường khác nhau. Với comments chỉ ghi độ dài và chỉ số ký tự khác đầu tiên. Nhật ký khôi phục lỗi vẫn giữ để thử lại.
+- **Hồi quy.** Mock lệch nửa tick ở `input` vẫn vào nhánh khôi phục và có dữ liệu trong báo cáo lẫn timing. Mock đọc lại `end` lệch vẫn báo lỗi và giữ nhật ký. Mock probe kiểm tra đọc, báo chênh lệch và dọn marker đúng tag. Bộ chuẩn đạt 76 nhóm, parse 136 file PowerShell, bỏ qua sáu nhóm tích hợp Windows. Đã kiểm tra parity của executor sinh tự động và cú pháp ES3. Probe và hai giả thuyết vẫn chờ kết quả native.
+
 ## Issue #72 — Biểu thức điều kiện lồng trong ExtendScript làm bỏ qua ghi trước marker review (18/11/2026)
 
 - **Dấu hiệu.** Ba lượt Dựng theo voice native 2.20.93–2.20.95 không ghi gì ở bước "Ghi trước marker voice/review". Toàn bộ marker review được ghi sau khi cắt, khoảng 8,7 giây. Hậu kiểm báo `ownerIndex=-1`, còn mock báo 1.

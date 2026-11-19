@@ -201,6 +201,10 @@ for (var ri = 0; ri < reviewOwners.length; ri++) {
   const insertion = speedHelper.body.start + 1 - fn.body.start - 1;
   let instrumentedPrefix = rawPrefix.slice(0,insertion) + "\n        diagnosticTouch(item);\n" + rawPrefix.slice(insertion);
   if (measure) {
+    const projectionStart = "voiceProjection = { piecesCompared: 0, firstMismatch: null };";
+    instrumentedPrefix = insertMeasurement(instrumentedPrefix, projectionStart, projectionStart + `
+        if (!diagnosticDetail) diagnosticDetail = {};
+        diagnosticDetail.voiceProjection = voiceProjection;`);
     const ownerLookup = "var owner = ownerByKey[clipOwner.key];";
     instrumentedPrefix = insertMeasurement(instrumentedPrefix, ownerLookup, ownerLookup + "\n        var ownerKnown = !!owner;");
     const finalTiming = 'reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));';
