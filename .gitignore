@@ -26,8 +26,3 @@ Desktop.ini
 *.p12
 *.pfx
 *.key
-
-# Claude Code local settings
-/.claude/settings.local.json
-/CLAUDE.local.md
-/.claude/worktrees/
