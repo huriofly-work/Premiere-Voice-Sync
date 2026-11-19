@@ -1,6 +1,6 @@
 # Quy trình phát hành
 
-1. Cập nhật `VERSION`, manifest, changelog, README và mặc định version của script build ZIP.
+1. Chạy `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Set-Version.ps1 -Version <X.Y.Z>` để đổi mọi chuỗi version nhúng cùng lúc: `VERSION`, manifest (hai chỗ), panel, `main.js`, mặc định của script build ZIP, test layout và dòng phiên bản trong ARCHITECTURE, MAINTAINER_BRIEFING, USER_GUIDE. Script dừng mà không ghi file nào nếu một chỗ không còn khớp mẫu, và từ chối hạ version. Thêm `-Check` để chỉ kiểm. Changelog, `docs/releases/<version>.json`, ghi chú phát hành và phần mô tả trạng thái trong README/docs vẫn sửa tay.
 2. Chạy `tests\Run-Tests.ps1` trên checkout sạch.
 3. Nghiệm thu trong Premiere Pro 26.2.2 theo `TESTING.md`.
 4. Tạo ZIP bằng `installer\build-release.ps1`.
