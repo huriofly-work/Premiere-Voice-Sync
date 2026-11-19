@@ -1041,7 +1041,7 @@ $._PVS._markerTools = (function () {
                 for (var oi = 0; oi < before.length; oi++) {
                     var candidate = before[oi];
                     // A move requires the full compensation snapshot, including color.
-                    if (owned(g, candidate) && !(g.retainedNames && g.retainedNames[candidate.name]) && !find(matched, candidate) && candidate.end !== null && candidate.color !== null) obsolete.push({ row: candidate, order: oi });
+                    if (owned(g, candidate) && !find(matched, candidate) && candidate.end !== null && candidate.color !== null) obsolete.push({ row: candidate, order: oi });
                 }
                 obsolete.sort(function (a, b) { return a.row.seconds - b.row.seconds || a.order - b.order; });
                 for (var spare = 0; spare < obsolete.length; spare++) {
@@ -1098,7 +1098,6 @@ $._PVS._markerTools = (function () {
             } finally { timings.verificationMs += (new Date()).getTime() - verificationStarted; }
             var expectedRows = after.slice(0);
             for (var o = 0; o < before.length; o++) if (owned(g, before[o]) && !find(kept, before[o])) {
-                if (g.retainedNames && g.retainedNames[before[o].name]) continue;
                 // Verify the entire resulting collection as well as identity:
                 // some hosts expose fresh proxies on each enumeration.
                 var found = false, staleState = fingerprint([before[o]], false);
@@ -1262,7 +1261,6 @@ $._PVS._prepareMarkerSources = function (owners, fps, workflow) {
                 ownerPredicate(video, voice, caption), 0.25 / fps, true);
             owner.Group.matchNames = true;
             owner.Group.targets = [];
-            owner.Group.retainedNames = {};
         } catch (e) { owner.error = e.message || String(e); }
     }
     return byKey;
@@ -1345,7 +1343,6 @@ $._PVS._planClipMarkers = function (owners, items, issues, kind, workflow, fps, 
         if (!selected) { unattached(issue, "Không có clip trong khoảng cảnh báo."); continue; }
         var owner = selected.owner;
         if (!owner || !owner.Group || !selected.mapping) {
-            if (owner && owner.Group) owner.Group.retainedNames[style.name] = true;
             unattached(issue, (owner && owner.error) || "Không đọc được ánh xạ từ timeline sang nguồn.");
             if (owner) owner.hasUnattached = true;
             continue;
@@ -1395,7 +1392,6 @@ $._PVS._planClipMarkers = function (owners, items, issues, kind, workflow, fps, 
                     continue;
                 }
             } catch (e) { reason = e.message || String(e); }
-            group.retainedNames[style.name] = true;
             for (var u = 0; u < span.issues.length; u++) unattached(span.issues[u], reason);
         }
     }

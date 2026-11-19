@@ -269,9 +269,11 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],null,[v.clip,next]);
     assert.equal(r.reviewMarkerClipCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2)*1.1)<1e-7);
   });
-  test("unsupported mapping retains the owned marker for retry",()=>{
-    const v=voice();invoke(v);v.clip.isSpeedReversed=()=>true;
-    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,1);
+  test("an unattached warning still cleans every old marker of its kind",()=>{
+    // Decision 2026-11-19: Gan marker always removes the previous run's markers; a warning
+    // that cannot be placed is only listed as unattached.
+    const v=voice();invoke(v);assert.equal(v.source.values.length,1);v.clip.isSpeedReversed=()=>true;
+    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(v.source.values.length,0);
   });
   test("mixed supported and unsupported sources are reported",()=>{
     const v=voice(),other=Object.assign({},v.clip,{getSpeed:()=>NaN});
