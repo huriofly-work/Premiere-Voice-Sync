@@ -152,6 +152,10 @@ marker review 17 → 6.
   script giữa các lệnh cắt dài hơn khoảng 1–1,6 s mỗi lần. Chưa rõ phần 14,1 s gồm gì vì executor thường không ghi chi
   tiết. User xem timeline và xác nhận marker đúng (nghiệm thu, một project); vẫn là prerelease. Việc kế: đo một
   lượt không phải đổi marker cũ để biết thời gian thật; tìm phần 14,1 s (có thể gộp với #75); chưa nâng stable.
+- Lượt 2.20.98 trên project thứ hai (19/11 14:31) **xong**: `ok=true`, timeline 13,6 s, 50 đoạn voice, 51 đoạn hình,
+  119 caption, 5 marker tốc độ, 0 lỗi. User xác nhận timeline đúng. Project không có cảnh báo review nên không đi qua
+  ghi trước marker và phép so ánh xạ voice (#83): đây là bằng chứng luồng dựng chung, chưa phải lần thử thứ hai của bản
+  sửa. "Cập nhật marker nguồn" 0,7 s với 5 marker.
 
 ## Việc còn lại (14/11/2026)
 
