@@ -13,7 +13,7 @@ và tài liệu của luồng bị ảnh hưởng trước khi sửa mã.
 
 ## Tài liệu vận hành
 
-- [Maintainer briefing](MAINTAINER_BRIEFING.md) và [bàn giao Codex → Claude](HANDOFF.md): bản đồ project cho người mới tiếp quản.
+- [Maintainer briefing](MAINTAINER_BRIEFING.md) và [bàn giao kỹ thuật](HANDOFF.md): bản đồ project cho người mới tiếp quản.
 - [Cấu trúc project và dữ liệu local](PROJECT_LAYOUT.md).
 - [Kiến trúc runtime](ARCHITECTURE.md), [đánh giá hiệu năng](PERFORMANCE_REVIEW.md).
 - [Kiểm thử](TESTING.md), [bộ nhớ hồi quy](REGRESSION_MEMORY.md).

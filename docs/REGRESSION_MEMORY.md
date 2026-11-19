@@ -398,7 +398,7 @@ User nâng 2.20.91 lên stable/Latest cùng ngày.
   thêm lifecycle fallback collision/duration/rerun/empty cleanup, log count/reason;
   giữ **17/17** voice review và **24/24** speed-range cases cũ. Executor sinh bằng
   generator, parity và syntax main/security đạt. Entry cập nhật **trước standard
-  suite**. Codex sửa và tự rà path/transaction, không có lượt
+  suite**. Bản sửa tự rà path/transaction, không có lượt
   review độc lập. Không chạy Premiere/install/release, không commit/push/đổi branch
   và không đụng AppData. Log targeted: `_local/pr37-review/green-*.log`.
 - **Kết quả suite sửa review.** Standard suite đạt **72 nhóm/132 PS parse** ngay
@@ -462,7 +462,7 @@ User nâng 2.20.91 lên stable/Latest cùng ngày.
   IncidentNotifications. Syntax main/security, executor parity, Acorn ES3 cho
   host/executor/caption-input và `git diff --check` đều đạt. Log cuối ở
   `_local/voice-clip-markers/standard-suite-final.log` và `marker-tests-final.log`.
-- **Nghiệm thu.** Codex viết code và tự rà các path chung/fallback; Claude đọc
+- **Nghiệm thu.** Người viết code tự rà các path chung/fallback; người rà đọc
   diff và chạy lại standard suite (72 nhóm) cùng 9 test JS marker. Native riêng
   phần độ dài marker (15/11, probe): gán `marker.end` bằng số giây được Premiere
   26.2.2 nhận, đọc lại đúng, user thấy dải marker đúng vị trí trên clip A2 (lệch
@@ -534,8 +534,8 @@ Phép thử khả thi chạy trên Premiere 26.2.2 (CEP 12) với sequence bản
   Windows integration bỏ qua: InstallerLifecycle, InstallRollback, PanelRegistry,
   NotificationShortcut, NativeNotifications, IncidentNotifications. Syntax
   `main.js`/`security.js`, executor parity và `git diff --check` đều đạt.
-  Codex viết sửa và tự rà; Claude đọc diff và chạy lại standard suite. Khi
-  review, Claude khôi phục dòng nhắc "Giữ lại nhật ký khôi phục audio…" trong
+  Người viết sửa tự rà; người rà đọc diff và chạy lại standard suite. Khi
+  review, người rà khôi phục dòng nhắc "Giữ lại nhật ký khôi phục audio…" trong
   thông báo lỗi của Chỉ tạo subtitle khi journal còn (bản đầu bỏ mất dòng này).
 - **Nghiệm thu.** **Native Premiere pending**. Không chạy Premiere, cài,
   build release, commit hay push; không sửa dữ liệu AppData/runtime/dist.
@@ -580,7 +580,7 @@ Phép thử khả thi chạy trên Premiere 26.2.2 (CEP 12) với sequence bản
   PanelRegistry, NotificationShortcut, NativeNotifications, IncidentNotifications.
   Sau suite chạy lại đúng bảy file JS marker nêu trên, **7/7 đạt**; syntax
   main/security, executor `--check`, Acorn ES3 cho host/executor/caption-input
-  và diff whitespace đều đạt. Codex viết sửa và tự rà; Claude đọc diff và
+  và diff whitespace đều đạt. Người viết sửa tự rà; người rà đọc diff và
   chạy lại standard suite cùng bảy test JS marker. Báo cáo replay/ghi chú từng đoạn giữ riêng trong `_local/`, không
   đưa dữ liệu người dùng vào file tracked.
 - **Nghiệm thu.** Chỉ kiểm chứng tự động/mock/local; **Native Premiere pending**.
@@ -632,7 +632,7 @@ Phép thử khả thi chạy trên Premiere 26.2.2 (CEP 12) với sequence bản
   6 issue vẫn thành 6 marker; bounds issue, vị trí, tên và màu bằng trước sửa.
   Ba comment trước/sau chỉ ở `_local/short-marker-text/replay-comments.md`, không
   đưa lời người dùng vào repo. Không chạy lại engine/media/Premiere.
-  Codex viết sửa và một lượt tự rà diff/shared/fallback paths; Claude đọc diff
+  Người viết sửa có một lượt tự rà diff/shared/fallback paths; người rà đọc diff
   và chạy lại standard suite cùng bảy test JS marker. Chữ marker nay có tiếng
   Việt có dấu sinh trong host: executor sinh lại đã escape `\uXXXX`, còn
   `host.jsx` vốn đã có chuỗi tiếng Việt; hiển thị thật vẫn cần kiểm trên
@@ -677,7 +677,7 @@ Phép thử khả thi chạy trên Premiere 26.2.2 (CEP 12) với sequence bản
 - **Kiểm chứng.** Standard suite đạt 70 nhóm/130 PS parse, sáu nhóm Windows
   integration bỏ qua; JS syntax hai file, executor parity và JS marker đạt.
   Suite cuối sau chốt quyền cắt cũng đạt 70 nhóm/130 PS parse; replay giữ
-  kết quả trên. Codex viết sửa và tự rà; Claude đọc diff và chạy lại
+  kết quả trên. Người viết sửa tự rà; người rà đọc diff và chạy lại
   standard suite (70 nhóm đạt).
   Chỉ output ignored; không thay media/SRT/cache gốc. **Native Premiere pending**.
 
@@ -708,8 +708,8 @@ vào 2.20.89 (mục "2.20.89: caption bỏ padding 5 frame ở mép" bên dướ
   0 chồng lấn, chữ/metadata caption, đoạn hình/voice, marker và luật khoảng
   không lời không đổi.
 - **Kiểm chứng.** Standard suite 70 nhóm đạt, 130 script parse; sáu nhóm
-  Windows integration bỏ qua. JS syntax và executor parity đạt. Codex viết
-  sửa; Claude đọc diff và chạy lại suite. **Native Premiere pending**.
+  Windows integration bỏ qua. JS syntax và executor parity đạt. Người rà
+  đọc diff và chạy lại suite. **Native Premiere pending**.
 
 ## Issue #22 — Từ trùng Start bị đảo thứ tự, caption kết thúc sớm (15/11/2026)
 
@@ -757,8 +757,8 @@ vào 2.20.89 (mục "2.20.89: caption bỏ padding 5 frame ở mép" bên dướ
 - **Kiểm chứng.** Bảy nhóm liên quan đạt; standard suite đạt 70 nhóm/130
   script PowerShell parse, sáu nhóm Windows integration bỏ qua. Hai JS syntax
   check và executor parity đạt; `git diff --check` sạch. SHA-256 voice/SRT
-  nguồn không đổi, primary cache dùng lại trùng bản gốc. Codex viết sửa và tự
-  rà; Claude đọc diff và chạy lại standard suite (70 nhóm đạt). **Native
+  nguồn không đổi, primary cache dùng lại trùng bản gốc. Người viết sửa tự
+  rà; người rà đọc diff và chạy lại standard suite (70 nhóm đạt). **Native
   Premiere pending**.
 - **Còn lại.** Tám cue trong khối sửa tay vẫn hiện chữ ASR vì khác SRT một dấu
   hoặc một từ (ví dụ thanh điệu, tên riêng): khôi phục chữ SRT trong khối này
