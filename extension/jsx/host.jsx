@@ -853,32 +853,6 @@ $._PVS._markerTools = (function () {
         }
         return values.sort().join("\n");
     }
-    function formatDifferenceValue(value) {
-        if (typeof value !== "string") return String(value);
-        return JSON.stringify(value.length > 48 ? value.slice(0, 48) + "..." : value);
-    }
-    function describeDifference(actual, prior) {
-        try {
-            if (!actual) return " Marker identity missing.";
-            var fields = ["seconds", "end", "name", "comments", "type", "color"], detail = [];
-            for (var i = 0; i < fields.length && detail.length < 3; i++) {
-                var field = fields[i], a = actual[field], b = prior[field];
-                if (a === b) continue;
-                if (field === "comments") {
-                    var first = 0, limit = Math.min(a.length, b.length);
-                    while (first < limit && a.charAt(first) === b.charAt(first)) first++;
-                    detail.push(field + " (actualLength=" + a.length + ", priorLength=" + b.length + ", firstDiffIndex=" + first + ")");
-                } else {
-                    var values = "actual=" + formatDifferenceValue(a) + ", prior=" + formatDifferenceValue(b);
-                    if ((field === "seconds" || field === "end") && typeof a === "number" && typeof b === "number") {
-                        values += ", deltaTicks=" + (a - b) * 254016000000;
-                    }
-                    detail.push(field + " (" + values + ")");
-                }
-            }
-            return detail.length ? " " + detail.join("; ") : "";
-        } catch (ignoreDetail) { return ""; }
-    }
     function inScope(group, seconds) {
         for (var i = 0; i < group.ranges.length; i++) if (seconds >= group.ranges[i].start && seconds < group.ranges[i].end) return true;
         return false;
@@ -919,7 +893,7 @@ $._PVS._markerTools = (function () {
         return count <= 1;
     }
     // Choose on the timeline grid before mapping into ProjectItem seconds.
-    function point(g, start, end, fps, map, onBlocked) {
+    function point(g, start, end, fps, map) {
         var first = Math.ceil(start * fps - 0.0000001), last = Math.ceil(end * fps - 0.0000001) - 1;
         if (first > last) return null;
         var middle = Math.max(first, Math.min(last, Math.round((start + end) * fps / 2 + 0.0000001)));
@@ -929,10 +903,7 @@ $._PVS._markerTools = (function () {
         }
         function attempt(frame) {
             var t = frame / fps, seconds = map ? map.source(t) : t;
-            if (!available(g, seconds)) {
-                if (onBlocked) onBlocked(seconds);
-                return null;
-            }
+            if (!available(g, seconds)) return null;
             var halfFrame = (map ? map.speed : 1) / fps / 2;
             return { seconds: seconds, end: seconds, positionTolerance: halfFrame, verify: function (actual, actualEnd) {
                 return actualEnd !== null && inside(actual) && inside(actualEnd) &&
@@ -976,106 +947,6 @@ $._PVS._markerTools = (function () {
         for (var i = 0; i < rows.length; i++) if (same(rows[i], row)) return rows[i];
         return null;
     }
-    // Reverse only verified writes from our transactions. Identity and field checks
-    // protect manual edits made while a staged session was paused.
-    function restore(entries) {
-        var errors = [], replacements = entries.replacements || [];
-        entries.replacements = replacements;
-        function lookup(rows, saved) {
-            for (var i = 0; i < replacements.length; i++) if (same(replacements[i].old, saved)) saved = replacements[i].fresh;
-            return find(rows, saved);
-        }
-        function replacementsFor(savedRows) {
-            var result = [];
-            for (var i = 0; i < replacements.length; i++) if (find(savedRows, replacements[i].old)) result.push(replacements[i].fresh);
-            return result;
-        }
-        for (var i = entries.length - 1; i >= 0; i--) {
-            var entry = entries[i], collection = entry.collection, reversing = false;
-            try {
-                var rows = read(collection), foreign = [], j, prior, current, marker;
-                for (j = 0; j < rows.length; j++) foreign.push(rows[j]);
-                // Preflight every affected identity before the first reverse write.
-                for (j = 0; j < entry.after.length; j++) {
-                    current = lookup(rows, entry.after[j]);
-                    if (!current || fingerprint([current], false) !== fingerprint([entry.after[j]], false)) throw new Error("Marker changed since commit." + describeDifference(current, entry.after[j]));
-                    for (var f = foreign.length - 1; f >= 0; f--) if (same(current, foreign[f])) foreign.splice(f, 1);
-                }
-                var occupied = index(foreign, entry.tolerance);
-                for (j = 0; j < entry.before.length; j++) {
-                    prior = entry.before[j];
-                    current = lookup(rows, prior);
-                    if (current && find(foreign, current)) throw new Error("Deleted marker identity reappeared outside the transaction.");
-                    if (current && current.seconds === prior.seconds) continue;
-                    if (near(occupied, prior.seconds, entry.tolerance).length) throw new Error("Original marker position occupied.");
-                }
-                reversing = true;
-                var retained = entry.before.concat(replacementsFor(entry.before));
-                for (j = 0; j < entry.after.length; j++) if (!find(retained, entry.after[j])) {
-                    collection.deleteMarker(lookup(rows, entry.after[j]).ref);
-                }
-                for (j = 0; j < entry.before.length; j++) {
-                    prior = entry.before[j]; current = lookup(rows, prior);
-                    if (current) {
-                        marker = current.ref;
-                        if (prior.seconds !== current.seconds) marker.start = prior.seconds;
-                        if (markerEnd(marker) !== prior.end) marker.end = prior.end;
-                    } else {
-                        var existing = read(collection);
-                        marker = collection.createMarker(prior.seconds);
-                        if (!marker || find(existing, { ref: marker, guid: String(marker.guid || "") }) || marker.name || marker.comments) throw new Error("Cannot recreate deleted marker safely.");
-                        replacements.push({ old: prior, fresh: { ref: marker, guid: String(marker.guid || "") } });
-                        if (markerEnd(marker) !== prior.end) marker.end = prior.end;
-                    }
-                    if (!current || prior.name !== current.name) marker.name = prior.name;
-                    if (!current || prior.comments !== current.comments) marker.comments = prior.comments;
-                    if (!current || prior.color !== current.color) marker.setColorByIndex(prior.color);
-                }
-                rows = read(collection);
-                if (rows.length !== foreign.length + entry.before.length) throw new Error("Marker count differs.");
-                for (j = 0; j < foreign.length; j++) {
-                    current = find(rows, foreign[j]);
-                    if (!current || fingerprint([current], false) !== fingerprint([foreign[j]], false)) throw new Error("Unrelated marker differs." + describeDifference(current, foreign[j]));
-                }
-                for (j = 0; j < entry.before.length; j++) {
-                    prior = entry.before[j]; current = lookup(rows, prior);
-                    if (!current || fingerprint([current], false) !== fingerprint([prior], false)) throw new Error("Original marker fields differ." + describeDifference(current, prior));
-                }
-                entries.splice(i, 1);
-            } catch (error) {
-                errors.push("Marker restoration: " + (error.message || String(error)));
-                if (reversing) try {
-                    // A setter may mutate and then throw. Save the observed state
-                    // inside this host call so a retry can guard against later edits.
-                    var partial = read(collection), tracked = entry.after.concat(replacementsFor(entry.before)), updated = [];
-                    for (var u = 0; u < tracked.length; u++) {
-                        var observed = lookup(partial, tracked[u]);
-                        if (observed && !find(updated, observed)) updated.push(observed);
-                    }
-                    entry.after = updated;
-                } catch (unreadable) {}
-                break; // Earlier transactions may depend on these identities.
-            }
-        }
-        return errors;
-    }
-    function restoredRows(expected, actual, journal, diagnostic) {
-        if (expected.length !== actual.length) {
-            if (diagnostic) diagnostic.detail = " Count (actual=" + actual.length + ", prior=" + expected.length + ").";
-            return false;
-        }
-        var replacements = journal.replacements || [];
-        for (var i = 0; i < expected.length; i++) {
-            var identity = expected[i];
-            for (var j = 0; j < replacements.length; j++) if (same(identity, replacements[j].old)) identity = replacements[j].fresh;
-            var row = find(actual, identity);
-            if (!row || fingerprint([row], false) !== fingerprint([expected[i]], false)) {
-                if (diagnostic) diagnostic.detail = describeDifference(row, expected[i]);
-                return false;
-            }
-        }
-        return true;
-    }
     function sourceReviewOwner(workflow) {
         // Source markers are shared across sequences. Each workflow replaces its own warnings.
         // v3 carries no sequence ID; v2 tags with any sequence ID migrate on the next write.
@@ -1087,25 +958,20 @@ $._PVS._markerTools = (function () {
             return comments.indexOf(tag) >= 0 || tagPattern.test(comments);
         };
     }
-    function snapshotOwned(g, rows, ownsReview) {
+    function snapshotOwned(g, rows) {
         var scoped = [];
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
-            if (owned(g, row) || (ownsReview && ownsReview(row))) scoped.push(row);
+            if (owned(g, row)) scoped.push(row);
         }
         return scoped;
     }
-    function reversible(g, ownsReview) {
-        var rows = snapshotOwned(g, g.before, ownsReview);
+    function reversible(g) {
+        var rows = snapshotOwned(g, g.before);
         for (var i = 0; i < rows.length; i++) if (rows[i].end === null || rows[i].color === null) return false;
         return true;
     }
-    function resetGroup(g, rows) {
-        g.before = rows; g.positions = index(rows, g.tolerance); g.reserved = {}; g.desired = [];
-        g.peerReservations = null;
-        g.requests = {}; g.markerTargets = [];
-    }
-    function commit(g, touch, journal, keepSurplus) {
+    function commit(g, touch) {
         var commitStarted = (new Date()).getTime();
         var timings = { collectionBefore: g.before.length, collectionAfter: g.before.length,
             readPasses: 0, readMs: 0, creates: 0, nameWrites: 0, commentsWrites: 0,
@@ -1240,11 +1106,7 @@ $._PVS._markerTools = (function () {
                 }
             } finally { timings.verificationMs += (new Date()).getTime() - verificationStarted; }
             var expectedRows = after.slice(0);
-            // A later native issue or changed source edge may still match this GUID.
-            // Premiere cannot recreate it, so only final reconciliation removes surplus.
-            g.surplus = [];
             for (var o = 0; o < before.length; o++) if (owned(g, before[o]) && !find(kept, before[o])) {
-                if (keepSurplus) { g.surplus.push(before[o]); continue; }
                 // Verify the entire resulting collection as well as identity:
                 // some hosts expose fresh proxies on each enumeration.
                 var found = false, staleState = fingerprint([before[o]], false);
@@ -1258,11 +1120,6 @@ $._PVS._markerTools = (function () {
                 for (var d = 0; d < removed.length; d++) if (find(after, removed[d])) throw new Error("Marker deletion verification failed.");
                 if (fingerprint(after, false) !== fingerprint(expectedRows, false)) throw new Error("Marker deletion verification failed: collection differs.");
             } finally { timings.verificationMs += (new Date()).getTime() - verificationStarted; }
-            if (journal && mutationAttempted) {
-                var affected = [];
-                for (var ar = 0; ar < after.length; ar++) if (find(created, after[ar]) || find(changed, after[ar])) affected.push(after[ar]);
-                journal.push({ collection: g.collection, before: changed.concat(removed), after: affected, tolerance: g.tolerance });
-            }
             g.after = after;
             result.count = kept.length; result.deleted = removed.length;
             for (var m = 0; m < wanted.length; m++) if (wanted[m].merged) result.merged++;
@@ -1306,8 +1163,8 @@ $._PVS._markerTools = (function () {
         }
         return finishResult();
     }
-    return { sourceReviewOwner: sourceReviewOwner, group: group, point: point, available: available, add: add, commit: commit, restore: restore, reversible: reversible,
-        resetGroup: resetGroup, read: read, fingerprint: fingerprint, snapshotOwned: snapshotOwned, restoredRows: restoredRows };
+    return { sourceReviewOwner: sourceReviewOwner, group: group, point: point, available: available, add: add, commit: commit, reversible: reversible,
+        read: read, fingerprint: fingerprint, snapshotOwned: snapshotOwned };
 }());
 
 // Premiere reports either a ratio (<=10) or a percentage (>10).
@@ -1438,7 +1295,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         // Snapshot every current voice source, including those with no desired
         // issue, so empty reruns clean stale scoped warnings too. No display IDs.
         for (var vi = 0; voiceItems && vi < voiceItems.length; vi++) {
-            var item = voiceItems[vi], mapping = transaction && transaction.prepareOnly ? item.mapping : $._PVS._clipMarkerMapping(item);
+            var item = voiceItems[vi], mapping = $._PVS._clipMarkerMapping(item);
             if (!item || !item.projectItem || typeof item.projectItem.getMarkers !== "function" || seq.sequenceID === undefined) continue;
             var projectItem = item.projectItem, key = "", owner = null;
             key = $._PVS._projectItemKey(projectItem);
@@ -1466,9 +1323,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
         function planClip(target, selected) {
             var map = selected.mapping, owner = selected.owner, end = Math.min(target.end, map.end), candidate = Math.max(target.start, map.start);
             if (!owner.group || owner.error || end <= candidate) return false;
-            var spec = tools.point(owner.group, candidate, end, fps, map, function (seconds) {
-                if (transaction && transaction.prepareOnly && transaction.pendingDeletion(owner.key, seconds)) owner.defer = true;
-            });
+            var spec = tools.point(owner.group, candidate, end, fps, map);
             if (!spec) return false;
             spec.name = name;
             spec.comments = shortNotes(target.notes) + "\n" + tag;
@@ -1520,16 +1375,20 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
                 } catch (clipPlanError) { unattached(span, clipPlanError.message); }
             }
         }
-        if (transaction && transaction.prepareOnly) {
-            // The final pass reports requests that could not be staged.
-            transaction.owners = owners;
-            return stats;
-        }
         for (var co = 0; co < owners.length; co++) {
             var clipOwner = owners[co];
             if (!clipOwner.group) continue;
             var clipResult;
-            try { clipResult = transaction && transaction.commit ? transaction.commit(clipOwner) : tools.commit(clipOwner.group); }
+            try {
+                if (workflow === "edit" && !tools.reversible(clipOwner.group)) clipOwner.group.blocked = true;
+                clipResult = tools.commit(clipOwner.group);
+                if (transaction && transaction.reviewTimings) {
+                    clipResult.timings.phase = "post";
+                    clipResult.timings.kind = "review";
+                    clipResult.timings.ownerIndex = co;
+                    transaction.reviewTimings.push(clipResult.timings);
+                }
+            }
             catch (writeError) { clipResult = { failures: [String(writeError)], colorFailures: [] }; }
             stats.reviewMarkerColorFailureCount += clipResult.colorFailures.length;
             if (clipResult.failures.length) {
@@ -1687,17 +1546,7 @@ $._PVS.executePlan = function (planPath) {
     var unattachedOwnedMarkers = [];
     var reviewMarkerStats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, unattachedMarkers: [], unattachedMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     var pendingNativeReview = null;
-    var markerTools = $._PVS._markerTools;
-    var preOwners = [], reviewTimings = [], voiceProjection = null;
-    function restoreEntries(entries) {
-        var errors = markerTools.restore(entries);
-        // restore removes an entry only after successful read-back.
-        if (errors.length) throw new Error(errors.join("; "));
-    }
-    function phaseTiming(result, phase, kind, ownerIndex) {
-        result.timings.phase = phase; result.timings.kind = kind; result.timings.ownerIndex = ownerIndex;
-        return result.timings;
-    }
+    var reviewTimings = [];
     var nativeProgressSerial = 0;
     function noteNative(phase, operation) {
         var file = null;
@@ -1829,9 +1678,9 @@ $._PVS.executePlan = function (planPath) {
         return false;
     }
     function prepareClipMarkerGroup(owner, markerGroups, fps) {
-        var key = projectItemKey(owner.Item);
+        var key = owner.key || projectItemKey(owner.Item);
         if (!key || markerGroups[key]) throw new Error("Ambiguous clip marker source.");
-        owner.ProjectItem = owner.Item.projectItem;
+        owner.ProjectItem = owner.ProjectItem || owner.Item.projectItem;
         // No supported mapping means no range cleanup, not a guessed speed.
         // Unmapped owners remain snapshots only; unmapped warnings go in the report.
         owner.Group = $._PVS._markerTools.group(owner.ProjectItem.getMarkers(), owner.Ranges.length ? owner.Ranges : [{ start: 0, end: Number.MAX_VALUE }], owner.Ranges.length ? isOwnedClipMarker : function () { return false; }, 0.25 / fps, true);
@@ -1842,16 +1691,15 @@ $._PVS.executePlan = function (planPath) {
         if (key && markerGroups[key]) markerGroups[key].blocked = true;
         else for (var k in markerGroups) if (markerGroups.hasOwnProperty(k)) markerGroups[k].blocked = true;
     }
-    function markerCleanupOwners(sequence, main, linkedTrack, linkedName, voiceTrack, voiceSpecs, chapters) {
+    function markerCleanupOwners(sequence, main, linkedTrack, linkedName, voiceTrack, voiceSpecs) {
         var owners = [], byKey = {};
         function add(item, allowNested) {
             var key = projectItemKey(item), mapping = $._PVS._clipMarkerMapping(item, allowNested);
             if (!key) throw new Error("Invalid owned source identity for marker cleanup.");
-            if (!byKey[key]) { byKey[key] = { Item: item, NodeId: String(item.nodeId), Ranges: [] }; owners.push(byKey[key]); }
+            if (!byKey[key]) { byKey[key] = { ProjectItem: item.projectItem, key: key, Ranges: [] }; owners.push(byKey[key]); }
             // Match placement's V1/A1 nest adapter; A2 has no such exception.
             // Unreadable/reverse/remapped items contribute no cleanup range.
             if (allowNested) byKey[key].picture = true;
-            else if (chapters) chapters.push({ item: item, map: mapping, start: Number(item.start.seconds), end: Number(item.end.seconds) });
             if (mapping) byKey[key].Ranges.push({ start: mapping.source(mapping.start), end: mapping.source(mapping.end) });
         }
         add(main, true);
@@ -1898,11 +1746,11 @@ $._PVS.executePlan = function (planPath) {
         if (group) group.hasUnattached = true;
         else for (var key in markerGroups) if (markerGroups.hasOwnProperty(key)) markerGroups[key].hasUnattached = true;
     }
-    function planOwnedClipMarker(trackItem, spec, fps, markerGroups, plannedRange, projectedMapping) {
+    function planOwnedClipMarker(trackItem, spec, fps, markerGroups, plannedRange) {
         // Collect requests only. The complete source group is committed later.
         var group = markerGroups[projectItemKey(trackItem)];
         if (!group) throw new Error("Clip marker source was not prepared.");
-        var map = projectedMapping || $._PVS._clipMarkerMapping(trackItem, spec.Owner !== "A2");
+        var map = $._PVS._clipMarkerMapping(trackItem, spec.Owner !== "A2");
         if (!map) throw new Error("Clip source mapping unavailable for marker on '" + trackItem.name + "'.");
         var target = ownedMarkerTarget(trackItem, spec, fps, plannedRange), start = target.start, end = target.end;
         var sourceStart = map.source(start), sourceEnd = map.source(end);
@@ -1933,29 +1781,6 @@ $._PVS.executePlan = function (planPath) {
         for (var i = 0; i < plan.segments.length; i++) if (plan.segments[i].Kind === "retime" && Math.abs(Number(plan.segments[i].NewStart) - Number(spec.Time)) < 0.001) return i;
         return null;
     }
-    function projectVoicePiece(segment) {
-        function frame(frameValue, seconds) { return frameValue === undefined ? Math.round(Number(seconds) * fps) : Number(frameValue); }
-        var first = frame(segment.OriginalVoiceStartFrame, segment.OriginalVoiceStart);
-        var last = frame(segment.OriginalVoiceEndFrame, segment.OriginalVoiceEnd);
-        var dest = frame(segment.NewVoiceStartFrame, segment.NewVoiceStart);
-        if (!(last > first && first >= 0 && dest >= 0)) return null;
-        var chapter = null;
-        for (var i = 0; i < chapters.length; i++) {
-            if (chapters[i].end <= first / fps || chapters[i].start >= last / fps) continue;
-            if (chapter || chapters[i].start > first / fps || chapters[i].end < last / fps) return null;
-            chapter = chapters[i];
-        }
-        if (!chapter) return null;
-        var start = dest / fps, end = (dest + last - first) / fps;
-        if (!chapter.map) return {projectItem:chapter.item.projectItem, start:{seconds:start}, end:{seconds:end}, mapping:null};
-        var speed = chapter.map.speed;
-        var input = (Number(chapter.item.inPoint.ticks) + Math.round(first * ticksPerFrame) - Number(chapter.item.start.ticks)) / 254016000000;
-        if (!isFinite(input) || input < 0) return null;
-        return { projectItem: chapter.item.projectItem, start: { seconds: start }, end: { seconds: end },
-            mapping: { start: start, end: end, input: input, speed: speed,
-                source: function (t) { return (t - start + input) * speed; },
-                timeline: function (m) { return start + m / speed - input; } } };
-    }
     function voiceMarkerSpecs(specs) {
         var result = [], bySegment = {};
         for (var i = 0; i < specs.length; i++) {
@@ -1976,95 +1801,6 @@ $._PVS.executePlan = function (planPath) {
             }
             entry.reasons["r" + note] = true;
         }
-        return result;
-    }
-    function planVoiceProjection(specs) {
-        var pieces = [], bySegment = {};
-        if (chapters.length !== voiceClips.length || (!specs.length && !asArray(plan.reviewMarkers).length)) return null;
-        for (var i = 0; i < plan.segments.length; i++) if (plan.segments[i].Kind === "retime") {
-            var piece = projectVoicePiece(plan.segments[i]);
-            if (!piece) return null;
-            pieces.push(piece); bySegment[String(i)] = piece;
-        }
-        for (var m = 0; m < specs.length; m++) {
-            var spec = specs[m], target = bySegment[String(segmentForMarker(spec))];
-            if (!target || spec.Owner !== "A2") return null;
-            var g = clipMarkerGroups[projectItemKey(target)];
-            if (!target.mapping) { g.blocked = true; continue; }
-            try { planOwnedClipMarker(target, spec, fps, clipMarkerGroups, null, target.mapping); }
-            catch (unsafe) { g.blocked = true; }
-        }
-        return pieces;
-    }
-    function preCommit(owner, group, kind, index) {
-        if (!group || group.blocked || !markerTools.reversible(group)) return null;
-        owner.preCommitted = true;
-        var result = markerTools.commit(group, function () { timelineMutated = true; }, owner.journal, true);
-        if (result.failures.length) {
-            var failure = result.failures.join("; ");
-            if (/restoration|changed since preparation/i.test(failure)) throw new Error(failure);
-            result.timings.failed = true;
-        } else owner.expected = group.after;
-        return phaseTiming(result, "pre", kind, index);
-    }
-    function sameVoiceProjection() {
-        // Premiere 26.2.2, 2026-11-19 restore-projection: A2 timeline edges
-        // stayed on-frame, while speed-1.1 source in-points differed by up to 80 ticks.
-        var ticksPerSecond = 254016000000, timelineToleranceTicks = 1, inputToleranceSeconds = 1 / (1000 * fps);
-        var maxDelta = { start: 0, end: 0, input: 0 };
-        voiceProjection = { piecesCompared: 0, firstMismatch: null, maxAbsDeltaTicks: maxDelta };
-        function mismatch(index, reason, actual, predicted) {
-            var detail = { pieceIndex: index, reason: reason, actual: actual, predicted: predicted };
-            if (reason === "start" || reason === "end" || reason === "input") {
-                var delta = actual - predicted;
-                detail.deltaTicks = delta * ticksPerSecond;
-                detail.deltaFrames = delta * fps;
-            }
-            voiceProjection.firstMismatch = detail;
-            return false;
-        }
-        if (!projectedPieces) return mismatch(null, "projection-missing", speechPieces.length, null);
-        if (speechPieces.length !== projectedPieces.length) return mismatch(null, "count", speechPieces.length, projectedPieces.length);
-        for (var i = 0; i < speechPieces.length; i++) {
-            var actual = $._PVS._clipMarkerMapping(speechPieces[i]), predicted = projectedPieces[i].mapping;
-            var actualKey = projectItemKey(speechPieces[i]), predictedKey = projectItemKey(projectedPieces[i]);
-            voiceProjection.piecesCompared++;
-            if (actualKey !== predictedKey) {
-                // Path-derived keys can contain private source paths.
-                return mismatch(i, "key", actualKey.indexOf("path:") === 0 ? "path" : actualKey, predictedKey.indexOf("path:") === 0 ? "path" : predictedKey);
-            }
-            if (!actual && !predicted) continue;
-            if (!actual || !predicted) return mismatch(i, "mapping-missing", !!actual, !!predicted);
-            var startDeltaTicks = Math.abs(actual.start - predicted.start) * ticksPerSecond;
-            var endDeltaTicks = Math.abs(actual.end - predicted.end) * ticksPerSecond;
-            var inputDelta = Math.abs(actual.input - predicted.input);
-            maxDelta.start = Math.max(maxDelta.start, startDeltaTicks);
-            maxDelta.end = Math.max(maxDelta.end, endDeltaTicks);
-            maxDelta.input = Math.max(maxDelta.input, inputDelta * ticksPerSecond);
-            if (!(startDeltaTicks <= timelineToleranceTicks)) return mismatch(i, "start", actual.start, predicted.start);
-            if (!(endDeltaTicks <= timelineToleranceTicks)) return mismatch(i, "end", actual.end, predicted.end);
-            if (!(inputDelta <= inputToleranceSeconds)) return mismatch(i, "input", actual.input, predicted.input);
-            if (actual.speed !== predicted.speed) return mismatch(i, "speed", actual.speed, predicted.speed);
-        }
-        return true;
-    }
-    function guardOwner(owner, rows) {
-        if (markerTools.fingerprint(rows || markerTools.read(owner.ProjectItem.getMarkers()), true) !== markerTools.fingerprint(owner.expected, true)) throw new Error("Marker collection changed since preparation; inspect before retry.");
-    }
-    function undoEarlyReview(owner) {
-        if (!owner.reviewEntry) return;
-        guardOwner(owner);
-        restoreEntries([owner.reviewEntry]);
-        owner.journal.splice(owner.reviewOffset, 1);
-        owner.reviewEntry = null;
-        owner.expected = markerTools.read(owner.ProjectItem.getMarkers());
-    }
-    function commitFinalReview(clipOwner) {
-        var owner = ownerByKey[clipOwner.key];
-        if (owner && owner.preCommitted) guardOwner(owner, clipOwner.group.before);
-        else if (markerTools.snapshotOwned(clipOwner.group, clipOwner.group.before).length && !markerTools.reversible(clipOwner.group)) clipOwner.group.blocked = true;
-        var result = markerTools.commit(clipOwner.group);
-        reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));
         return result;
     }
     function cleanLegacyOwnedRulerMarkers(sequence, end, fps) {
@@ -2126,12 +1862,7 @@ $._PVS.executePlan = function (planPath) {
         if (!originalMain || Math.abs(Number(originalMain.end.seconds) - mainEnd) > 0.1) throw new Error("V1 main clip no longer matches plan.");
         var originalMainName = String(originalMain.name), originalMainProjectItem = originalMain.projectItem;
         var clipMarkerGroups = {};
-        var chapters = [];
-        var cleanupOwners = markerCleanupOwners(original, originalMain, linkedTrackIndex, linkedSpecs[0].name, voiceTrackIndex, voiceClips, chapters);
-        for (var cleanupOwnerIndex = 0; cleanupOwnerIndex < cleanupOwners.length; cleanupOwnerIndex++) {
-            prepareClipMarkerGroup(cleanupOwners[cleanupOwnerIndex], clipMarkerGroups, fps);
-        }
-        var ownerByKey = {};
+        var cleanupOwners = markerCleanupOwners(original, originalMain, linkedTrackIndex, linkedSpecs[0].name, voiceTrackIndex, voiceClips);
         var plannedCollisionEndFrame = plan.plannedMainVideoEndFrame === undefined ? Math.round(plannedEnd * fps) : Number(plan.plannedMainVideoEndFrame);
         var tailAnchorFrame = null;
         for (var preservedV1Index = 1; preservedV1Index < original.videoTracks[0].clips.numItems; preservedV1Index++) {
@@ -2201,46 +1932,6 @@ $._PVS.executePlan = function (planPath) {
         var cuts = [];
         for (var cutKey in cutFrames) if (cutFrames.hasOwnProperty(cutKey)) cuts.push(Number(cutKey));
         cuts.sort(function (a, b) { return a - b; });
-        var plannedClipMarkers = voiceMarkerSpecs(asArray(plan.markers));
-        var voiceReservations = {}, projectedPieces = planVoiceProjection(plannedClipMarkers), preparedReview = { prepareOnly: true, voiceReservations: voiceReservations, pendingDeletion: function (key, seconds) {
-            var group = clipMarkerGroups[key], surplus = group && group.surplus;
-            for (var i = 0; surplus && i < surplus.length; i++) if (Math.abs(surplus[i].seconds - seconds) < group.tolerance) return true;
-            return false;
-        } };
-        for (var preOwnerIndex = 0; preOwnerIndex < cleanupOwners.length; preOwnerIndex++) {
-            var preOwner = cleanupOwners[preOwnerIndex], preGroup = preOwner.Group;
-            preOwner.index = preOwnerIndex; preOwner.journal = [];
-            preOwner.expected = preGroup.before;
-            ownerByKey[projectItemKey(preOwner.Item)] = preOwner;
-            preOwner.eligible = projectedPieces && !preOwner.picture && !preGroup.blocked && markerTools.reversible(preGroup, markerTools.sourceReviewOwner("edit"));
-            var preClipTiming = null;
-            if (preOwner.eligible) {
-                preOwners.push(preOwner);
-                if (preGroup.desired.length) {
-                    preClipTiming = preCommit(preOwner, preGroup, "voice", preOwnerIndex);
-                    preOwner.eligible = !!preClipTiming && !preClipTiming.failed;
-                    if (preOwner.eligible) voiceReservations[projectItemKey(preOwner.Item)] = preGroup.reserved;
-                } else preGroup.surplus = markerTools.snapshotOwned(preGroup, preGroup.before);
-            }
-            preGroup.blocked = false;
-            markerTools.resetGroup(preGroup, preOwner.expected);
-        }
-        if (projectedPieces && asArray(plan.reviewMarkers).length) {
-            $._PVS._applyReviewMarkers(workingSequence, asArray(plan.reviewMarkers), [{start:0,end:plannedCollisionEndFrame/fps}], "edit", plan.captions, projectedPieces, preparedReview);
-        }
-        var reviewOwners = preparedReview.owners || [];
-        for (var preReviewIndex = 0; preReviewIndex < reviewOwners.length; preReviewIndex++) {
-            var reviewOwner = reviewOwners[preReviewIndex], sourceOwner = ownerByKey[reviewOwner.key], preReviewTiming = null;
-            if (sourceOwner && sourceOwner.eligible && !reviewOwner.defer && reviewOwner.group && reviewOwner.group.desired.length) {
-                guardOwner(sourceOwner, reviewOwner.group.before);
-                sourceOwner.reviewOffset = sourceOwner.journal.length;
-                preReviewTiming = preCommit(sourceOwner, reviewOwner.group, "review", sourceOwner.index);
-                sourceOwner.reviewEntry = sourceOwner.journal[sourceOwner.reviewOffset];
-                // Keep original review positions free for rollback as well as the staged SRT points.
-                sourceOwner.Group.before = sourceOwner.expected;
-                if (preReviewTiming && !preReviewTiming.failed) sourceOwner.Group.peerReservations = reviewOwner.group.reserved;
-            }
-        }
         for (var cutIndex = 0; cutIndex < cuts.length; cutIndex++) {
             pendingNativeReview = {start:cuts[cutIndex]/fps,end:(cuts[cutIndex]+1)/fps,reason:"cắt V1/A1 lỗi – kiểm tra trước khi thử lại",severity:"error"};
             timelineMutated = true;
@@ -2497,6 +2188,75 @@ $._PVS.executePlan = function (planPath) {
         }
         var fillClips = [];
 
+        var captionFile = new File(plan.captionSrtPath);
+        var captionCreated = false;
+        var captionTemporaryBinRemoved = false;
+        var captionProjectItemCountBefore = 0;
+        var captionProjectItemCountAfter = 0;
+        var captionTemporaryBinStillPresent = false;
+        var captionDeleteReturnValue = "";
+        var captionCleanupProbeCount = 0;
+        function countCaptionProjectItems(root, targetPath) {
+            var count = 0;
+            if (!root) return count;
+            try {
+                if (root.getMediaPath && String(root.getMediaPath() || "").toLowerCase() === String(targetPath || "").toLowerCase()) count++;
+            } catch (ignoreCaptionCountPath) {}
+            try {
+                if (root.children) for (var childIndex = 0; childIndex < root.children.numItems; childIndex++) count += countCaptionProjectItems(root.children[childIndex], targetPath);
+            } catch (ignoreCaptionCountChildren) {}
+            return count;
+        }
+        function projectTreeContainsNodeId(root, targetNodeId) {
+            if (!root || targetNodeId === "") return false;
+            try { if (String(root.nodeId) === targetNodeId) return true; } catch (ignoreCaptionNodeId) {}
+            try {
+                if (root.children) for (var childIndex = 0; childIndex < root.children.numItems; childIndex++) {
+                    if (projectTreeContainsNodeId(root.children[childIndex], targetNodeId)) return true;
+                }
+            } catch (ignoreCaptionNodeChildren) {}
+            return false;
+        }
+        // A caption failure is reported by the post-check; Video and Voice markers are still written.
+        var captionError = "";
+        if (captionFile.exists) {
+            captionProjectItemCountBefore = countCaptionProjectItems(app.project.rootItem, plan.captionSrtPath);
+            var captionBin = null;
+            var captionBinNodeId = "";
+            try { try {
+                captionBin = app.project.rootItem.createBin("PVS_TEMP_CAPTION_" + String((new Date()).getTime()));
+                if (!captionBin) throw new Error("Could not create temporary caption bin.");
+                try { captionBinNodeId = String(captionBin.nodeId); } catch (ignoreCaptionBinNodeId) {}
+                if (captionBinNodeId === "") throw new Error("Temporary caption bin has no nodeId.");
+                if (!app.project.importFiles([plan.captionSrtPath], true, captionBin, false)) throw new Error("Could not import aligned caption SRT into temporary bin.");
+                var captionItem = $._PVS._findItemByMediaPath(captionBin, plan.captionSrtPath);
+                if (!captionItem) throw new Error("Could not import aligned caption SRT.");
+                captionCreated = !!workingSequence.createCaptionTrack(captionItem, 0, Sequence.CAPTION_FORMAT_SUBTITLE);
+                if (!captionCreated) throw new Error("Premiere could not create caption track.");
+            } finally {
+                if (captionBin) {
+                    try {
+                        var deleteResult = captionBin.deleteBin();
+                        captionDeleteReturnValue = deleteResult === undefined ? "undefined" : String(deleteResult);
+                    } catch (captionBinDeleteError) {
+                        captionDeleteReturnValue = "throw: " + captionBinDeleteError.message;
+                    }
+                }
+                for (var captionCleanupProbe = 0; captionCleanupProbe < 6; captionCleanupProbe++) {
+                    captionCleanupProbeCount = captionCleanupProbe + 1;
+                    captionTemporaryBinStillPresent = projectTreeContainsNodeId(app.project.rootItem, captionBinNodeId);
+                    captionProjectItemCountAfter = countCaptionProjectItems(app.project.rootItem, plan.captionSrtPath);
+                    if (!captionTemporaryBinStillPresent && captionProjectItemCountAfter === captionProjectItemCountBefore) {
+                        captionTemporaryBinRemoved = true;
+                        break;
+                    }
+                    if (captionCleanupProbe < 5) {
+                        try { $.sleep(50); } catch (ignoreCaptionCleanupSleep) {}
+                    }
+                }
+            } } catch (captionFailure) { captionError = captionFailure.message || String(captionFailure); }
+            if (!captionTemporaryBinRemoved) captionError = (captionError ? captionError + "; " : "") + "Temporary caption cleanup failed: deleteBin returned " + captionDeleteReturnValue + "; bin still present=" + captionTemporaryBinStillPresent + "; SRT ProjectItems before=" + captionProjectItemCountBefore + ", after=" + captionProjectItemCountAfter + ".";
+        }
         var maxVideoError = 0;
         var maxAudioError = 0;
         var maxVoiceError = 0;
@@ -2546,24 +2306,56 @@ $._PVS.executePlan = function (planPath) {
             var expectedVoiceFrame = speechPlans[validateVoice].NewVoiceStartFrame === undefined ? Math.round(Number(speechPlans[validateVoice].NewVoiceStart) * fps) : Number(speechPlans[validateVoice].NewVoiceStartFrame);
             maxVoiceError = Math.max(maxVoiceError, Math.abs(frameOf(speechPieces[validateVoice].start) - expectedVoiceFrame));
         }
-        if (preOwners.length && !sameVoiceProjection()) {
-            try {
-                for (var drift = 0; drift < preOwners.length; drift++) {
-                    var driftOwner = preOwners[drift];
-                    guardOwner(driftOwner);
-                    restoreEntries(driftOwner.journal);
-                    driftOwner.expected = markerTools.read(driftOwner.ProjectItem.getMarkers());
-                    markerTools.resetGroup(driftOwner.Group, driftOwner.expected);
-                    driftOwner.reviewEntry = null;
-                }
-            } catch (reversalError) {
-                var mismatch = voiceProjection.firstMismatch;
-                throw new Error("Voice projection mismatch (" + mismatch.reason + ", piece " + mismatch.pieceIndex + "); " + (reversalError.message || String(reversalError)));
+        var masterInOutReset = false;
+        try {
+            var masterNestedItem = originalMainProjectItem;
+            if (masterNestedItem && masterNestedItem.clearInPoint && masterNestedItem.clearOutPoint) {
+                masterNestedItem.clearInPoint();
+                masterNestedItem.clearOutPoint();
+                masterInOutReset = true;
             }
+        } catch (ignoreMasterReset) {}
+        var preservedAfter = preservedSignatures(workingSequence, linkedTrackIndex, voiceTrackIndex, originalMainName, linkedSpecs[0].name, combinedVoiceNames);
+        var unrelatedPreserved = sameSignatures(preservedBefore, preservedAfter);
+        var captionCueCount = plan.captions && plan.captions.length ? plan.captions.length : 0;
+        var expectedCaptionCueCount = plan.summary && plan.summary.captionCueCount ? Number(plan.summary.captionCueCount) : captionCueCount;
+        var captionsValid = captionFile.exists && captionCueCount > 0 && captionCueCount === expectedCaptionCueCount;
+        // Without a caption track there are no Caption markers to place.
+        var reviewIssues = captionCreated ? asArray(plan.reviewMarkers).slice(0) : [];
+        function addNativeReview(startFrame, endFrame, reason, severity) {
+            var start = Math.max(0, Math.min(startFrame, plannedEndFrame - 1));
+            var end = Math.min(plannedEndFrame, Math.max(start + 1, endFrame));
+            reviewIssues.push({ start: start / fps, end: end / fps, reason: reason, severity: severity || "error" });
+        }
+        for (var reviewIndex = 0; reviewIndex < sourceSegments.length; reviewIndex++) {
+            var reviewVideo = videoPieces[reviewIndex], reviewAudio = audioPieces[reviewIndex];
+            var reviewStart = Math.round(Number(sourceSegments[reviewIndex].NewStart) * fps);
+            var reviewEnd = reviewStart + durationFramesOf(reviewVideo);
+            if (Math.abs(frameOf(reviewVideo.start) - reviewStart) > validationToleranceFrames || Math.abs(frameOf(reviewAudio.start) - reviewStart) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "V1/A1 lệch vị trí kế hoạch – kiểm tra");
+            if (Math.abs(frameOf(reviewVideo.start) - frameOf(reviewAudio.start)) > validationToleranceFrames || Math.abs(frameOf(reviewVideo.end) - frameOf(reviewAudio.end)) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "mép V1/A1 lệch nhau – kiểm tra");
+            var reviewLinked = false;
+            try {
+                var reviewLinks = reviewVideo.getLinkedItems();
+                for (var reviewLink = 0; reviewLink < reviewLinks.length; reviewLink++) if (String(reviewLinks[reviewLink].nodeId) === String(reviewAudio.nodeId)) reviewLinked = true;
+            } catch (ignoreReviewLink) {}
+            if (!reviewLinked) addNativeReview(reviewStart, reviewEnd, "chưa xác minh liên kết V1/A1 – kiểm tra");
+            if (readSpeedPercent(reviewVideo) === null || readSpeedPercent(reviewAudio) === null) addNativeReview(reviewStart, reviewEnd, "không đọc được speed – kiểm tra phát", "review");
+        }
+        for (var reviewVoice = 0; reviewVoice < speechPieces.length; reviewVoice++) {
+            var reviewVoiceStart = Math.round(Number(speechPlans[reviewVoice].NewVoiceStart) * fps);
+            if (Math.abs(frameOf(speechPieces[reviewVoice].start) - reviewVoiceStart) > validationToleranceFrames) addNativeReview(reviewVoiceStart, reviewVoiceStart + durationFramesOf(speechPieces[reviewVoice]), "voice lệch vị trí kế hoạch – kiểm tra");
+        }
+        for (var reviewGap = 0; reviewGap < videoCoverageGaps.length; reviewGap++) addNativeReview(videoCoverageGaps[reviewGap].previousEndFrame, videoCoverageGaps[reviewGap].nextStartFrame, "hở hình " + videoCoverageGaps[reviewGap].gapFrames + " frame – kiểm tra");
+        for (var reviewSpeed = 0; reviewSpeed < speedConvergenceFailures.length; reviewSpeed++) addNativeReview(speedConvergenceFailures[reviewSpeed].startFrame, speedConvergenceFailures[reviewSpeed].startFrame + speedConvergenceFailures[reviewSpeed].desiredFrames, "độ dài sau speed chưa khớp (" + speedConvergenceFailures[reviewSpeed].label.replace(" segment ", " ") + ") – kiểm tra");
+        if (finalVideoTailDeltaFrames !== 0 || finalAudioTailDeltaFrames !== 0) addNativeReview(Math.min(finalVideoEndFrame, finalAudioEndFrame, plannedEndFrame) - 1, plannedEndFrame, "đuôi hình/tiếng lệch kế hoạch: V1=" + finalVideoTailDeltaFrames + ", A1=" + finalAudioTailDeltaFrames + " frame – kiểm tra");
+        var plannedClipMarkers = voiceMarkerSpecs(asArray(plan.markers));
+        for (var cleanupOwnerIndex = 0; cleanupOwnerIndex < cleanupOwners.length; cleanupOwnerIndex++) {
+            prepareClipMarkerGroup(cleanupOwners[cleanupOwnerIndex], clipMarkerGroups, fps);
         }
         var markerCount = 0;
         var mergeClipMarkerCount = 0;
         var markerFailures = [];
+        var voiceReservations = {};
         for (var markerIndex = 0; markerIndex < plannedClipMarkers.length; markerIndex++) {
             var plannedMarkerSpec = plannedClipMarkers[markerIndex];
             var plannedSegmentIndex = segmentForMarker(plannedMarkerSpec);
@@ -2605,25 +2397,20 @@ $._PVS.executePlan = function (planPath) {
                 catch (reportError) { markerFailures.push(speedMarkerError.message + "; " + reportError.message); }
             }
         }
-        // One synchronous commit per source; pause/cancel only between groups.
-        voiceReservations = {};
         for (var markerOwnerIndex = 0; markerOwnerIndex < cleanupOwners.length; markerOwnerIndex++) {
             var markerOwner = cleanupOwners[markerOwnerIndex];
             try {
                 markerOwner.Group.collection = markerOwner.ProjectItem.getMarkers();
                 var clipMarkerResult = $._PVS._markerTools.commit(markerOwner.Group, function () { timelineMutated = true; });
-                if (!markerOwner.picture && !clipMarkerResult.failures.length) voiceReservations[projectItemKey(markerOwner.Item)] = markerOwner.Group.reserved;
-                if (clipMarkerResult.failures.length === 0) markerOwner.expected = markerOwner.Group.after;
-                phaseTiming(clipMarkerResult, "post", markerOwner.picture ? "picture" : "voice", markerOwnerIndex);
+                // Keep planned voice positions reserved even after a compensated field failure.
+                if (!markerOwner.picture) voiceReservations[markerOwner.key] = markerOwner.Group.reserved;
+                clipMarkerResult.timings.phase = "post";
+                clipMarkerResult.timings.kind = markerOwner.picture ? "picture" : "voice";
+                clipMarkerResult.timings.ownerIndex = markerOwnerIndex;
                 markerCount += clipMarkerResult.count;
                 mergeClipMarkerCount += clipMarkerResult.merged;
                 clearedClipMarkerCount += clipMarkerResult.deleted;
                 if (clipMarkerResult.failures.length) {
-                    // Keep what was written; later review steps compare against the rows now on the source.
-                    if (markerOwner.preCommitted) {
-                        markerOwner.expected = markerTools.read(markerOwner.ProjectItem.getMarkers());
-                        markerOwner.reviewEntry = null;
-                    }
                     var failedTargets = markerOwner.Group.markerTargets || [];
                     for (var ft = 0; ft < failedTargets.length; ft++) {
                         failedTargets[ft].reason = clipMarkerResult.failures.join("; ");
@@ -2646,123 +2433,7 @@ $._PVS.executePlan = function (planPath) {
             var rulerCleanup = cleanLegacyOwnedRulerMarkers(workingSequence, plannedEndFrame / fps, fps);
             for (var off = 0; off < rulerCleanup.failures.length; off++) markerFailures.push(rulerCleanup.failures[off]);
         } catch (rulerCleanupError) { markerFailures.push("Legacy ruler cleanup: " + rulerCleanupError.message); }
-        var reviewIssues = asArray(plan.reviewMarkers).slice(0);
-        function addNativeReview(startFrame, endFrame, reason, severity) {
-            var start = Math.max(0, Math.min(startFrame, plannedEndFrame - 1));
-            var end = Math.min(plannedEndFrame, Math.max(start + 1, endFrame));
-            reviewIssues.push({ start: start / fps, end: end / fps, reason: reason, severity: severity || "error" });
-        }
-        for (var reviewIndex = 0; reviewIndex < sourceSegments.length; reviewIndex++) {
-            var reviewVideo = videoPieces[reviewIndex], reviewAudio = audioPieces[reviewIndex];
-            var reviewStart = Math.round(Number(sourceSegments[reviewIndex].NewStart) * fps);
-            var reviewEnd = reviewStart + durationFramesOf(reviewVideo);
-            if (Math.abs(frameOf(reviewVideo.start) - reviewStart) > validationToleranceFrames || Math.abs(frameOf(reviewAudio.start) - reviewStart) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "V1/A1 lệch vị trí kế hoạch – kiểm tra");
-            if (Math.abs(frameOf(reviewVideo.start) - frameOf(reviewAudio.start)) > validationToleranceFrames || Math.abs(frameOf(reviewVideo.end) - frameOf(reviewAudio.end)) > validationToleranceFrames) addNativeReview(reviewStart, reviewEnd, "mép V1/A1 lệch nhau – kiểm tra");
-            var reviewLinked = false;
-            try {
-                var reviewLinks = reviewVideo.getLinkedItems();
-                for (var reviewLink = 0; reviewLink < reviewLinks.length; reviewLink++) if (String(reviewLinks[reviewLink].nodeId) === String(reviewAudio.nodeId)) reviewLinked = true;
-            } catch (ignoreReviewLink) {}
-            if (!reviewLinked) addNativeReview(reviewStart, reviewEnd, "chưa xác minh liên kết V1/A1 – kiểm tra");
-            if (readSpeedPercent(reviewVideo) === null || readSpeedPercent(reviewAudio) === null) addNativeReview(reviewStart, reviewEnd, "không đọc được speed – kiểm tra phát", "review");
-        }
-        for (var reviewVoice = 0; reviewVoice < speechPieces.length; reviewVoice++) {
-            var reviewVoiceStart = Math.round(Number(speechPlans[reviewVoice].NewVoiceStart) * fps);
-            if (Math.abs(frameOf(speechPieces[reviewVoice].start) - reviewVoiceStart) > validationToleranceFrames) addNativeReview(reviewVoiceStart, reviewVoiceStart + durationFramesOf(speechPieces[reviewVoice]), "voice lệch vị trí kế hoạch – kiểm tra");
-        }
-        for (var reviewGap = 0; reviewGap < videoCoverageGaps.length; reviewGap++) addNativeReview(videoCoverageGaps[reviewGap].previousEndFrame, videoCoverageGaps[reviewGap].nextStartFrame, "hở hình " + videoCoverageGaps[reviewGap].gapFrames + " frame – kiểm tra");
-        for (var reviewSpeed = 0; reviewSpeed < speedConvergenceFailures.length; reviewSpeed++) addNativeReview(speedConvergenceFailures[reviewSpeed].startFrame, speedConvergenceFailures[reviewSpeed].startFrame + speedConvergenceFailures[reviewSpeed].desiredFrames, "độ dài sau speed chưa khớp (" + speedConvergenceFailures[reviewSpeed].label.replace(" segment ", " ") + ") – kiểm tra");
-        if (finalVideoTailDeltaFrames !== 0 || finalAudioTailDeltaFrames !== 0) addNativeReview(Math.min(finalVideoEndFrame, finalAudioEndFrame, plannedEndFrame) - 1, plannedEndFrame, "đuôi hình/tiếng lệch kế hoạch: V1=" + finalVideoTailDeltaFrames + ", A1=" + finalAudioTailDeltaFrames + " frame – kiểm tra");
-        if (reviewIssues.length > asArray(plan.reviewMarkers).length) {
-            // New native issues can claim old review GUIDs or extend an existing range.
-            // Re-plan against the original review rows before assigning those positions.
-            for (var ri = 0; ri < preOwners.length; ri++) {
-                var ro = preOwners[ri];
-                undoEarlyReview(ro);
-            }
-        }
-        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview, voiceReservations:voiceReservations});
-        var captionFile = new File(plan.captionSrtPath);
-        var captionCreated = false;
-        var captionTemporaryBinRemoved = false;
-        var captionProjectItemCountBefore = 0;
-        var captionProjectItemCountAfter = 0;
-        var captionTemporaryBinStillPresent = false;
-        var captionDeleteReturnValue = "";
-        var captionCleanupProbeCount = 0;
-        function countCaptionProjectItems(root, targetPath) {
-            var count = 0;
-            if (!root) return count;
-            try {
-                if (root.getMediaPath && String(root.getMediaPath() || "").toLowerCase() === String(targetPath || "").toLowerCase()) count++;
-            } catch (ignoreCaptionCountPath) {}
-            try {
-                if (root.children) for (var childIndex = 0; childIndex < root.children.numItems; childIndex++) count += countCaptionProjectItems(root.children[childIndex], targetPath);
-            } catch (ignoreCaptionCountChildren) {}
-            return count;
-        }
-        function projectTreeContainsNodeId(root, targetNodeId) {
-            if (!root || targetNodeId === "") return false;
-            try { if (String(root.nodeId) === targetNodeId) return true; } catch (ignoreCaptionNodeId) {}
-            try {
-                if (root.children) for (var childIndex = 0; childIndex < root.children.numItems; childIndex++) {
-                    if (projectTreeContainsNodeId(root.children[childIndex], targetNodeId)) return true;
-                }
-            } catch (ignoreCaptionNodeChildren) {}
-            return false;
-        }
-        if (captionFile.exists) {
-            captionProjectItemCountBefore = countCaptionProjectItems(app.project.rootItem, plan.captionSrtPath);
-            var captionBin = null;
-            var captionBinNodeId = "";
-            try {
-                captionBin = app.project.rootItem.createBin("PVS_TEMP_CAPTION_" + String((new Date()).getTime()));
-                if (!captionBin) throw new Error("Could not create temporary caption bin.");
-                try { captionBinNodeId = String(captionBin.nodeId); } catch (ignoreCaptionBinNodeId) {}
-                if (captionBinNodeId === "") throw new Error("Temporary caption bin has no nodeId.");
-                if (!app.project.importFiles([plan.captionSrtPath], true, captionBin, false)) throw new Error("Could not import aligned caption SRT into temporary bin.");
-                var captionItem = $._PVS._findItemByMediaPath(captionBin, plan.captionSrtPath);
-                if (!captionItem) throw new Error("Could not import aligned caption SRT.");
-                captionCreated = !!workingSequence.createCaptionTrack(captionItem, 0, Sequence.CAPTION_FORMAT_SUBTITLE);
-                if (!captionCreated) throw new Error("Premiere could not create caption track.");
-            } finally {
-                if (captionBin) {
-                    try {
-                        var deleteResult = captionBin.deleteBin();
-                        captionDeleteReturnValue = deleteResult === undefined ? "undefined" : String(deleteResult);
-                    } catch (captionBinDeleteError) {
-                        captionDeleteReturnValue = "throw: " + captionBinDeleteError.message;
-                    }
-                }
-                for (var captionCleanupProbe = 0; captionCleanupProbe < 6; captionCleanupProbe++) {
-                    captionCleanupProbeCount = captionCleanupProbe + 1;
-                    captionTemporaryBinStillPresent = projectTreeContainsNodeId(app.project.rootItem, captionBinNodeId);
-                    captionProjectItemCountAfter = countCaptionProjectItems(app.project.rootItem, plan.captionSrtPath);
-                    if (!captionTemporaryBinStillPresent && captionProjectItemCountAfter === captionProjectItemCountBefore) {
-                        captionTemporaryBinRemoved = true;
-                        break;
-                    }
-                    if (captionCleanupProbe < 5) {
-                        try { $.sleep(50); } catch (ignoreCaptionCleanupSleep) {}
-                    }
-                }
-            }
-            if (!captionTemporaryBinRemoved) throw new Error("Temporary caption cleanup failed: deleteBin returned " + captionDeleteReturnValue + "; bin still present=" + captionTemporaryBinStillPresent + "; SRT ProjectItems before=" + captionProjectItemCountBefore + ", after=" + captionProjectItemCountAfter + ".");
-        }
-        var masterInOutReset = false;
-        try {
-            var masterNestedItem = originalMainProjectItem;
-            if (masterNestedItem && masterNestedItem.clearInPoint && masterNestedItem.clearOutPoint) {
-                masterNestedItem.clearInPoint();
-                masterNestedItem.clearOutPoint();
-                masterInOutReset = true;
-            }
-        } catch (ignoreMasterReset) {}
-        var preservedAfter = preservedSignatures(workingSequence, linkedTrackIndex, voiceTrackIndex, originalMainName, linkedSpecs[0].name, combinedVoiceNames);
-        var unrelatedPreserved = sameSignatures(preservedBefore, preservedAfter);
-        var captionCueCount = plan.captions && plan.captions.length ? plan.captions.length : 0;
-        var expectedCaptionCueCount = plan.summary && plan.summary.captionCueCount ? Number(plan.summary.captionCueCount) : captionCueCount;
-        var captionsValid = captionFile.exists && captionCueCount > 0 && captionCueCount === expectedCaptionCueCount;
+        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {reviewTimings:reviewTimings, voiceReservations:voiceReservations});
         report = {
             ok: masterInOutReset && markerFailures.length === 0 && speedNonConvergenceCount === 0 && timelineEndMismatchCount === 0 && maxVideoError <= validationToleranceFrames && maxAudioError <= validationToleranceFrames && maxVoiceError <= validationToleranceFrames && maxPairStartError <= validationToleranceFrames && maxPairEndError <= validationToleranceFrames && maxVideoCoverageGapFrames <= maxCoverageGapFramesAllowed && finalVideoTailDeltaFrames === 0 && finalAudioTailDeltaFrames === 0 && linkMismatchCount === 0 && unrelatedPreserved && fillClips.length === fillRequests.length && captionsValid && captionCreated && captionTemporaryBinRemoved && captionProjectItemCountAfter === captionProjectItemCountBefore,
             executorVersion: 25,
@@ -2815,6 +2486,7 @@ $._PVS.executePlan = function (planPath) {
             captionReady: captionsValid,
             captionCueCount: captionCueCount,
             captionCreated: captionCreated,
+            captionError: captionError,
             captionTemporaryBinRemoved: captionTemporaryBinRemoved,
             captionTemporaryBinStillPresent: captionTemporaryBinStillPresent,
             captionDeleteReturnValue: captionDeleteReturnValue,
@@ -2872,6 +2544,5 @@ $._PVS.executePlan = function (planPath) {
     report.unattachedMarkerCount = report.unattachedMarkers.length;
     if (reviewMarkerStats.reviewMarkerFailureCount) report.ok = false;
     if (cleanupError !== "") report.ok = false;
-    if (voiceProjection) report.voiceProjection = voiceProjection;
     return $._PVS._result(report);
 };

@@ -1,21 +1,10 @@
 # Đánh giá tăng tốc Premiere Voice Sync
 
-## Ghi marker trước khi cắt, issue #55 (18/11/2026)
+## Gắn marker sau hậu kiểm, issue #94 (19/11/2026)
 
-Lượt Sông Congo 2.20.92 mất 25,2 giây cho 19 marker nguồn voice và khoảng 5 giây cho 22 marker rà trên 101 lát A2. Probe 17/11 đo trung bình một lần tạo marker tăng từ 14,7 lên 45,1 ms giữa hai lượt có 1 và 101 clip. [Bảng đo từng thao tác](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
+Sau khi dựng A2, trace ghi các bước `Tạo caption`, `Hậu kiểm`, chuẩn bị marker, `Gắn marker`, `Dọn thước và gắn marker review` và `Báo cáo`. Mỗi call của vòng `Gắn marker` xử lý một ProjectItem. `detail.markerCommit` ghi loại nguồn, chỉ số owner, số lần tạo, dời, xóa, ghi thuộc tính và thời gian. `detail.reviewCommits` ghi các bộ đếm tương ứng cho nhóm review. Cả hai dùng `phase="post"`.
 
-Trace ghi `phase`, `kind` và `ownerIndex` cùng các bộ đếm và thời gian #50 trong `detail.markerCommit`. Lượt review sau dựng dùng `detail.reviewCommits` vì một bước hậu kiểm có thể gặp nhiều nguồn. Fixture 65 lát A2 có khoảng lặng và speed 90% ghi marker căn voice và review trước cắt. Khi timeline khớp dự kiến, hai nhóm này có 0 lần tạo, dời, xóa hoặc ghi thuộc tính sau dựng. Chưa đo thời gian toàn lượt trên Premiere với #55.
-
-Trace bổ sung để tìm lý do marker review chỉ được ghi sau khi cắt. Các trường lấy từ dữ liệu đã tính trong lượt dựng, không thêm lượt đọc Premiere.
-
-| Bước | Trường bổ sung |
-| --- | --- |
-| Ghi trước marker voice | `preKey`, `picture`, `eligible`, `blocked`, số yêu cầu `desired` và cờ `projected` cho biết có kết quả chiếu voice. |
-| Chuẩn bị sau Ghi trước marker voice | `unattachedMarkerCount`, `unattachedReasons`, `reviewOwnersLength` và danh sách `reviewOwners` với `key`, `defer`, cờ `error`, số yêu cầu `desired` và số đoạn `targets`. |
-| Ghi trước marker review | `reviewKey`, `sourceOwnerFound`, `sourceEligible`, `defer` và `desired`. |
-| Chuẩn bị sau Cập nhật marker nguồn | Mỗi mục `detail.reviewCommits` có `ownerKey`, `ownerKnown` tại lúc tra nguồn và danh sách `ownerKeys` đã đăng ký trước khi cắt. |
-
-Trace giữ khóa `node:<id>` và rút mọi khóa `path:` thành `path`. Lý do chưa gắn chỉ ghi các thông báo có sẵn của bước phân bổ hoặc thông báo lỗi chung.
+Lượt ghi diễn ra sau khi A2 đã được cắt thành nhiều lát. Probe ngày 17/11 đo trung bình một lần tạo marker tăng từ 14,7 lên 45,1 ms giữa lượt có 1 và 101 clip. Chưa đo thời gian toàn lượt của #94 trên Premiere. [Bảng đo từng thao tác](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
 
 ## Tái sử dụng marker clip nguồn, issue #53 (17/11/2026)
 

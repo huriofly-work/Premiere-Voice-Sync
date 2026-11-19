@@ -104,6 +104,8 @@ node tools/probes/run-probe.js 8099 move-cleanup $probeDoc $probeItem $probeTag 
 
 ## Kiểm tra lệch ánh xạ voice và khôi phục marker — 2.20.97
 
+**Đã gỡ (#94/#95):** bản mới không còn bước khôi phục marker nên `Probe-MarkerRestore.jsx` và test mock của nó đã xoá. Phần dưới giữ làm lịch sử đo.
+
 `Probe-MarkerRestore.jsx` dùng cấu hình debug/Node 22+ bên dưới.
 Mở sequence cần đo rồi chạy lệnh chỉ đọc. Index audio bắt đầu từ 0 (A2 là 1).
 

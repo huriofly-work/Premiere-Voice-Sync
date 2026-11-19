@@ -416,7 +416,7 @@
       }catch(ignore){localFeedback("notificationTestFeedback","Chưa dùng được thông báo Windows. Kết quả tác vụ vẫn nằm trong panel.",true);}
     },5000);
   }
-  var stageLabels = { preflight: "Kiểm tra đầu vào", alignment: "Nhận diện và căn lời", planning: "Lập kế hoạch", timeline: "Dựng timeline và hậu kiểm", export: "Xuất audio", captions: "Thêm Caption Track", cleanup: "Dọn file tạm", unknown: "Chưa xác định" };
+  var stageLabels = { preflight: "Kiểm tra đầu vào", alignment: "Nhận diện và căn lời", planning: "Lập kế hoạch", timeline: "Dựng timeline, hậu kiểm và gắn marker", export: "Xuất audio", captions: "Thêm Caption Track", cleanup: "Dọn file tạm", unknown: "Chưa xác định" };
   function noticeAttribute(element, name, value) {
     if (element && element.setAttribute) element.setAttribute(name, value);
   }
@@ -672,7 +672,7 @@
     var context = runContext;
     if (context.impact === "changed" || context.impact === "unknown") recoveryContext = context;
     var message = context.impact === "unchanged" ? "Đã dừng theo yêu cầu. Timeline chưa bị thay đổi bởi tác vụ này." : "Các thay đổi đã thực hiện chưa được hoàn tác. Kiểm tra hoặc khôi phục timeline trước khi chạy lại.";
-    if (context.workflow === "edit" && context.impact !== "unchanged") message = "Timeline và marker được giữ đến bước đã thực hiện. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
+    if (context.workflow === "edit" && context.impact !== "unchanged") message = "Timeline được giữ đến bước đã thực hiện. Marker chỉ được gắn ở bước cuối, nên nếu dừng trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
     status(message, "warn");
     showWorkflowNotice("Đã dừng tác vụ", message, "warn", { kind: "cancelled", code: "WORKFLOW_CANCELLED", impact: context.impact, stage: context.cancelStage || context.stage, details: context.warnings.join("\n") });
   }
@@ -720,7 +720,7 @@
     if (/WORKFLOW_PAUSE_STATE_UNAVAILABLE/.test(raw)) message = "Không xác minh được trạng thái để tạm dừng/tiếp tục an toàn. Tác vụ đã dừng; xem chi tiết để kiểm tra.";
     if (context.impact === "changed") message = "Tác vụ dừng khi timeline hoặc Project đã thay đổi. Kiểm tra hoặc khôi phục bản đã lưu trước khi chạy lại.";
     if (context.impact === "unknown") message = "Chưa xác minh được kết quả của thao tác vừa chạy. Kiểm tra timeline, phụ đề và trạng thái audio trước khi chạy lại.";
-    if (context.workflow === "edit" && (context.impact === "changed" || context.impact === "unknown")) message = "Tác vụ dừng do lỗi. Timeline và marker được giữ đến bước đã thực hiện. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
+    if (context.workflow === "edit" && (context.impact === "changed" || context.impact === "unknown")) message = "Tác vụ dừng do lỗi. Timeline được giữ đến bước đã thực hiện. Nếu lỗi xảy ra trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
     var fieldId = null;
     if (!fatal && context.impact === "unchanged" && context.stage === "preflight") fieldId = error && error.pvsInputField || (/SRT/i.test(raw) ? context.workflow === "captions" ? "captionSrtCandidates" : "srtCandidates" : null);
     log(raw, "error");
@@ -1181,7 +1181,7 @@
     if (Number(result.clipMarkerFailureCount || 0) > 0) reasons.push(result.clipMarkerFailureCount + " lỗi cập nhật marker clip: " + (result.clipMarkerFailures || []).join("; "));
     if (Number(result.reviewMarkerFailureCount || 0) > 0) reasons.push(result.reviewMarkerFailureCount + " lỗi hậu kiểm marker: " + (result.reviewMarkerFailures || []).join("; "));
     if (result.masterInOutReset === false) reasons.push("không xóa được In/Out của master nest");
-    if (result.captionCreated === false) reasons.push("không tạo được caption track");
+    if (result.captionCreated === false) reasons.push("không tạo được caption track, nên không gắn marker caption" + (result.captionError ? " (" + result.captionError + ")" : ""));
     if (result.captionTemporaryBinRemoved === false || Number(result.captionProjectItemCountAfter || 0) !== Number(result.captionProjectItemCountBefore || 0)) reasons.push("file caption tạm vẫn còn trong Project");
     if (result.unrelatedPreserved === false) reasons.push("element ngoài phạm vi đã thay đổi");
     if (result.error) return [result.error].concat(reasons).join("; ");
@@ -1718,7 +1718,7 @@
           if (mutation === true) runContext.impact = "changed";
           else if (mutation === false && runContext.impact !== "changed") runContext.impact = "unchanged";
         }
-        record({ type: "response", call: nextCall, wallMilliseconds: Date.now() - requestedAt, ok: response.ok, done: response.done, stage: response.stage || "", hostMilliseconds: response.milliseconds, checkpoint: response.checkpoint || "" });
+        record({ type: "response", call: nextCall, wallMilliseconds: Date.now() - requestedAt, ok: response.ok, done: response.done, stage: response.stage || nextStage, hostMilliseconds: response.milliseconds, checkpoint: response.checkpoint || "" });
         if (response.done) {
           record({ type: "finish", ok: !!(response.result && response.result.ok), timings: response.timings || [] });
           if (!response.result) throw new Error("Chẩn đoán không trả về hậu kiểm.");

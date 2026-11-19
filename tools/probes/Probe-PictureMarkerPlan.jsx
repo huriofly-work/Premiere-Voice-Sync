@@ -58,7 +58,7 @@ $._PVSPictureMarkerPlanProbe = (function () {
         return count <= 1;
     }
     // Choose on the timeline grid before mapping into ProjectItem seconds.
-    function point(g, start, end, fps, map, onBlocked) {
+    function point(g, start, end, fps, map) {
         var first = Math.ceil(start * fps - 0.0000001), last = Math.ceil(end * fps - 0.0000001) - 1;
         if (first > last) return null;
         var middle = Math.max(first, Math.min(last, Math.round((start + end) * fps / 2 + 0.0000001)));
@@ -68,10 +68,7 @@ $._PVSPictureMarkerPlanProbe = (function () {
         }
         function attempt(frame) {
             var t = frame / fps, seconds = map ? map.source(t) : t;
-            if (!available(g, seconds)) {
-                if (onBlocked) onBlocked(seconds);
-                return null;
-            }
+            if (!available(g, seconds)) return null;
             var halfFrame = (map ? map.speed : 1) / fps / 2;
             return { seconds: seconds, end: seconds, positionTolerance: halfFrame, verify: function (actual, actualEnd) {
                 return actualEnd !== null && inside(actual) && inside(actualEnd) &&

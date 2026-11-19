@@ -115,14 +115,4 @@ after=context.diagnosticSnapshotAfter(seq,before,"read-only");assert.notStrictEq
 assert.strictEqual(context.diagnosticSnapshotAfter(seq,before,"unknown").strategy,"full");
 seq=seqFixture();seq.videoTracks[0].clips[1].nodeId="v0";before=context.diagnosticSnapshot(seq,true);
 assert.strictEqual(context.diagnosticSnapshotAfter(seq,before,"speed").strategy,"full-fallback");
-// Cleanup owner native proxies must be replaced before the first cleanup batch,
-// including when its loop index has not yet been initialized.
-vm.runInContext("var videoPieces,audioPieces,allVoicePieces,speechPieces,removeVoice,tailItems,qeSequence,cleanupOwnerIndex;",context);
-const freshOwner=mediaClip("owner");
-context.cleanupOwners=[{NodeId:"owner",Item:{get nodeId(){throw Error("STALE_OWNER_PROXY");}}}];
-context.diagnosticRebind({}, {byId:{owner:freshOwner}});
-assert.strictEqual(context.cleanupOwners[0].Item,freshOwner);
-assert.throws(()=>context.diagnosticRebind({}, {byId:{}}),/DIAGNOSTIC_MARKER_OWNER_MISSING/);
-context.cleanupOwnerIndex=1;
-context.diagnosticRebind({}, {byId:{}}); // Completed owners are never read again.
-console.log("DIAGNOSTIC_FAST_SUPPORT_OK:first-exact-and-nearest-tie-parity;duplicate-unordered-nonfinite-gap-negative-tolerance;fresh-layout-every-query;20000-to-5050-stable-and-24950-to-10000-changing-gap-mock-reads;randomized-mutable-layout-parity;native-read-errors;fingerprint-parity;fewer-collection-reads;cleanup-owner-rebind");
+console.log("DIAGNOSTIC_FAST_SUPPORT_OK:first-exact-and-nearest-tie-parity;duplicate-unordered-nonfinite-gap-negative-tolerance;fresh-layout-every-query;20000-to-5050-stable-and-24950-to-10000-changing-gap-mock-reads;randomized-mutable-layout-parity;native-read-errors;fingerprint-parity;fewer-collection-reads");

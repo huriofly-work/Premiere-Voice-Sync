@@ -82,7 +82,7 @@ const editRegressions = {
     const f=fixture({editResult:{ok:false,executorVersion:25,timelineMutated:true,error:"Original host error",settings:{validationToleranceFrames:1},clipMarkerFailureCount:1,clipMarkerFailures:["Marker write failed"]}});
     await settle(f,f.api.edit());
     assert.match(f.controls.workflowNoticeTechnical.textContent,/^Original host error; .*1 lỗi cập nhật marker clip: Marker write failed/);
-    assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline và marker được giữ/);
+    assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline được giữ đến bước đã thực hiện..*trước bước Gắn marker/);
   },
   async "closing-error-secondary"() {
     const f=fixture({advanceError:true,closeError:true});
@@ -124,7 +124,7 @@ if(require.main===module)(async()=>{
       assert.equal(!!f.api.recovery(),changed,mode+":"+stopAt+":recovery");
       if(changed)assert(f.controls.runSync.disabled&&f.controls.runCaptions.disabled);
       else assert(f.controls.workflowNoticeMessage.textContent.includes("Timeline chưa bị thay đổi"));
-      if(stopAt==="edit-advance-1")assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline và marker được giữ/);
+      if(stopAt==="edit-advance-1")assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline được giữ đến bước đã thực hiện..*trước bước Gắn marker/);
       const hosts=f.calls.filter(c=>c[0]==="host").map(c=>c[1]);
       if(["edit-begin","edit-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
       if(["export-begin","export-yield","export-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortCaptionAudioExport")).length,1);

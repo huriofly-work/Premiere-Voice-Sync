@@ -97,13 +97,6 @@ function diagnosticRebind(sequence, snapshot) {
         var tail = snapshot.byId[String(tailItems[tailIndex].Item.nodeId)];
         if (tail) tailItems[tailIndex].Item = tail;
     }
-    if (typeof cleanupOwners !== "undefined" && cleanupOwners && Number(cleanupOwnerIndex || 0) < cleanupOwners.length) {
-        for (var cleanupIndex = cleanupOwnerIndex || 0; cleanupIndex < cleanupOwners.length; cleanupIndex++) {
-            var ownerItem = snapshot.byId[cleanupOwners[cleanupIndex].NodeId];
-            if (!ownerItem) throw new Error("DIAGNOSTIC_MARKER_OWNER_MISSING");
-            cleanupOwners[cleanupIndex].Item = ownerItem;
-        }
-    }
     if (qeSequence) {
         qeSequence = qe.project.getActiveSequence();
         qeVideoTrack = qeSequence.getVideoTrackAt(0);

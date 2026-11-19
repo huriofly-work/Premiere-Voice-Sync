@@ -93,45 +93,30 @@ function generate(source, options) {
     return value;
   }
   const loops = {
-    cleanupOwnerIndex: "Đọc marker nguồn", preOwnerIndex: "Ghi trước marker voice", preReviewIndex: "Ghi trước marker review",
     cutIndex: "Cắt V1–A1 linked", omitIndex: "Bỏ hình–A1 theo SRT đã lược", fastIndex: "Tăng speed V1–A1",
     moveIndex: "Dồn vị trí V1–A1", slowIndex: "Giảm speed V1–A1", reconcileIndex: "Đối chiếu mép V1–A1",
     voiceCutIndex: "Cắt voice A2", removeVoice: "Bỏ lát khoảng lặng A2", voiceMove: "Dồn voice A2",
-    markerIndex: "Chuẩn bị marker voice", speedMarkerIndex: "Chuẩn bị marker tốc độ", markerOwnerIndex: "Cập nhật marker nguồn"
+    markerIndex: "Chuẩn bị marker voice", speedMarkerIndex: "Chuẩn bị marker tốc độ", markerOwnerIndex: "Gắn marker"
   };
-  const boundaries = { voiceNames: "Hình V1–A1", fillRequests: "Voice A2", captionFile: "Marker", masterInOutReset: "Caption" };
-  function insertMeasurement(code, point, replacement) {
-    if (code.split(point).length !== 2) throw Error("Review diagnostic measurement placement: " + point);
-    return code.replace(point, replacement);
-  }
-  const steps = []; let cursor = start, label = "Kiểm tra đầu vào và chuẩn bị";
+  const boundaries = { voiceNames: "Hình V1–A1", captionFile: "Voice A2", maxVideoError: "Caption", plannedClipMarkers: "Hậu kiểm" };
+  // measurePrepare marks preparation steps; it follows the stage kind, not the label text.
+  const steps = []; let cursor = start, label = "Kiểm tra đầu vào và chuẩn bị", prepare = true;
   function flush(to, checkpoint) {
     let code = slice(cursor,to);
-    if (measure && label === "Chuẩn bị sau " + loops.preOwnerIndex) {
-      const prepareReview = "$._PVS._applyReviewMarkers(workingSequence, asArray(plan.reviewMarkers),";
-      code = "var preparedReviewStats = null;\n" + insertMeasurement(code, prepareReview, "preparedReviewStats = " + prepareReview) + `
-diagnosticDetail.unattachedMarkerCount = preparedReviewStats ? preparedReviewStats.unattachedMarkerCount : 0;
-diagnosticDetail.unattachedReasons = [];
-for (var ui = 0; preparedReviewStats && ui < preparedReviewStats.unattachedMarkers.length; ui++) {
-    diagnosticDetail.unattachedReasons.push(diagnosticReviewReason(preparedReviewStats.unattachedMarkers[ui].reason));
-}
-diagnosticDetail.reviewOwnersLength = reviewOwners.length;
-diagnosticDetail.reviewOwners = [];
-for (var ri = 0; ri < reviewOwners.length; ri++) {
-    var preparedOwner = reviewOwners[ri];
-    diagnosticDetail.reviewOwners.push({
-        key: diagnosticMarkerKey(preparedOwner.key), defer: !!preparedOwner.defer, error: !!preparedOwner.error,
-        desired: preparedOwner.group ? preparedOwner.group.desired.length : 0, targets: preparedOwner.targets.length
-    });
-}`;
-    }
-    if (code.trim()) steps.push({ label, code, checkpoint: checkpoint || "" });
+    if (code.trim()) steps.push({label, code, checkpoint: checkpoint || "", measurePrepare: prepare});
     else if (checkpoint && steps.length) steps[steps.length-1].checkpoint = checkpoint;
     cursor = to;
   }
   for (const node of attempt.block.body) {
     const variable = node.type === "VariableDeclaration" && node.declarations[0].id.name;
-    if (boundaries[variable]) { flush(node.start, boundaries[variable]); label = "Chuẩn bị " + (variable === "voiceNames" ? "voice A2" : variable === "captionFile" ? "caption" : "hậu kiểm"); }
+    if (boundaries[variable]) {
+      flush(node.start, boundaries[variable]);
+      label = ({voiceNames:"Chuẩn bị voice A2", captionFile:"Tạo caption", maxVideoError:"Hậu kiểm", plannedClipMarkers:"Chuẩn bị marker"})[variable];
+      prepare = variable !== "captionFile";
+    }
+    if (node.type === "ExpressionStatement" && node.expression.left && node.expression.left.name === "report") {
+      flush(node.start, "Marker"); label = "Báo cáo"; prepare = false;
+    }
     const loopVariable = node.type === "ForStatement" && node.init && node.init.type === "VariableDeclaration" && node.init.declarations[0].id.name;
     if (!loops[loopVariable]) continue;
     flush(node.start);
@@ -140,7 +125,7 @@ for (var ri = 0; ri < reviewOwners.length; ri++) {
     // A source marker transaction never spans host calls. Even no-delay yields
     // between source owners so cancellation keeps uncommitted owners intact.
     const speedLoop = ["fastIndex", "slowIndex"].includes(loopVariable);
-    const ownerLoop = ["markerOwnerIndex","preOwnerIndex","preReviewIndex"].includes(loopVariable);
+    const ownerLoop = loopVariable === "markerOwnerIndex";
     const yieldCondition = ownerLoop ? "batchCount >= 1" :
       `!diagnosticNoDelay && (batchCount >= diagnosticBatchLimit || (batchCount > 0 && (new Date()).getTime() - batchStarted >= diagnosticBatchBudgetMs))`;
     let loopBody = slice(node.body.start+1,node.body.end-1);
@@ -149,28 +134,6 @@ for (var ri = 0; ri < reviewOwners.length; ri++) {
       if (loopBody.split(point).length !== 2) throw Error("Review marker owner measurement placement.");
       loopBody = loopBody.replace(point, "diagnosticMarkerOwner(markerOwner.Group, cleanupOwners.length);\n                " + point)
         .replace("markerCount += clipMarkerResult.count;", "diagnosticDetail.markerCommit = clipMarkerResult.timings;\n                markerCount += clipMarkerResult.count;");
-    }
-    if (measure && loopVariable === "preOwnerIndex") {
-      loopBody = insertMeasurement(loopBody, "ownerByKey[projectItemKey(preOwner.Item)] = preOwner;",
-        "var preKey = projectItemKey(preOwner.Item);\n            ownerByKey[preKey] = preOwner;");
-      loopBody = insertMeasurement(loopBody, "preGroup.blocked = false;", `diagnosticDetail.markerCommit = preClipTiming;
-            diagnosticDetail.preKey = diagnosticMarkerKey(preKey);
-            diagnosticDetail.picture = !!preOwner.picture;
-            diagnosticDetail.eligible = !!preOwner.eligible;
-            diagnosticDetail.blocked = !!preGroup.blocked;
-            diagnosticDetail.desired = preGroup.desired.length;
-            diagnosticDetail.projected = !!projectedPieces;
-            preGroup.blocked = false;`);
-    }
-    if (measure && loopVariable === "preReviewIndex") {
-      const reviewGate = "if (sourceOwner && sourceOwner.eligible";
-      loopBody = insertMeasurement(loopBody, reviewGate, `diagnosticDetail.reviewKey = diagnosticMarkerKey(reviewOwner.key);
-            diagnosticDetail.sourceOwnerFound = !!sourceOwner;
-            diagnosticDetail.sourceEligible = !!(sourceOwner && sourceOwner.eligible);
-            diagnosticDetail.defer = !!reviewOwner.defer;
-            diagnosticDetail.desired = reviewOwner.group ? reviewOwner.group.desired.length : 0;
-            ${reviewGate}`);
-      loopBody += "\ndiagnosticDetail.markerCommit = preReviewTiming;";
     }
     if (speedLoop) {
       // Baseline/fast count four atomic V1/A1 mutations after plan-only skips.
@@ -187,52 +150,20 @@ for (var ri = 0; ri < reviewOwners.length; ri++) {
       `for (; ${slice(node.test.start,node.test.end)}; ${slice(node.update.start,node.update.end)}) {\n` +
       `if (${yieldCondition}) return false;\n` +
       `batchCount++;\n${loopBody}\n}\n`;
-    const postMode = speedLoop ? "speed" : ownerLoop || ["cleanupOwnerIndex","markerIndex","speedMarkerIndex"].includes(loopVariable) ? "read-only" : "full";
-    steps.push({ label: loops[loopVariable], code, loop: true, checkpoint: "", postMode });
-    cursor = node.end; label = "Chuẩn bị sau " + loops[loopVariable];
+    const postMode = speedLoop ? "speed" : ownerLoop || ["markerIndex","speedMarkerIndex"].includes(loopVariable) ? "read-only" : "full";
+    steps.push({ label: loops[loopVariable], code, loop: true, checkpoint: "", postMode, measurePrepare: ["markerIndex","speedMarkerIndex"].includes(loopVariable) });
+    cursor = node.end;
+    label = ownerLoop ? "Dọn thước và gắn marker review" : "Chuẩn bị sau " + loops[loopVariable];
+    prepare = true;
   }
   flush(end);
   if (steps.length < 15 || steps.filter(s=>s.loop).length !== Object.keys(loops).length) throw Error("Executor layout changed; review diagnostic stage map.");
-  steps.forEach((step,index) => { step.measurePrepare = index === 0 || step.label.indexOf("Chuẩn bị") === 0; });
   const rawPrefix = source.slice(fn.body.start+1,attempt.start);
   if (rawPrefix.split("$._PVS._findQEClipAtTicks(qeTrack,").length !== 2) throw Error("Review QE lookup transformation.");
   const speedHelper = fn.body.body.find(n => n.type === "FunctionDeclaration" && n.id.name === "setClipSpeed");
   if (!speedHelper || speedHelper.params[0].name !== "item") throw Error("Review speed dirty-item instrumentation.");
   const insertion = speedHelper.body.start + 1 - fn.body.start - 1;
   let instrumentedPrefix = rawPrefix.slice(0,insertion) + "\n        diagnosticTouch(item);\n" + rawPrefix.slice(insertion);
-  if (measure) {
-    const projectionStart = "voiceProjection = { piecesCompared: 0, firstMismatch: null, maxAbsDeltaTicks: maxDelta };";
-    instrumentedPrefix = insertMeasurement(instrumentedPrefix, projectionStart, projectionStart + `
-        if (!diagnosticDetail) diagnosticDetail = {};
-        diagnosticDetail.voiceProjection = voiceProjection;`);
-    const ownerLookup = "var owner = ownerByKey[clipOwner.key];";
-    instrumentedPrefix = insertMeasurement(instrumentedPrefix, ownerLookup, ownerLookup + "\n        var ownerKnown = !!owner;");
-    const finalTiming = 'reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));';
-    instrumentedPrefix = insertMeasurement(instrumentedPrefix, finalTiming, `result.timings.ownerKey = diagnosticMarkerKey(clipOwner.key);
-        result.timings.ownerKnown = ownerKnown;
-        result.timings.ownerKeys = [];
-        for (var ownerKey in ownerByKey) {
-            if (ownerByKey.hasOwnProperty(ownerKey)) result.timings.ownerKeys.push(diagnosticMarkerKey(ownerKey));
-        }
-        ${finalTiming}`);
-    instrumentedPrefix += `
-function diagnosticMarkerKey(key) {
-    return key.indexOf("path:") === 0 ? "path" : key;
-}
-function diagnosticReviewReason(reason) {
-    // Only built-in allocation messages are safe to include in this trace.
-    switch (reason) {
-        case "Nhiều clip cùng phù hợp.":
-        case "Không đọc được ánh xạ từ timeline sang nguồn.":
-        case "Không có clip trong khoảng cảnh báo.":
-        case "Không còn frame trống trên clip.":
-            return reason;
-        default:
-            return "Lỗi khi chuẩn bị marker review.";
-    }
-}
-`;
-  }
   const speedSignature = "function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, allowTerminalEndFallback)";
   const qeLookup = "$._PVS._findQEClipAtTicks(qeTrack, item.start.ticks, tolerance)";
   if (instrumentedPrefix.split(speedSignature).length!==2 || instrumentedPrefix.split(qeLookup).length!==2) throw Error("Review logical QE helper signature.");
@@ -243,7 +174,7 @@ function diagnosticReviewReason(reason) {
   const catcher = source.slice(attempt.handler.body.start+1,attempt.handler.body.end-1);
   const suffix = source.slice(attempt.end,fn.body.end-1).replace(/return \$\._PVS\._result\(report\);/, "return report;");
   const hash = crypto.createHash("sha256").update(source).digest("hex");
-  const ownerStage = ["markerOwnerIndex","preOwnerIndex","preReviewIndex"].map(key => "step.label===" + JSON.stringify(loops[key])).join("||");
+  const ownerStage = "step.label===" + JSON.stringify(loops.markerOwnerIndex);
   const reviewTrace = measure ? "if(reviewTimings.length && diagnosticDetail){diagnosticDetail.reviewCommits=reviewTimings;reviewTimings=[];}\n" : "";
   const generated = `// GENERATED by tools/Build-DiagnosticExecutor.js; do not hand-edit.\n// Stable host SHA256: ${hash}\n` +
     `(function () {\nvar session = null;\n$._PVS.diagnosticInfo = function () { return $._PVS._result({ok:true, revision:"staged-edit-v3", baseHash:"${hash}", active:!!session}); };\n` +
@@ -253,7 +184,7 @@ function diagnosticReviewReason(reason) {
     `\nvar steps = [\n` + steps.map(s=>`{label:${JSON.stringify(s.label)},checkpoint:${JSON.stringify(s.checkpoint)},postMode:${JSON.stringify(s.postMode || "full")},measurePrepare:${s.measurePrepare},run:function(){\n${s.measurePrepare ? instrument(s.code) : s.code}\nreturn true;}}`).join(",\n") +
     `\n];\nvar stageIndex=0, expectedCall=0, expectedSignature=null, sequenceId=null, timings=[];\n` +
     `function signature(seq) {\nvar rows=[String(seq.sequenceID)], kinds=[seq.videoTracks,seq.audioTracks];\nfor(var k=0;k<kinds.length;k++)for(var t=0;t<kinds[k].numTracks;t++){var track=kinds[k][t];for(var c=0;c<track.clips.numItems;c++){var clip=track.clips[c];rows.push(k+":"+t+":"+String(clip.nodeId)+":"+String(clip.start.ticks)+":"+String(clip.end.ticks)+":"+String(clip.inPoint.ticks)+":"+String(clip.outPoint.ticks)+":"+String(readSpeedPercent(clip)));}}\nreturn rows.join("|");}\n` +
-    `function rebind(seq){\nvar byId={},kinds=[seq.videoTracks,seq.audioTracks];\nfor(var k=0;k<kinds.length;k++)for(var t=0;t<kinds[k].numTracks;t++)for(var c=0;c<kinds[k][t].clips.numItems;c++){var clip=kinds[k][t].clips[c];byId[String(clip.nodeId)]=clip;}\nvar groups=[videoPieces,audioPieces,allVoicePieces,speechPieces];for(var g=0;g<groups.length;g++)if(groups[g])for(var i=0;i<groups[g].length;i++){if(g===2 && removeVoice!==undefined && i>removeVoice)continue;var fresh=byId[String(groups[g][i].nodeId)];if(fresh)groups[g][i]=fresh;}\nif(tailItems)for(var j=0;j<tailItems.length;j++){var tail=byId[String(tailItems[j].Item.nodeId)];if(tail)tailItems[j].Item=tail;}\nif(cleanupOwners && Number(cleanupOwnerIndex||0)<cleanupOwners.length)for(var oi=cleanupOwnerIndex||0;oi<cleanupOwners.length;oi++){var ownerItem=byId[cleanupOwners[oi].NodeId];if(!ownerItem)throw new Error("DIAGNOSTIC_MARKER_OWNER_MISSING");cleanupOwners[oi].Item=ownerItem;}\nif(qeSequence){qeSequence=qe.project.getActiveSequence();qeVideoTrack=qeSequence.getVideoTrackAt(0);qeAudioTrack=qeSequence.getAudioTrackAt(linkedTrackIndex);if(qeVoiceTrack)qeVoiceTrack=qeSequence.getAudioTrackAt(voiceTrackIndex);}\n}\n` +
+    `function rebind(seq){\nvar byId={},kinds=[seq.videoTracks,seq.audioTracks];\nfor(var k=0;k<kinds.length;k++)for(var t=0;t<kinds[k].numTracks;t++)for(var c=0;c<kinds[k][t].clips.numItems;c++){var clip=kinds[k][t].clips[c];byId[String(clip.nodeId)]=clip;}\nvar groups=[videoPieces,audioPieces,allVoicePieces,speechPieces];for(var g=0;g<groups.length;g++)if(groups[g])for(var i=0;i<groups[g].length;i++){if(g===2 && removeVoice!==undefined && i>removeVoice)continue;var fresh=byId[String(groups[g][i].nodeId)];if(fresh)groups[g][i]=fresh;}\nif(tailItems)for(var j=0;j<tailItems.length;j++){var tail=byId[String(tailItems[j].Item.nodeId)];if(tail)tailItems[j].Item=tail;}\nif(qeSequence){qeSequence=qe.project.getActiveSequence();qeVideoTrack=qeSequence.getVideoTrackAt(0);qeAudioTrack=qeSequence.getAudioTrackAt(linkedTrackIndex);if(qeVoiceTrack)qeVoiceTrack=qeSequence.getAudioTrackAt(voiceTrackIndex);}\n}\n` +
     `function finish(e){\nif(e){${catcher}}\n${cleanup}\n${suffix}\n}\n` +
     `var initialSequence=app.project.activeSequence;if(!initialSequence)return $._PVS._result({ok:false,error:"DIAGNOSTIC_NO_ACTIVE_SEQUENCE"});\nsequenceId=String(initialSequence.sequenceID);expectedSignature=signature(initialSequence);\n` +
     `session={token:String(token),awaitAcceptance:awaitAcceptance===true,acceptedResult:null,advance:function(call){\nif(this.acceptedResult)return {ok:false,error:"DIAGNOSTIC_AWAITING_ACCEPTANCE"};\nif(Number(call)!==expectedCall)return {ok:false,done:false,error:"DIAGNOSTIC_CALL_ORDER",timelineMutated:timelineMutated};\nexpectedCall++;var started=(new Date()).getTime(),step=steps[stageIndex],checkpoint="";diagnosticDetail=null;\ntry{var active=app.project.activeSequence;if(!active)throw new Error("DIAGNOSTIC_NO_ACTIVE_SEQUENCE");\nif(String(active.sequenceID)!==sequenceId)throw new Error("DIAGNOSTIC_SEQUENCE_CHANGED");\nvar checkStarted=(new Date()).getTime(),currentSnapshot=diagnosticFast?diagnosticSnapshot(active,true):null;\nif((diagnosticFast?currentSnapshot.signature:signature(active))!==expectedSignature)throw new Error("DIAGNOSTIC_TIMELINE_CHANGED_BETWEEN_BATCHES");\nvar checkMs=(new Date()).getTime()-checkStarted,rebindStarted=(new Date()).getTime();\nif(diagnosticFast)diagnosticRebind(active,currentSnapshot);else rebind(active);\nvar rebindMs=(new Date()).getTime()-rebindStarted;diagnosticDirtyItems={};diagnosticQeStats=diagnosticNewQeStats();diagnosticDetail=diagnosticNewDetail(step.measurePrepare,${ownerStage});\nvar workStarted=(new Date()).getTime(),complete=step.run(),workMs=(new Date()).getTime()-workStarted;if(complete){stageIndex++;checkpoint=step.checkpoint;}\n${reviewTrace}var snapshotStarted=(new Date()).getTime(),afterSnapshot=diagnosticFast?diagnosticSnapshotAfter(active,currentSnapshot,step.postMode):null;expectedSignature=diagnosticFast?afterSnapshot.signature:signature(active);var snapshotMs=(new Date()).getTime()-snapshotStarted;\ntimings.push({stage:step.label,milliseconds:(new Date()).getTime()-started,complete:complete,checkMs:checkMs,rebindMs:rebindMs,workMs:workMs,snapshotMs:snapshotMs,qeLookupMs:diagnosticQeStats.milliseconds,qeQueries:diagnosticQeStats.queries,qeHits:diagnosticQeStats.hits,qeBuilds:diagnosticQeStats.builds,qeFallbacks:diagnosticQeStats.fallbacks,qeCacheReuses:diagnosticQeStats.reuses,qeCountChanges:diagnosticQeStats.countChanges,qeCandidateMisses:diagnosticQeStats.candidateMisses,qeInvalidLayouts:diagnosticQeStats.invalidLayouts,qeItemReads:diagnosticQeStats.itemReads,qeEarlyHits:diagnosticQeStats.earlyHits,qeNearestScans:diagnosticQeStats.nearestScans,snapshotStrategy:diagnosticFast?afterSnapshot.strategy:"full",snapshotDetailReads:diagnosticFast?afterSnapshot.detailReads:0,detail:diagnosticDetail});\nif(stageIndex===steps.length)return {ok:true,done:true,result:finish(null),timings:timings};\nreturn {ok:true,done:false,nextCall:expectedCall,stage:step.label,nextStage:steps[stageIndex].label,stageIndex:stageIndex,stageCount:steps.length,checkpoint:checkpoint,timelineMutated:timelineMutated,milliseconds:timings[timings.length-1].milliseconds};\n}catch(e){timings.push({stage:step.label,milliseconds:(new Date()).getTime()-started,failed:true,detail:diagnosticDetail});return {ok:false,done:true,result:finish(e),timings:timings};}\n},abort:function(){if(this.acceptedResult)return {ok:true,done:true,result:this.acceptedResult,timings:timings};return {ok:false,done:true,result:{ok:false,executorVersion:25,timelineMutated:timelineMutated,error:"DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE"},timings:timings};}};\nreturn $._PVS._result({ok:true,token:String(token),stageCount:steps.length,nextCall:0,nextStage:steps[0].label,profile:diagnosticFast?"fast":"baseline"});\n};\n` +
