@@ -61,7 +61,7 @@ node tools/probes/run-probe.js move-cleanup $probeDoc $probeItem $probeTag probe
 
 ## Kiểm tra lệch ánh xạ voice và khôi phục marker — 2.20.97
 
-`Probe-MarkerRestore.jsx` **chưa chạy native**. Dùng cấu hình debug/Node 22+ bên dưới.
+`Probe-MarkerRestore.jsx` dùng cấu hình debug/Node 22+ bên dưới.
 Mở sequence cần đo rồi chạy lệnh chỉ đọc. Index audio bắt đầu từ 0 (A2 là 1).
 
 ```powershell
@@ -70,7 +70,8 @@ node tools/probes/run-probe.js restore-projection 1
 ```
 
 - `restore-projection` đọc từng clip trên track đang chọn. `timebase` là số tick mỗi frame, `fps` tính từ timebase. Với `start`, `end`, `inPoint`, `outPoint`, kết quả có `seconds` và `ticks` Premiere trả về, `tickSeconds` đổi từ ticks, `frame` làm tròn từ seconds, và `frameSeconds` đổi lại từ frame. `deltaVsTicks` và `deltaVsRoundedFrameTicks` là độ lệch có dấu của `seconds` so với hai phép đổi, tính bằng tick. `speedSource` cho biết hệ số `speed` lấy từ hàm host hay bản sao.
-- Báo cáo Auto edit có `voiceProjection.piecesCompared` và `firstMismatch` khi bước so ánh xạ chạy. Chỉ số lát bắt đầu từ 0. `deltaTicks` và `deltaFrames` bằng giá trị đọc từ clip trừ dự đoán. Khi lệch khoá nguồn, khoá dạng đường dẫn hiển thị là `path`. `firstMismatch: null` nghĩa là mọi lát đã so đều khớp.
+- Ngày 19/11/2026, Premiere 26.2.2, sequence mẫu ở 30 fps có một clip A2 speed 1.1 với hai mép timeline trên lưới frame và `outPoint` thấp hơn lưới một tick. Sequence đã dựng có 101 clip A2 cùng speed 1.1. Cả 101 `start` và `end` nằm đúng lưới frame, với `.seconds` đúng bằng ticks đổi ra giây. Có 100/101 `inPoint` lệch lưới tối đa khoảng 80 tick và 101/101 `outPoint` lệch tối đa khoảng 2 tick. Số đo xác nhận giả thuyết A về việc phép so tuyệt đối ở `input` báo lệch giả. Dữ liệu ở `_local/probe-restore-projection-built.json`.
+- Báo cáo Auto edit có `voiceProjection.piecesCompared`, `firstMismatch` và `maxAbsDeltaTicks` cho `start`, `end`, `input` trên các lát đã so. Chỉ số lát bắt đầu từ 0. `deltaTicks` và `deltaFrames` bằng giá trị đọc từ clip trừ dự đoán. Khi lệch khoá nguồn, khoá dạng đường dẫn hiển thị là `path`. `firstMismatch: null` nghĩa là mọi lát đã so đều trong dung sai.
 
 Dùng project thử và media thử riêng cho phép đo ghi marker. Lấy `documentId` và `nodeId` từ `restore-list` rồi điền vào hai biến bên dưới. Với nguồn chưa có marker, các vị trí thử bắt đầu khoảng giây 41, cách nhau 6 giây. Media thử dài khoảng 65 giây đủ cho các vị trí mặc định. Nếu có marker sẵn gần vị trí thử, probe tìm vị trí xa hơn.
 
@@ -80,15 +81,19 @@ $probeDoc = '<documentId>'
 $probeItem = '<nodeId>'
 $probeTag = '[PremiereVoiceSync:marker-restore:v1]'
 node tools/probes/run-probe.js restore-run $probeDoc $probeItem $probeTag probe-tagged-only
+node tools/probes/run-probe.js restore-journal $probeDoc $probeItem $probeTag probe-tagged-only
 # Chi chay cleanup neu can don tag con sot.
 node tools/probes/run-probe.js restore-cleanup $probeDoc $probeItem $probeTag probe-tagged-only
 ```
 
 - `restore-run` thử dời marker điểm, dời và đổi độ dài marker khoảng, xóa rồi tạo lại, và đổi màu. `requestedSeconds` là vị trí yêu cầu ban đầu. `prior` là giá trị Premiere đọc lại trước khi thay đổi, `modified` là trạng thái sau khi thay đổi và `actual` là trạng thái sau khôi phục. Theo thứ tự của host, ghi start trước rồi chỉ ghi end nếu end đọc lại còn khác. Khi tạo lại, ghi end nếu cần, rồi ghi name, comments và màu. `markerToolsSource` cho biết probe dùng hàm host đang nạp hay bản sao.
-- `differences` liệt kê từng trường lệch, kể cả lệch dưới một tick. Với comments chỉ ghi độ dài và vị trí ký tự khác đầu tiên, tính từ 0. `fingerprintMatches` so nội dung theo host. Marker tạo lại nhận GUID mới, ngoài phép so này.
+- Ngày 19/11/2026, `restore-run` dùng hàm host trên ProjectItem voice thật trong Premiere 26.2.2. Cả bốn ca đều có `fingerprintMatches=true`, không ghi nhận sai khác và dọn xong vẫn đủ 59 marker gốc. Start yêu cầu 41.1745078411745 giây đọc lại thành 41.1745078411714 giây. Khôi phục theo giá trị đã đọc lại cho kết quả chính xác. Các ca một giao dịch với comments ASCII chưa tái hiện lỗi `Original marker fields differ.` của giả thuyết B. Dữ liệu ở `_local/probe-restore-run.json`.
+- `restore-journal` cần host của panel đã nạp `$._PVS._markerTools`. Probe tạo marker điểm và marker khoảng có ghi chú tiếng Việt nhiều dòng. Giao dịch voice dời hai marker và tạo thêm một marker, dùng `keepSurplus=true` như lúc ghi trước khi cắt. Giao dịch review dùng cùng collection, cùng nhật ký và các vị trí voice đã đặt chỗ. Để thử đường xóa rồi tạo lại, probe tắt ghép dời và cho xóa marker review dư như lượt đối chiếu cuối. Lượt ghi trước của Auto edit cho phép ghép dời và giữ marker dư. Probe đặt vị trí nguồn trực tiếp, rồi gọi đúng `restore(journal)` như nhánh lệch của Auto edit.
+- Ngày 19/11/2026, `restore-journal` chạy trên ProjectItem voice thật đó (host panel 2.20.96). Giao dịch voice dời 2 và tạo 1 marker. Giao dịch review tạo 2 và xóa 2. Khôi phục không báo lỗi, không còn mục nhật ký nào, `fingerprintMatches=true`, comments tiếng Việt khớp từng ký tự, không có marker lạ. Dọn xong vẫn đủ 59 marker gốc. Giả thuyết B vẫn chưa tái hiện được. Dữ liệu ở `_local/probe-restore-journal.json`.
+- `differences` liệt kê các trường lệch, kể cả lệch dưới một tick. Với comments, kết quả ghi độ dài, chỉ số và mã UTF-16 của từng ký tự khác nhau, tính từ 0. `restore-journal` ghi lỗi từ host, số mục nhật ký còn lại, `fingerprintMatches` cho toàn bộ ảnh chụp và `commentsByteIdentical` cho từng marker lẫn toàn bộ lượt thử. Khi tạo lại, phép so dùng GUID thay thế do host ghi nhận.
 - Lệnh ghi chỉ dùng ProjectItem media khớp ID, tag và scope. Nếu còn marker mang tag từ lượt trước, lượt thử dừng. Khi kết thúc hoặc gặp lỗi, probe chỉ dọn marker mới có dòng đầu comments khớp tag và đối chiếu toàn bộ collection với ảnh chụp ban đầu. Nếu ghi tag thất bại thì marker chưa có tag được giữ để kiểm tra thủ công. `restore-cleanup` chỉ xóa marker mang đúng tag và kiểm tra các marker còn lại. Các lệnh ghi chỉ thao tác trên marker nguồn. Probe không Save/Undo.
 
-Mock (`tests/unit/probe-marker-restore.test.js`) kiểm tra cách đọc, thứ tự ghi và dọn trong mô hình giả lập. Hai giả thuyết về sai khác số thực và đọc lại marker vẫn chờ kết quả Premiere.
+Mock (`tests/unit/probe-marker-restore.test.js`) kiểm tra cách đọc, thứ tự khôi phục hai giao dịch, báo mã ký tự khi sai dấu tiếng Việt và dọn theo tag.
 
 ## Đo chi phí ghi marker — issue #49
 

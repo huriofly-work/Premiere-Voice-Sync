@@ -162,9 +162,13 @@ $._PVSMarkerRestoreProbe = (function () {
             var field = fields[i], a = actual[field], b = prior[field];
             if (a === b && (a !== 0 || 1 / a === 1 / b)) continue;
             if (field === "comments") {
-                var first = 0, limit = Math.min(a.length, b.length);
-                while (first < limit && a.charAt(first) === b.charAt(first)) first++;
-                result.push({ field: field, actualLength: a.length, priorLength: b.length, firstDiffIndex: first });
+                var codes = [];
+                for (var j = 0; j < Math.max(a.length, b.length); j++) {
+                    if (a.charAt(j) !== b.charAt(j)) codes.push({ index: j,
+                        actual: j < a.length ? a.charCodeAt(j) : null,
+                        prior: j < b.length ? b.charCodeAt(j) : null });
+                }
+                result.push({ field: field, actualLength: a.length, priorLength: b.length, firstDiffIndex: codes[0].index, charCodes: codes });
             } else {
                 var detail = { field: field, actual: a, prior: b };
                 if ((field === "seconds" || field === "end") && typeof a === "number" && typeof b === "number") detail.deltaTicks = (a - b) * TICKS;
@@ -237,11 +241,11 @@ $._PVSMarkerRestoreProbe = (function () {
         entry.differences = differences(actual, prior);
         entry.fingerprintMatches = !!actual && fingerprint([actual], false) === fingerprint([prior], false);
     }
-    function run(documentId, nodeId, tag, scope) {
-        var collection = target(documentId, nodeId, tag, scope), before = read(collection), i;
+    function freeBases(before, count) {
+        var i;
         for (i = 0; i < before.length; i++) if (tagged(before[i].comments)) throw new Error("Probe-tagged markers already exist; run restore-cleanup first.");
         var bases = [], candidate = 1234 / 29.97;
-        while (bases.length < CASES.length) {
+        while (bases.length < count) {
             if (candidate > 100000) throw new Error("No free probe positions within limit.");
             var occupied = false;
             for (i = 0; i < before.length; i++) {
@@ -250,10 +254,15 @@ $._PVSMarkerRestoreProbe = (function () {
             if (!occupied) bases.push(candidate);
             candidate += 6;
         }
+        return bases;
+    }
+    function run(documentId, nodeId, tag, scope) {
+        var collection = target(documentId, nodeId, tag, scope), before = read(collection);
+        var bases = freeBases(before, CASES.length);
         var result = { ok: true, documentId: documentId, nodeId: nodeId, tag: TAG, beforeCount: before.length,
             markerToolsSource: hostTools() ? "host" : "replicated", cases: [], cleanup: { attempted: 0, errors: [], verified: false } };
         try {
-            for (i = 0; i < CASES.length; i++) {
+            for (var i = 0; i < CASES.length; i++) {
                 var entry = { id: CASES[i].id, requestedSeconds: bases[i] };
                 result.cases.push(entry);
                 runCase(collection, CASES[i], entry);
@@ -262,6 +271,100 @@ $._PVSMarkerRestoreProbe = (function () {
         } catch (e) { result.ok = false; result.error = String(e.message || e); }
         finally {
             try { result.cleanup = removeTagged(collection, before, read(collection)); }
+            catch (e) { result.cleanup.errors.push(String(e.message || e)); }
+            if (!result.cleanup.verified || result.cleanup.errors.length) result.ok = false;
+        }
+        return result;
+    }
+    function runJournal(documentId, nodeId, tag, scope) {
+        var collection = target(documentId, nodeId, tag, scope), tools = hostTools();
+        if (!tools || typeof tools.group !== "function" || typeof tools.commit !== "function" ||
+            typeof tools.restore !== "function" || typeof tools.restoredRows !== "function") {
+            throw new Error("Load the panel host marker tools before running restore-journal.");
+        }
+        var initial = tools.read(collection), bases = freeBases(initial, 4), journal = [];
+        var voiceName = "VOICE SYNC - Kiem tra can voice (PVS probe)";
+        var reviewName = "VOICE SYNC - Can kiem tra (PVS probe)";
+        var result = { ok: true, documentId: documentId, nodeId: nodeId, tag: TAG, beforeCount: initial.length,
+            markerToolsSource: "host", commits: [], restoreErrors: [], markers: [],
+            cleanup: { attempted: 0, errors: [], verified: false } };
+        function ownsVoice(row) { return tagged(row.comments) && row.name === voiceName; }
+        function ownsReview(row) { return tagged(row.comments) && row.name === reviewName; }
+        function spec(name, seconds, duration, note, color) {
+            return { name: name, seconds: seconds, end: seconds + duration, color: color,
+                comments: TAG + "\nC\u1ea7n ki\u1ec3m tra l\u1eddi voice\nNghe l\u1ea1i \u0111o\u1ea1n " + note };
+        }
+        function seed(request) {
+            var marker = createFresh(collection, request.seconds);
+            marker.comments = request.comments;
+            if (!tagged(marker.comments)) throw new Error("Probe tag readback failed; inspect untagged marker manually.");
+            marker.name = request.name;
+            if (request.end !== request.seconds) marker.end = Number(marker.start.seconds) + (request.end - request.seconds);
+            marker.setColorByIndex(request.color);
+        }
+        function commit(kind, group, keepSurplus) {
+            if (!tools.reversible(group)) throw new Error("Incomplete probe marker snapshot.");
+            var commitResult = tools.commit(group, null, journal, keepSurplus), timing = commitResult.timings;
+            result.commits.push({ kind: kind, moves: timing.moves, creates: timing.creates, deletes: timing.deletes,
+                failures: commitResult.failures, colorFailures: commitResult.colorFailures });
+            if (commitResult.failures.length || commitResult.colorFailures.length) throw new Error("Probe commit failed: " + kind + ".");
+        }
+        try {
+            seed(spec(voiceName, bases[0], 0.75, "1a", 4));
+            seed(spec(voiceName, bases[0] + 1, 0, "1b", 4));
+            seed(spec(reviewName, bases[2], 0.5, "2a", 1));
+            seed(spec(reviewName, bases[2] + 1, 0, "2b", 4));
+            var before = tools.read(collection), ranges = [{ start: 0, end: Number.MAX_VALUE }], tolerance = 0.25 / 30;
+            var voice = tools.group(collection, ranges, ownsVoice, tolerance, true);
+            tools.add(voice, spec(voiceName, bases[0] + 1.5, 0.25, "3a", 4));
+            tools.add(voice, spec(voiceName, bases[0] + 2, 0, "3b", 4));
+            tools.add(voice, spec(voiceName, bases[1], 0, "3c", 4));
+            commit("voice", voice, true);
+
+            // Force review recreation to cover the deletion path of final reconciliation.
+            var review = tools.group(collection, ranges, ownsReview, tolerance, false);
+            if (tools.fingerprint(review.before, true) !== tools.fingerprint(voice.after, true)) throw new Error("Probe collection changed after voice commit.");
+            review.peerReservations = voice.reserved;
+            tools.add(review, spec(reviewName, bases[3], 0, "4a", 1));
+            tools.add(review, spec(reviewName, bases[3] + 1, 0, "4b", 4));
+            commit("review", review, false);
+
+            if (journal.length !== 2) throw new Error("Expected two committed probe journal entries.");
+            if (tools.fingerprint(tools.read(collection), true) !== tools.fingerprint(review.after, true)) throw new Error("Probe collection changed before restore.");
+            for (var j = 0; j < journal.length; j++) {
+                var affected = journal[j].before.concat(journal[j].after);
+                for (var a = 0; a < affected.length; a++) if (!tagged(affected[a].comments)) throw new Error("Unexpected marker outside probe ownership.");
+            }
+            result.restoreErrors = tools.restore(journal);
+            result.remainingJournalEntries = journal.length;
+
+            var after = tools.read(collection), diagnostic = { detail: "" };
+            result.fingerprintMatches = tools.restoredRows(before, after, journal, diagnostic);
+            result.restoreDifference = diagnostic.detail;
+            result.commentsByteIdentical = true;
+            var replacements = journal.replacements || [], matched = [];
+            for (var i = 0; i < before.length; i++) {
+                var prior = before[i];
+                if (!tagged(prior.comments)) continue;
+                var identity = prior;
+                for (var r = 0; r < replacements.length; r++) {
+                    if (find([identity], replacements[r].old)) identity = replacements[r].fresh;
+                }
+                var actual = find(after, identity), sameComments = !!actual && actual.comments === prior.comments;
+                result.markers.push({ prior: snapshot(prior), actual: snapshot(actual),
+                    commentsByteIdentical: sameComments, differences: differences(actual, prior) });
+                if (actual) matched.push(actual);
+                if (!sameComments) result.commentsByteIdentical = false;
+            }
+            result.unexpectedMarkers = [];
+            for (var k = 0; k < after.length; k++) {
+                if (!find(initial, after[k]) && !find(matched, after[k])) result.unexpectedMarkers.push(snapshot(after[k]));
+            }
+            if (result.unexpectedMarkers.length) result.commentsByteIdentical = false;
+            result.ok = result.fingerprintMatches && result.commentsByteIdentical && !result.restoreErrors.length && !journal.length;
+        } catch (e) { result.ok = false; result.error = String(e.message || e); }
+        finally {
+            try { result.cleanup = removeTagged(collection, initial, read(collection)); }
             catch (e) { result.cleanup.errors.push(String(e.message || e)); }
             if (!result.cleanup.verified || result.cleanup.errors.length) result.ok = false;
         }
@@ -282,6 +385,7 @@ $._PVSMarkerRestoreProbe = (function () {
         }); },
         projection: function (trackIndex) { return guarded(function () { return projection(trackIndex); }); },
         run: function (documentId, nodeId, tag, scope) { return guarded(function () { return run(documentId, nodeId, tag, scope); }); },
+        journal: function (documentId, nodeId, tag, scope) { return guarded(function () { return runJournal(documentId, nodeId, tag, scope); }); },
         cleanup: function (documentId, nodeId, tag, scope) { return guarded(function () { return cleanup(documentId, nodeId, tag, scope); }); }
     };
 }());

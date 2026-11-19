@@ -26,9 +26,9 @@ function scriptFor(args) {
         if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: move-run|move-cleanup <documentId> <nodeId> <tag> <scope>");
         return `$._PVSMarkerMoveEndProbe.${command === "move-run" ? "run" : "cleanup"}(${rest.map(literal).join(",")})`;
     }
-    if (["restore-run", "restore-cleanup"].includes(command)) {
-        if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: restore-run|restore-cleanup <documentId> <nodeId> <tag> probe-tagged-only");
-        return `$._PVSMarkerRestoreProbe.${command === "restore-run" ? "run" : "cleanup"}(${rest.map(literal).join(",")})`;
+    if (["restore-run", "restore-journal", "restore-cleanup"].includes(command)) {
+        if (rest.length !== 4 || rest.some(v => typeof v !== "string" || !v)) throw Error("Usage: restore-run|restore-journal|restore-cleanup <documentId> <nodeId> <tag> probe-tagged-only");
+        return `$._PVSMarkerRestoreProbe.${command.slice("restore-".length)}(${rest.map(literal).join(",")})`;
     }
     if (["cost-run", "cost-cleanup"].includes(command)) {
         const max = command === "cost-run" ? 5 : 4;

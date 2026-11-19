@@ -1,5 +1,6 @@
 "use strict";
 const markerBounds=require("./marker-bounds");
+const {speedDividedTime}=markerBounds;
 const assert = require("assert"), fs = require("fs"), path = require("path"), vm = require("vm");
 const root = path.join(__dirname, "../..");
 const host = fs.readFileSync(path.join(root,"extension/jsx/host.jsx"),"utf8");
@@ -25,7 +26,7 @@ const TPF = 8467200000;
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
 function tracks(items) { Object.defineProperty(items,"numTracks",{get(){return this.length;}}); return items; }
 function time(frame) { return { ticks:String(frame*TPF),seconds:frame/30 }; }
-function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false, observe=false, {nativeWrappers=false}={}) {
+function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, oldMarkers=false, trace=false, observe=false, {nativeWrappers=false, nativeVoiceSourceTicks=false}={}) {
   let nextId=0;
   const actions=[],nativeRows=[];let qeReads=0;
   function markers(){
@@ -60,16 +61,24 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   clip("Nest",seq.videoTracks[0],0,count*120,0,count*120,nested);
   clip("Nest",seq.audioTracks[0],0,count*120,0,count*120,nested);
   const originalVoice=clip("Voice",seq.audioTracks[1],0,voiceFrame,0,voiceFrame,voice);originalVoice.speed=voiceSpeed;
+  if (nativeVoiceSourceTicks) originalVoice.outPoint=speedDividedTime(voiceFrame*TPF*voiceSpeed-2,voiceSpeed);
   // Preserved tail moves first and must remain identical across both paths.
   clip("End screen",seq.videoTracks[0],count*120,count*120+60,0,60,{nodeId:"end"});
   clip("Adjustment",Object.assign(seq.videoTracks[1]={clips:collection([])}),count*120,count*120+60,0,60,{nodeId:"adjustment"});
   function razor(track,frame){
     const item=track.clips.find(c=>Number(c.start.ticks)/TPF<frame&&Number(c.end.ticks)/TPF>frame);
     if(!item)return;
-    const oldEnd=Number(item.end.ticks)/TPF,oldOut=Number(item.outPoint.ticks)/TPF;
+    const oldEnd=Number(item.end.ticks)/TPF,oldOut=item.outPoint;
     const sourceCut=Number(item.inPoint.ticks)/TPF+(frame-Number(item.start.ticks)/TPF);
-    const other=clip(item.name,track,frame,oldEnd,sourceCut,oldOut,item.projectItem);other.speed=item.speed;
-    item.end=time(frame);item.outPoint=time(sourceCut);track.clips.sort((a,b)=>Number(a.start.ticks)-Number(b.start.ticks));
+    const other=clip(item.name,track,frame,oldEnd,sourceCut,Number(oldOut.ticks)/TPF,item.projectItem);other.speed=item.speed;
+    item.end=time(frame);item.outPoint=time(sourceCut);
+    if (nativeVoiceSourceTicks && item.projectItem===voice) {
+      // Model the measured whole-tick readback after each speed-divided cut.
+      other.inPoint=speedDividedTime(sourceCut*TPF*item.speed-1,item.speed);
+      other.outPoint=oldOut;
+      item.outPoint=speedDividedTime(frame*TPF*item.speed-2,item.speed);
+    }
+    track.clips.sort((a,b)=>Number(a.start.ticks)-Number(b.start.ticks));
   }
   function tcFrames(tc){const v=tc.split(":").map(Number);return ((v[0]*3600+v[1]*60+v[2])*30)+v[3];}
   function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);const oldSpeed=c.speed;c.inPoint=time(Number(c.inPoint.ticks)/TPF*oldSpeed/factor);c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
@@ -598,8 +607,9 @@ function finishTrial(f,profile){
   assert.strictEqual(JSON.parse(api.diagnosticInfo()).active,false);
   return {report:r.result,checkpoints,calls,timings:r.timings};
 }
-if (!process.argv.slice(2).length) {
-  const f=issue55Fixture(()=>fixture(2,false,true)), api=f.api;
+function voiceProjectionCase({nativeVoiceSourceTicks=false, field, delta=0}={}) {
+  const f=issue55Fixture(()=>fixture(nativeVoiceSourceTicks ? 42 : 2,false,!nativeVoiceSourceTicks,
+    nativeVoiceSourceTicks ? 1.1 : 1,false,false,false,false,{nativeVoiceSourceTicks})), api=f.api;
   let result=JSON.parse(api.beginDiagnosticEdit("fixture","float-drift","no-delay"));
   while (!result.done && result.nextStage !== "Cắt V1–A1 linked") {
     result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));
@@ -609,7 +619,7 @@ if (!process.argv.slice(2).length) {
   let driftRestores=0;
   api._clipMarkerMapping=function(item, allowNested) {
     const mapping=clipMapping(item, allowNested);
-    if (mapping && item.projectItem===f.voice) mapping.input+=0.5/254016000000;
+    if (field && mapping && item.projectItem===f.voice) mapping[field]+=delta;
     return mapping;
   };
   api._markerTools.restore=function(entries) {
@@ -618,14 +628,52 @@ if (!process.argv.slice(2).length) {
   };
   do {result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));} while (!result.done);
   assert(result.result.ok,JSON.stringify(result.result));
-  assert.equal(driftRestores,1,"The original exact comparison still takes the journal restoration branch.");
-  const {piecesCompared, firstMismatch}=result.result.voiceProjection;
-  assert.equal(piecesCompared,1);
-  assert.deepStrictEqual(firstMismatch,{
-    pieceIndex:0, reason:"input", actual:0.5/254016000000, predicted:0,
-    deltaTicks:0.5, deltaFrames:0.5/254016000000*30
-  });
-  assert.deepStrictEqual(result.timings.find(t=>t.detail?.voiceProjection).detail.voiceProjection,result.result.voiceProjection);
+  const projection=result.result.voiceProjection;
+  assert.deepStrictEqual(result.timings.find(t=>t.detail?.voiceProjection).detail.voiceProjection,projection);
+  return {f, driftRestores, projection};
+}
+if (!process.argv.slice(2).length) {
+  const {f, driftRestores, projection}=voiceProjectionCase({nativeVoiceSourceTicks:true});
+  const clips=f.seq.audioTracks[1].clips;
+  assert.equal(clips.length,42);
+  for (const [i, clip] of clips.entries()) {
+    const segment=f.plan.segments[i];
+    assert.deepStrictEqual(clip.start,time(segment.NewVoiceStartFrame));
+    assert.deepStrictEqual(clip.end,time(segment.NewVoiceStartFrame+segment.OutputDurationFrames));
+    assert.equal(clip.speed,1.1);
+    assert.equal(Number(clip.outPoint.ticks),segment.OriginalVoiceEndFrame*TPF-2);
+    assert.equal(clip.outPoint.seconds,Number(clip.outPoint.ticks)/254016000000);
+  }
+  const inputOffset=Math.abs(Number(clips.at(-1).inPoint.ticks)-f.plan.segments.at(-1).OriginalVoiceStartFrame*TPF);
+  assert(inputOffset>=20 && inputOffset<=80,inputOffset);
+  assert.equal(driftRestores,0,"Speed-1.1 whole-tick source readback must not restore the journal: "+JSON.stringify(projection));
+  assert.equal(projection.piecesCompared,clips.length);
+  assert.equal(projection.firstMismatch,null);
+  assert(Math.abs(projection.maxAbsDeltaTicks.input-inputOffset)<0.01);
+  assert.equal(projection.maxAbsDeltaTicks.start,0);
+  assert.equal(projection.maxAbsDeltaTicks.end,0);
+  console.log("VOICE_PROJECTION_SPEED_DIVIDED_TICKS_OK");
+}
+if (!process.argv.slice(2).length) {
+  const {driftRestores, projection}=voiceProjectionCase({field:"input",delta:0.5/254016000000});
+  assert.equal(driftRestores,0,"A half-tick source input offset must not restore the journal.");
+  assert.equal(projection.piecesCompared,2);
+  assert.equal(projection.firstMismatch,null);
+  assert(Math.abs(projection.maxAbsDeltaTicks.input-0.5)<0.001);
+  for (const [field,delta] of [["input",1.001/(1000*30)],["start",2/254016000000],["end",2/254016000000],["speed",1e-12]]) {
+    const {driftRestores, projection}=voiceProjectionCase({field,delta});
+    assert.equal(driftRestores,1,field);
+    assert.equal(projection.piecesCompared,1);
+    const {firstMismatch}=projection;
+    assert.equal(firstMismatch.pieceIndex,0);
+    assert.equal(firstMismatch.reason,field);
+    if (field!=="speed") {
+      assert.equal(firstMismatch.deltaTicks,(firstMismatch.actual-firstMismatch.predicted)*254016000000);
+      assert.equal(firstMismatch.deltaFrames,(firstMismatch.actual-firstMismatch.predicted)*30);
+      assert.equal(projection.maxAbsDeltaTicks[field],Math.abs(firstMismatch.deltaTicks));
+    }
+  }
+  console.log("VOICE_PROJECTION_TOLERANCE_OK:half-tick-input;larger-input-start-end-drift;exact-speed");
 }
 function reviewOnlyFixture(nativeWrappers) {
   const f = fixture(65, false, true, 1.1, false, false, false, false, {nativeWrappers});

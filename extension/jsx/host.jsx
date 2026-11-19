@@ -2032,12 +2032,16 @@ $._PVS.executePlan = function (planPath) {
         return phaseTiming(result, "pre", kind, index);
     }
     function sameVoiceProjection() {
-        voiceProjection = { piecesCompared: 0, firstMismatch: null };
+        // Premiere 26.2.2, 2026-11-19 restore-projection: A2 timeline edges
+        // stayed on-frame, while speed-1.1 source in-points differed by up to 80 ticks.
+        var ticksPerSecond = 254016000000, timelineToleranceTicks = 1, inputToleranceSeconds = 1 / (1000 * fps);
+        var maxDelta = { start: 0, end: 0, input: 0 };
+        voiceProjection = { piecesCompared: 0, firstMismatch: null, maxAbsDeltaTicks: maxDelta };
         function mismatch(index, reason, actual, predicted) {
             var detail = { pieceIndex: index, reason: reason, actual: actual, predicted: predicted };
             if (reason === "start" || reason === "end" || reason === "input") {
                 var delta = actual - predicted;
-                detail.deltaTicks = delta * 254016000000;
+                detail.deltaTicks = delta * ticksPerSecond;
                 detail.deltaFrames = delta * fps;
             }
             voiceProjection.firstMismatch = detail;
@@ -2055,9 +2059,15 @@ $._PVS.executePlan = function (planPath) {
             }
             if (!actual && !predicted) continue;
             if (!actual || !predicted) return mismatch(i, "mapping-missing", !!actual, !!predicted);
-            if (actual.start !== predicted.start) return mismatch(i, "start", actual.start, predicted.start);
-            if (actual.end !== predicted.end) return mismatch(i, "end", actual.end, predicted.end);
-            if (actual.input !== predicted.input) return mismatch(i, "input", actual.input, predicted.input);
+            var startDeltaTicks = Math.abs(actual.start - predicted.start) * ticksPerSecond;
+            var endDeltaTicks = Math.abs(actual.end - predicted.end) * ticksPerSecond;
+            var inputDelta = Math.abs(actual.input - predicted.input);
+            maxDelta.start = Math.max(maxDelta.start, startDeltaTicks);
+            maxDelta.end = Math.max(maxDelta.end, endDeltaTicks);
+            maxDelta.input = Math.max(maxDelta.input, inputDelta * ticksPerSecond);
+            if (!(startDeltaTicks <= timelineToleranceTicks)) return mismatch(i, "start", actual.start, predicted.start);
+            if (!(endDeltaTicks <= timelineToleranceTicks)) return mismatch(i, "end", actual.end, predicted.end);
+            if (!(inputDelta <= inputToleranceSeconds)) return mismatch(i, "input", actual.input, predicted.input);
             if (actual.speed !== predicted.speed) return mismatch(i, "speed", actual.speed, predicted.speed);
         }
         return true;
