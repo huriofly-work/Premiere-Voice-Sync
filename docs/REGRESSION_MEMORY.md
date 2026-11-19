@@ -1,5 +1,11 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #92 — Bỏ mã sequence khỏi thẻ marker review (19/11/2026)
+
+- **Nguyên nhân.** Thẻ v2 `[PremiereVoiceSync:review-marker:v2:<workflow>:<sequenceID>]` nằm cuối comments của marker review trên ProjectItem voice. Từ #58, quyền sở hữu nhận v2 cùng workflow với mọi sequenceID, nên mã sequence không còn chọn gì. Nhưng phép so comments là so chính xác: chạy trên sequence khác với cùng ghi chú vẫn ghi lại toàn bộ marker review. Lượt 19/11 15:35 có 21 lần ghi comments, 0 lần dời, khoảng 0,47 s. Lượt đó chạy từ bản project chưa Save sau lượt trước, nên marker ban đầu là bản đã lưu. Log không giữ comments cũ, nên chưa loại được khả năng phần ghi chú cũng khác.
+- **Bất biến.** Ghi thẻ v3 `[PremiereVoiceSync:review-marker:v3:<workflow>]`, không có mã sequence. Nguồn nhận v3 và v2 (mọi mã) cùng workflow là của tool, nên bộ cũ được đổi thẻ một lần, giữ GUID, không nhân đôi. Workflow khác và marker thủ công không bị đụng. Dọn marker cũ trên thước giữ nguyên thẻ v2 theo sequence hiện tại và v1.
+- **Hồi quy.** `marker-reconciliation.test.js` đỏ trước sửa ở hai ca: chạy lại trên sequence khác ghi 0 lần, và v2 đổi sang v3 một lần rồi ghi 0 lần (log ở `_local/review-marker-tag/red.log`). Golden `marker-before-cuts.json` chỉ đổi hash marker: khi đổi thẻ mới về thẻ cũ trước khi băm, cả 42 fixture × 4 executor khớp hash cũ; hash timeline và tham số native không đổi. `partial-markers.test.js` giữ 276/312/4/0. Native Premiere pending.
+
 ## Issue #90 — Giữ timeline và marker đã ghi khi Dừng hoặc lỗi (19/11/2026)
 
 - **Nguyên nhân.** Khi Auto edit dừng hoặc lỗi sau khi ghi trước, executor tự khôi phục marker cả lượt dù timeline đã dựng một phần. Hậu kiểm có thể bỏ mất lỗi gốc khi có thêm lỗi marker. Nếu đóng phiên cũng lỗi, lỗi đóng phiên ghi đè lỗi đang xử lý.

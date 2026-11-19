@@ -1078,9 +1078,13 @@ $._PVS._markerTools = (function () {
     }
     function sourceReviewOwner(workflow) {
         // Source markers are shared across sequences. Each workflow replaces its own warnings.
+        // v3 carries no sequence ID; v2 tags with any sequence ID migrate on the next write.
+        var tag = "[PremiereVoiceSync:review-marker:v3:" + workflow + "]";
         var tagPattern = new RegExp("\\[PremiereVoiceSync:review-marker:v2:" + workflow + ":(?:[A-Za-z0-9_.!~*'()-]|%[0-9A-F]{2})+\\]");
         return function (row) {
-            return row.type === "Comment" && row.name === "VOICE SYNC - Can kiem tra" && tagPattern.test(row.comments);
+            if (row.type !== "Comment" || row.name !== "VOICE SYNC - Can kiem tra") return false;
+            var comments = String(row.comments || "");
+            return comments.indexOf(tag) >= 0 || tagPattern.test(comments);
         };
     }
     function snapshotOwned(g, rows, ownsReview) {
@@ -1379,11 +1383,13 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
     var stats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, unattachedMarkers: [], unattachedMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     if (issues === undefined) return stats; // Older plans have no review contract.
     var legacyTag = "[PremiereVoiceSync:review-marker:v1:" + workflow + "]";
-    var tag = seq.sequenceID === undefined ? legacyTag : "[PremiereVoiceSync:review-marker:v2:" + workflow + ":" + encodeURIComponent(String(seq.sequenceID)) + "]";
+    // Ruler markers are only cleaned up now; they keep their old per-sequence tags.
+    var rulerTag = seq.sequenceID === undefined ? legacyTag : "[PremiereVoiceSync:review-marker:v2:" + workflow + ":" + encodeURIComponent(String(seq.sequenceID)) + "]";
+    var tag = "[PremiereVoiceSync:review-marker:v3:" + workflow + "]";
     var name = "VOICE SYNC - Can kiem tra";
     var fps = 254016000000 / Number(seq.timebase);
     var groups = [];
-    function owned(m) { return String(m.name || "") === name && (String(m.comments || "").indexOf(tag) >= 0 || String(m.comments || "").indexOf(legacyTag) >= 0); }
+    function owned(m) { return String(m.name || "") === name && (String(m.comments || "").indexOf(rulerTag) >= 0 || String(m.comments || "").indexOf(legacyTag) >= 0); }
     function inScope(seconds) {
         for (var r = 0; r < ranges.length; r++) if (seconds >= Number(ranges[r].start) && seconds < Number(ranges[r].end)) return true;
         return false;
