@@ -302,6 +302,8 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
   if(process.argv.includes("--marker-reference"))process.exit(0);
 }
 function markerFailureCases() {
+  const nonCaptionRows=f=>issue55State(f).slice(0,-1).map(rows=>rows.filter(r=>r[3]!=="VOICE SYNC - Can kiem tra"));
+  let succeeded=null;
   for(const failCaption of [false,true]){
     const f=markerReferenceFixture(()=>fixture(6),0);
     const ruler=f.seq.markers;
@@ -313,9 +315,16 @@ function markerFailureCases() {
     const report=finishTrial(f,"no-delay").report;
     assert.equal(report.ok,!failCaption);
     if(failCaption){
-      assert.equal(report.error,"injected caption failure");
-      assert.deepStrictEqual(issue55State(f),before,"Caption failure preserves source and ruler markers");
-    }else assert.deepStrictEqual(markerRows(ruler),before[before.length-1].slice(0,1));
+      // The post-check reports the caption failure; picture and voice markers are still written.
+      assert.equal(report.error,undefined);
+      assert.equal(report.captionCreated,false);
+      assert.equal(report.captionError,"injected caption failure");
+      assert.deepStrictEqual(nonCaptionRows(f),succeeded,"Caption failure still writes picture and voice markers");
+      assert.notDeepStrictEqual(issue55State(f),before,"Caption failure no longer skips the marker stage");
+    }else {
+      assert.deepStrictEqual(markerRows(ruler),before[before.length-1].slice(0,1));
+      succeeded=nonCaptionRows(f);
+    }
   }
   // A rerun may start with every planned marker already correct. Native review
   // can still change this owner before a failed postcheck.
@@ -615,7 +624,7 @@ for(const profile of ["fast","no-delay"]){
   root.createBin=function(){const bin=create.call(root);bin.deleteBin=function(){return true;};return bin;};
   const report=finishTrial(stalled,profile).report;
   assert(!report.ok,"No-delay must still report a temporary caption bin that could not be removed.");
-  assert(report.error.includes("Temporary caption cleanup failed"));
+  assert(report.captionError.includes("Temporary caption cleanup failed"));
   assert.strictEqual(sleeps,profile==="no-delay"?0:5,"Only the trial bypasses caption cleanup waits.");
 }
 // Corrupt an untouched clip AFTER an incremental speed batch: the next full

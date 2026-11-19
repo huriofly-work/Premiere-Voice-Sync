@@ -853,32 +853,6 @@ $._PVS._markerTools = (function () {
         }
         return values.sort().join("\n");
     }
-    function formatDifferenceValue(value) {
-        if (typeof value !== "string") return String(value);
-        return JSON.stringify(value.length > 48 ? value.slice(0, 48) + "..." : value);
-    }
-    function describeDifference(actual, prior) {
-        try {
-            if (!actual) return " Marker identity missing.";
-            var fields = ["seconds", "end", "name", "comments", "type", "color"], detail = [];
-            for (var i = 0; i < fields.length && detail.length < 3; i++) {
-                var field = fields[i], a = actual[field], b = prior[field];
-                if (a === b) continue;
-                if (field === "comments") {
-                    var first = 0, limit = Math.min(a.length, b.length);
-                    while (first < limit && a.charAt(first) === b.charAt(first)) first++;
-                    detail.push(field + " (actualLength=" + a.length + ", priorLength=" + b.length + ", firstDiffIndex=" + first + ")");
-                } else {
-                    var values = "actual=" + formatDifferenceValue(a) + ", prior=" + formatDifferenceValue(b);
-                    if ((field === "seconds" || field === "end") && typeof a === "number" && typeof b === "number") {
-                        values += ", deltaTicks=" + (a - b) * 254016000000;
-                    }
-                    detail.push(field + " (" + values + ")");
-                }
-            }
-            return detail.length ? " " + detail.join("; ") : "";
-        } catch (ignoreDetail) { return ""; }
-    }
     function inScope(group, seconds) {
         for (var i = 0; i < group.ranges.length; i++) if (seconds >= group.ranges[i].start && seconds < group.ranges[i].end) return true;
         return false;
@@ -973,106 +947,6 @@ $._PVS._markerTools = (function () {
         for (var i = 0; i < rows.length; i++) if (same(rows[i], row)) return rows[i];
         return null;
     }
-    // Reverse only verified writes from our transactions. Identity and field checks
-    // protect manual edits made while a staged session was paused.
-    function restore(entries) {
-        var errors = [], replacements = entries.replacements || [];
-        entries.replacements = replacements;
-        function lookup(rows, saved) {
-            for (var i = 0; i < replacements.length; i++) if (same(replacements[i].old, saved)) saved = replacements[i].fresh;
-            return find(rows, saved);
-        }
-        function replacementsFor(savedRows) {
-            var result = [];
-            for (var i = 0; i < replacements.length; i++) if (find(savedRows, replacements[i].old)) result.push(replacements[i].fresh);
-            return result;
-        }
-        for (var i = entries.length - 1; i >= 0; i--) {
-            var entry = entries[i], collection = entry.collection, reversing = false;
-            try {
-                var rows = read(collection), foreign = [], j, prior, current, marker;
-                for (j = 0; j < rows.length; j++) foreign.push(rows[j]);
-                // Preflight every affected identity before the first reverse write.
-                for (j = 0; j < entry.after.length; j++) {
-                    current = lookup(rows, entry.after[j]);
-                    if (!current || fingerprint([current], false) !== fingerprint([entry.after[j]], false)) throw new Error("Marker changed since commit." + describeDifference(current, entry.after[j]));
-                    for (var f = foreign.length - 1; f >= 0; f--) if (same(current, foreign[f])) foreign.splice(f, 1);
-                }
-                var occupied = index(foreign, entry.tolerance);
-                for (j = 0; j < entry.before.length; j++) {
-                    prior = entry.before[j];
-                    current = lookup(rows, prior);
-                    if (current && find(foreign, current)) throw new Error("Deleted marker identity reappeared outside the transaction.");
-                    if (current && current.seconds === prior.seconds) continue;
-                    if (near(occupied, prior.seconds, entry.tolerance).length) throw new Error("Original marker position occupied.");
-                }
-                reversing = true;
-                var retained = entry.before.concat(replacementsFor(entry.before));
-                for (j = 0; j < entry.after.length; j++) if (!find(retained, entry.after[j])) {
-                    collection.deleteMarker(lookup(rows, entry.after[j]).ref);
-                }
-                for (j = 0; j < entry.before.length; j++) {
-                    prior = entry.before[j]; current = lookup(rows, prior);
-                    if (current) {
-                        marker = current.ref;
-                        if (prior.seconds !== current.seconds) marker.start = prior.seconds;
-                        if (markerEnd(marker) !== prior.end) marker.end = prior.end;
-                    } else {
-                        var existing = read(collection);
-                        marker = collection.createMarker(prior.seconds);
-                        if (!marker || find(existing, { ref: marker, guid: String(marker.guid || "") }) || marker.name || marker.comments) throw new Error("Cannot recreate deleted marker safely.");
-                        replacements.push({ old: prior, fresh: { ref: marker, guid: String(marker.guid || "") } });
-                        if (markerEnd(marker) !== prior.end) marker.end = prior.end;
-                    }
-                    if (!current || prior.name !== current.name) marker.name = prior.name;
-                    if (!current || prior.comments !== current.comments) marker.comments = prior.comments;
-                    if (!current || prior.color !== current.color) marker.setColorByIndex(prior.color);
-                }
-                rows = read(collection);
-                if (rows.length !== foreign.length + entry.before.length) throw new Error("Marker count differs.");
-                for (j = 0; j < foreign.length; j++) {
-                    current = find(rows, foreign[j]);
-                    if (!current || fingerprint([current], false) !== fingerprint([foreign[j]], false)) throw new Error("Unrelated marker differs." + describeDifference(current, foreign[j]));
-                }
-                for (j = 0; j < entry.before.length; j++) {
-                    prior = entry.before[j]; current = lookup(rows, prior);
-                    if (!current || fingerprint([current], false) !== fingerprint([prior], false)) throw new Error("Original marker fields differ." + describeDifference(current, prior));
-                }
-                entries.splice(i, 1);
-            } catch (error) {
-                errors.push("Marker restoration: " + (error.message || String(error)));
-                if (reversing) try {
-                    // A setter may mutate and then throw. Save the observed state
-                    // inside this host call so a retry can guard against later edits.
-                    var partial = read(collection), tracked = entry.after.concat(replacementsFor(entry.before)), updated = [];
-                    for (var u = 0; u < tracked.length; u++) {
-                        var observed = lookup(partial, tracked[u]);
-                        if (observed && !find(updated, observed)) updated.push(observed);
-                    }
-                    entry.after = updated;
-                } catch (unreadable) {}
-                break; // Earlier transactions may depend on these identities.
-            }
-        }
-        return errors;
-    }
-    function restoredRows(expected, actual, journal, diagnostic) {
-        if (expected.length !== actual.length) {
-            if (diagnostic) diagnostic.detail = " Count (actual=" + actual.length + ", prior=" + expected.length + ").";
-            return false;
-        }
-        var replacements = journal.replacements || [];
-        for (var i = 0; i < expected.length; i++) {
-            var identity = expected[i];
-            for (var j = 0; j < replacements.length; j++) if (same(identity, replacements[j].old)) identity = replacements[j].fresh;
-            var row = find(actual, identity);
-            if (!row || fingerprint([row], false) !== fingerprint([expected[i]], false)) {
-                if (diagnostic) diagnostic.detail = describeDifference(row, expected[i]);
-                return false;
-            }
-        }
-        return true;
-    }
     function sourceReviewOwner(workflow) {
         // Source markers are shared across sequences. Each workflow replaces its own warnings.
         // v3 carries no sequence ID; v2 tags with any sequence ID migrate on the next write.
@@ -1097,7 +971,7 @@ $._PVS._markerTools = (function () {
         for (var i = 0; i < rows.length; i++) if (rows[i].end === null || rows[i].color === null) return false;
         return true;
     }
-    function commit(g, touch, journal, keepSurplus) {
+    function commit(g, touch) {
         var commitStarted = (new Date()).getTime();
         var timings = { collectionBefore: g.before.length, collectionAfter: g.before.length,
             readPasses: 0, readMs: 0, creates: 0, nameWrites: 0, commentsWrites: 0,
@@ -1232,10 +1106,7 @@ $._PVS._markerTools = (function () {
                 }
             } finally { timings.verificationMs += (new Date()).getTime() - verificationStarted; }
             var expectedRows = after.slice(0);
-            // A later native issue or changed source edge may still match this GUID.
-            // Premiere cannot recreate it, so only final reconciliation removes surplus.
             for (var o = 0; o < before.length; o++) if (owned(g, before[o]) && !find(kept, before[o])) {
-                if (keepSurplus) continue;
                 // Verify the entire resulting collection as well as identity:
                 // some hosts expose fresh proxies on each enumeration.
                 var found = false, staleState = fingerprint([before[o]], false);
@@ -1249,11 +1120,6 @@ $._PVS._markerTools = (function () {
                 for (var d = 0; d < removed.length; d++) if (find(after, removed[d])) throw new Error("Marker deletion verification failed.");
                 if (fingerprint(after, false) !== fingerprint(expectedRows, false)) throw new Error("Marker deletion verification failed: collection differs.");
             } finally { timings.verificationMs += (new Date()).getTime() - verificationStarted; }
-            if (journal && mutationAttempted) {
-                var affected = [];
-                for (var ar = 0; ar < after.length; ar++) if (find(created, after[ar]) || find(changed, after[ar])) affected.push(after[ar]);
-                journal.push({ collection: g.collection, before: changed.concat(removed), after: affected, tolerance: g.tolerance });
-            }
             g.after = after;
             result.count = kept.length; result.deleted = removed.length;
             for (var m = 0; m < wanted.length; m++) if (wanted[m].merged) result.merged++;
@@ -1297,8 +1163,8 @@ $._PVS._markerTools = (function () {
         }
         return finishResult();
     }
-    return { sourceReviewOwner: sourceReviewOwner, group: group, point: point, available: available, add: add, commit: commit, restore: restore, reversible: reversible,
-        read: read, fingerprint: fingerprint, snapshotOwned: snapshotOwned, restoredRows: restoredRows };
+    return { sourceReviewOwner: sourceReviewOwner, group: group, point: point, available: available, add: add, commit: commit, reversible: reversible,
+        read: read, fingerprint: fingerprint, snapshotOwned: snapshotOwned };
 }());
 
 // Premiere reports either a ratio (<=10) or a percentage (>10).
@@ -2351,11 +2217,13 @@ $._PVS.executePlan = function (planPath) {
             } catch (ignoreCaptionNodeChildren) {}
             return false;
         }
+        // A caption failure is reported by the post-check; Video and Voice markers are still written.
+        var captionError = "";
         if (captionFile.exists) {
             captionProjectItemCountBefore = countCaptionProjectItems(app.project.rootItem, plan.captionSrtPath);
             var captionBin = null;
             var captionBinNodeId = "";
-            try {
+            try { try {
                 captionBin = app.project.rootItem.createBin("PVS_TEMP_CAPTION_" + String((new Date()).getTime()));
                 if (!captionBin) throw new Error("Could not create temporary caption bin.");
                 try { captionBinNodeId = String(captionBin.nodeId); } catch (ignoreCaptionBinNodeId) {}
@@ -2386,8 +2254,8 @@ $._PVS.executePlan = function (planPath) {
                         try { $.sleep(50); } catch (ignoreCaptionCleanupSleep) {}
                     }
                 }
-            }
-            if (!captionTemporaryBinRemoved) throw new Error("Temporary caption cleanup failed: deleteBin returned " + captionDeleteReturnValue + "; bin still present=" + captionTemporaryBinStillPresent + "; SRT ProjectItems before=" + captionProjectItemCountBefore + ", after=" + captionProjectItemCountAfter + ".");
+            } } catch (captionFailure) { captionError = captionFailure.message || String(captionFailure); }
+            if (!captionTemporaryBinRemoved) captionError = (captionError ? captionError + "; " : "") + "Temporary caption cleanup failed: deleteBin returned " + captionDeleteReturnValue + "; bin still present=" + captionTemporaryBinStillPresent + "; SRT ProjectItems before=" + captionProjectItemCountBefore + ", after=" + captionProjectItemCountAfter + ".";
         }
         var maxVideoError = 0;
         var maxAudioError = 0;
@@ -2452,7 +2320,8 @@ $._PVS.executePlan = function (planPath) {
         var captionCueCount = plan.captions && plan.captions.length ? plan.captions.length : 0;
         var expectedCaptionCueCount = plan.summary && plan.summary.captionCueCount ? Number(plan.summary.captionCueCount) : captionCueCount;
         var captionsValid = captionFile.exists && captionCueCount > 0 && captionCueCount === expectedCaptionCueCount;
-        var reviewIssues = asArray(plan.reviewMarkers).slice(0);
+        // Without a caption track there are no Caption markers to place.
+        var reviewIssues = captionCreated ? asArray(plan.reviewMarkers).slice(0) : [];
         function addNativeReview(startFrame, endFrame, reason, severity) {
             var start = Math.max(0, Math.min(startFrame, plannedEndFrame - 1));
             var end = Math.min(plannedEndFrame, Math.max(start + 1, endFrame));
@@ -2617,6 +2486,7 @@ $._PVS.executePlan = function (planPath) {
             captionReady: captionsValid,
             captionCueCount: captionCueCount,
             captionCreated: captionCreated,
+            captionError: captionError,
             captionTemporaryBinRemoved: captionTemporaryBinRemoved,
             captionTemporaryBinStillPresent: captionTemporaryBinStillPresent,
             captionDeleteReturnValue: captionDeleteReturnValue,

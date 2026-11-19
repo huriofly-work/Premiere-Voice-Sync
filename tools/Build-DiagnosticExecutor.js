@@ -99,18 +99,23 @@ function generate(source, options) {
     markerIndex: "Chuẩn bị marker voice", speedMarkerIndex: "Chuẩn bị marker tốc độ", markerOwnerIndex: "Gắn marker"
   };
   const boundaries = { voiceNames: "Hình V1–A1", captionFile: "Voice A2", maxVideoError: "Caption", plannedClipMarkers: "Hậu kiểm" };
-  const steps = []; let cursor = start, label = "Kiểm tra đầu vào và chuẩn bị";
+  // measurePrepare marks preparation steps; it follows the stage kind, not the label text.
+  const steps = []; let cursor = start, label = "Kiểm tra đầu vào và chuẩn bị", prepare = true;
   function flush(to, checkpoint) {
     let code = slice(cursor,to);
-    if (code.trim()) steps.push({label, code, checkpoint: checkpoint || ""});
+    if (code.trim()) steps.push({label, code, checkpoint: checkpoint || "", measurePrepare: prepare});
     else if (checkpoint && steps.length) steps[steps.length-1].checkpoint = checkpoint;
     cursor = to;
   }
   for (const node of attempt.block.body) {
     const variable = node.type === "VariableDeclaration" && node.declarations[0].id.name;
-    if (boundaries[variable]) { flush(node.start, boundaries[variable]); label = ({voiceNames:"Chuẩn bị voice A2", captionFile:"Tạo caption", maxVideoError:"Hậu kiểm", plannedClipMarkers:"Chuẩn bị marker"})[variable]; }
+    if (boundaries[variable]) {
+      flush(node.start, boundaries[variable]);
+      label = ({voiceNames:"Chuẩn bị voice A2", captionFile:"Tạo caption", maxVideoError:"Hậu kiểm", plannedClipMarkers:"Chuẩn bị marker"})[variable];
+      prepare = variable !== "captionFile";
+    }
     if (node.type === "ExpressionStatement" && node.expression.left && node.expression.left.name === "report") {
-      flush(node.start, "Marker"); label = "Báo cáo";
+      flush(node.start, "Marker"); label = "Báo cáo"; prepare = false;
     }
     const loopVariable = node.type === "ForStatement" && node.init && node.init.type === "VariableDeclaration" && node.init.declarations[0].id.name;
     if (!loops[loopVariable]) continue;
@@ -146,13 +151,13 @@ function generate(source, options) {
       `if (${yieldCondition}) return false;\n` +
       `batchCount++;\n${loopBody}\n}\n`;
     const postMode = speedLoop ? "speed" : ownerLoop || ["markerIndex","speedMarkerIndex"].includes(loopVariable) ? "read-only" : "full";
-    steps.push({ label: loops[loopVariable], code, loop: true, checkpoint: "", postMode });
+    steps.push({ label: loops[loopVariable], code, loop: true, checkpoint: "", postMode, measurePrepare: ["markerIndex","speedMarkerIndex"].includes(loopVariable) });
     cursor = node.end;
     label = ownerLoop ? "Dọn thước và gắn marker review" : "Chuẩn bị sau " + loops[loopVariable];
+    prepare = true;
   }
   flush(end);
   if (steps.length < 15 || steps.filter(s=>s.loop).length !== Object.keys(loops).length) throw Error("Executor layout changed; review diagnostic stage map.");
-  steps.forEach((step,index) => { step.measurePrepare = index === 0 || step.label === "Dọn thước và gắn marker review" || step.label === "Hậu kiểm" || step.label.indexOf("Chuẩn bị") === 0; });
   const rawPrefix = source.slice(fn.body.start+1,attempt.start);
   if (rawPrefix.split("$._PVS._findQEClipAtTicks(qeTrack,").length !== 2) throw Error("Review QE lookup transformation.");
   const speedHelper = fn.body.body.find(n => n.type === "FunctionDeclaration" && n.id.name === "setClipSpeed");

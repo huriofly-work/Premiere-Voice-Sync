@@ -112,29 +112,5 @@ test("ruler defaults never move",()=>{
   const b=fixture([1]),g=api.group(b.collection,[{start:0,end:100}],r=>r.name==="owned",0.01);api.add(g,spec(8));
   const result=api.commit(g);assert.equal(result.timings.moves,0);assert.equal(result.timings.creates,1);assert.equal(result.timings.deletes,1);
 });
-test("restore readback still rejects a sub-frame end difference and identifies the field",()=>{
-  const f=fixture([{seconds:1,end:1.25}]), marker=f.items[0], before=api.read(f.collection);
-  marker.start=2;
-  marker.end=2.5;
-  const after=api.read(f.collection), journal=[{collection:f.collection,before,after,tolerance:0.01}];
-  const end=Object.getOwnPropertyDescriptor(marker,"end");
-  Object.defineProperty(marker,"end",{...end,set(v){end.set(v+1/254016000000);}});
-  f.events.length=0;
-  const errors=api.restore(journal);
-  assert.equal(errors.length,1);
-  assert.match(errors[0],/^Marker restoration: Original marker fields differ\. end \(actual=.*prior=1\.25.*deltaTicks=/);
-  assert.deepStrictEqual(f.events.map(e=>e[0]),["start","end"]);
-  assert.equal(journal.length,1,"A failed readback leaves the recovery entry retryable.");
-});
-test("restore preflight describes comment changes without returning comment text",()=>{
-  const f=fixture([{seconds:1,comments:"shared prior"}]), before=api.read(f.collection);
-  const after=api.read(f.collection);
-  f.items[0].comments="shared current";
-  f.events.length=0;
-  const errors=api.restore([{collection:f.collection,before,after,tolerance:0.01}]);
-  assert.match(errors[0],/^Marker restoration: Marker changed since commit\. comments \(actualLength=14, priorLength=12, firstDiffIndex=7\)/);
-  assert(!errors[0].includes("shared"));
-  assert.deepStrictEqual(f.events,[]);
-});
 console.log("MARKER_MOVES:passed="+passed+";failed="+failures.length);
 if(failures.length)throw Error(failures.join("\n"));

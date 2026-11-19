@@ -4,7 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
-- Dựng theo voice ghi marker một lần sau hậu kiểm. Chạy lại giữ nguyên marker đã đúng, còn lượt dựng trên project lớn có thể chậm hơn một chút.
+- Dựng theo voice ghi marker một lần sau hậu kiểm. Chạy lại giữ nguyên marker đã đúng, còn lượt dựng trên project lớn có thể chậm hơn một chút. Không tạo được caption thì vẫn gắn marker hình và voice, chỉ bỏ marker caption, và panel báo rõ lỗi caption. Thông báo khi Dừng hoặc lỗi nói rõ marker chỉ được gắn ở bước cuối.
 
 - Thẻ cuối ghi chú của marker review không còn chứa mã sequence: `[PremiereVoiceSync:review-marker:v3:<chức năng>]` thay cho `…:v2:<chức năng>:<mã sequence>]`. Chạy trên sequence khác với cùng nội dung cảnh báo không còn ghi lại comments của mọi marker review. Lần chạy đầu sau khi cập nhật đổi thẻ cũ một lần, không tạo thêm marker (#92).
 - Dựng theo voice giữ timeline và marker đã ghi khi bấm Dừng hoặc gặp lỗi. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả (#90).

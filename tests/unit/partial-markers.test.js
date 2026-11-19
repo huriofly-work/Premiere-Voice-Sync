@@ -149,20 +149,12 @@ function prepare(make, index, profile, stop, { seed, surplus = false, longRange 
   const spans = new WeakMap();
   let activeGroup = null;
 
-  let restoration = null;
-  const restore = api._markerTools.restore;
-  api._markerTools.restore = function (...args) {
-    restoration = "journal";
-    try { return restore.apply(this, args); }
-    finally { restoration = null; }
-  };
-
   function count(i, operation, marker, before, after) {
     writes[operation] = (writes[operation] || 0) + 1;
     const { guid } = marker;
     touched[i].add(guid);
     writeTrace.push({ owner: labels[i], guid, kind: kind(fields(marker)), operation, before, after,
-      phase: restoration || activeGroup?.phase || null });
+      phase: activeGroup?.phase || null });
     if (protectedByOwner[i].has(guid)) {
       protectedWrites.push({ owner: labels[i], operation, guid, group: protectedByOwner[i].get(guid) });
     }
