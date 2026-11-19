@@ -7,7 +7,7 @@ khởi tạo lại ngày 14/11/2026 bằng một commit snapshot và chưa có r
 Tài khoản phát triển của project là `huriofly-work`. Xem
 [cấu hình và kiểm chứng sau chuyển tài khoản](maintenance/GITHUB_ACCOUNT_MIGRATION_2026-11-01.md).
 
-Mỗi đợt sửa cần có mã nguồn/test/tài liệu trên nhánh `claude/`, PR có kết quả
+Mỗi đợt sửa cần có mã nguồn/test/tài liệu trên nhánh riêng, PR có kết quả
 CI, và bản phân phối gắn với tag trỏ đúng commit. Không chỉ giữ bản cài local.
 Những thay đổi runtime chưa nghiệm thu trong Premiere được phát hành dưới
 dạng **prerelease**, không thay bản stable/Latest đã được chấp nhận.

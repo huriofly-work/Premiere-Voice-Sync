@@ -1,8 +1,8 @@
 # Maintainer briefing
 
-Written 2026-11-04 for Claude Code taking over from Codex. It is a map of what the
+Written 2026-11-04 for a maintainer taking over the project. It is a map of what the
 repository documents, verified against the files named here. It does not replace
-[AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md),
+[ARCHITECTURE.md](ARCHITECTURE.md),
 [REGRESSION_MEMORY.md](REGRESSION_MEMORY.md) or [HANDOFF.md](HANDOFF.md); read those
 for detail. Not verified by running Premiere: nothing here is native acceptance.
 
@@ -105,7 +105,7 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
 
 ## How to start a task
 
-1. `git status`, branch, worktrees; read AGENTS.md/CLAUDE.md rules for the task.
+1. Check `git status`, the branch and worktrees.
 2. Read the REGRESSION_MEMORY entry and tests for the affected path.
 3. Plan within the approved scope; work beyond it is allowed when it serves the
    task, and is reported with the reason.
@@ -114,6 +114,6 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
 
 ## Known limits of this briefing
 
-I (Claude) have read the documents above and the code structure, not every line of
-`main.js`, `host.jsx` or the engine libraries, and have not run Premiere. Treat code
+The author has read the documents above and the code structure, not every line of
+`main.js`, `host.jsx` or the engine libraries, and has not run Premiere. Treat code
 details as "read before editing", not as already known.
