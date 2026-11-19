@@ -36,10 +36,16 @@ function fixture(options={}){
     else if(expression.includes("s.captionTracks"))result={ok:true,count:0,bins:0,inPoint:0,outPoint:10};
     else if(expression.includes("diagnosticInfo"))result={ok:true,revision:"staged-edit-v3",baseHash:sourceHash};
     else if(expression.includes("beginDiagnosticEdit")){stopAt("edit-begin");result={ok:true,nextCall:0,nextStage:"video"};}
-    else if(expression.includes("advanceDiagnosticEdit")){advances++;stopAt("edit-advance-"+advances);result=advances===1?{ok:true,done:false,nextCall:1,nextStage:"voice",stage:"video",timelineMutated:true}:{ok:true,done:true,result:{ok:true,executorVersion:25,timelineMutated:true}};}
-    else if(expression.includes("acceptDiagnosticEdit"))result={ok:true};
+    else if(expression.includes("advanceDiagnosticEdit")){
+      advances++;stopAt("edit-advance-"+advances);
+      if(options.advanceError)result={ok:false,error:"Original advance error"};
+      else if(advances===1)result={ok:true,done:false,nextCall:1,nextStage:"voice",stage:"video",timelineMutated:true};
+      else result={ok:true,done:true,result:options.editResult||{ok:true,executorVersion:25,timelineMutated:true}};
+    }
+    else if(expression.includes("acceptDiagnosticEdit")){stopAt("edit-accept");result={ok:true};}
+    else if(expression.includes("abortDiagnosticEdit") && options.closeError)throw Error("Secondary close error");
     else if(expression.includes("abortDiagnosticEdit") && options.lostSession)result={ok:false,error:"DIAGNOSTIC_SESSION_NOT_FOUND"};
-    else if(expression.includes("abortDiagnosticEdit"))result={ok:false,done:true,result:{timelineMutated:advances>0,markerRestorationFailures:options.markerRestoreError?["MARKER_RESTORE_FAILED"]:[]}};
+    else if(expression.includes("abortDiagnosticEdit"))result={ok:false,done:true,result:{timelineMutated:advances>0}};
     else if(expression.includes("beginCaptionAudioExport")){stopAt("export-begin");result={ok:true,done:false,nextCall:0,rangeCount:2};}
     else if(expression.includes("advanceCaptionAudioExport")){advances++;stopAt("export-advance-"+advances);result={ok:true,done:advances===2,nextCall:advances,restored:advances===2};}
     else if(expression.includes("abortCaptionAudioExport"))result=options.restoreError?{ok:false,done:true,restored:false,exportFailurePhase:"restore",error:"RESTORE_FAILED"}:{ok:false,done:true,restored:true};
@@ -58,21 +64,58 @@ function fixture(options={}){
     createWorkflowMetrics=()=>({begin:s=>fixture.calls.push(["stage",s]),end:(r,o)=>fixture.calls.push(["stage-end",o]),finish:o=>fixture.calls.push(["finish",o]),linkTimeline(){},reviewPlan:r=>fixture.calls.push(["review-plan",r.reviewMarkers.length])});
     removeTreeSafe=()=>{if(hostPending||enginePending)throw Error("CLEANUP_WHILE_PENDING");fixture.calls.push(["cleanup"]);};
     retainLastRun=removeTreeSafe;
-    status=log=renderBackend=logCaptionTiming=()=>{};
+    status=renderBackend=logCaptionTiming=()=>{};
+    log=message=>fixture.calls.push(["log",message]);
     state.targetSrt="input.srt";
     window.api={reload:loadRecoveryJournal,check:checkIncidentInputs,edit:runSync,captions:runCaptions,stop:requestWorkflowStop,pause:requestWorkflowPause,fatal:reportUnexpectedError,choose:chooseWorkflowNotice,pending:()=>!!state.noticeChoice,busy:()=>state.workflowBusy,context:()=>runContext,recovery:()=>recoveryContext};
   `;
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',inject),context);api=context.window.api;
-  return {api,calls,controls,files,release:()=>engineCallback(),releaseResume:()=>resumeCallback()};
+  return {api,calls,controls,files,sequence,release:()=>engineCallback(),releaseResume:()=>resumeCallback()};
 }
 async function settle(f,running){
   for(let i=0;i<100;i++){if(f.api.pending()){f.api.choose(true);break;}if(!f.api.busy())break;await Promise.resolve();}
   await running;
   assert(!f.api.busy());assert(f.controls.stopWorkflow.hidden);
 }
+const editRegressions = {
+  async "postcheck-error-first"() {
+    const f=fixture({editResult:{ok:false,executorVersion:25,timelineMutated:true,error:"Original host error",settings:{validationToleranceFrames:1},clipMarkerFailureCount:1,clipMarkerFailures:["Marker write failed"]}});
+    await settle(f,f.api.edit());
+    assert.match(f.controls.workflowNoticeTechnical.textContent,/^Original host error; .*1 lỗi cập nhật marker clip: Marker write failed/);
+    assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline và marker được giữ/);
+  },
+  async "closing-error-secondary"() {
+    const f=fixture({advanceError:true,closeError:true});
+    await settle(f,f.api.edit());
+    assert.match(f.controls.workflowNoticeTechnical.textContent,/^Original advance error; Secondary close error/);
+    assert(f.api.recovery(),"Unverified timeline needs recovery");
+  },
+  async "late-stop-accepts-success"() {
+    for(const stopAt of ["edit-advance-2","edit-accept"]){
+      const storage=new Map(),f=fixture({stopAt,storage});
+      await settle(f,f.api.edit());
+      assert.equal(f.controls.workflowNoticeTitle.textContent,"Đã dựng xong.",stopAt);
+      assert(f.calls.some(c=>c[0]==="finish"&&c[1]==="success"));
+      const hosts=f.calls.filter(c=>c[0]==="host").map(c=>c[1]);
+      assert.equal(hosts.filter(c=>c.includes("acceptDiagnosticEdit")).length,1);
+      assert(!hosts.some(c=>c.includes("abortDiagnosticEdit")));
+      assert(!f.api.recovery()&&!storage.has("pvs.recovery.v1"));
+      assert.equal(f.calls.filter(c=>c[0]==="log"&&c[1]==="Yêu cầu Dừng đến sau khi dựng xong, giữ kết quả.").length,1);
+    }
+  }
+};
 if(require.main===module)(async()=>{
+  let failures=0;
+  for(const [name,test] of Object.entries(editRegressions)){
+    try { await test(); console.log("PASS "+name); }
+    catch(error){failures++;console.error("FAIL "+name,error);}
+  }
+  if(failures||process.argv.includes("--edit-regressions")){
+    process.exitCode=failures?1:0;
+    return;
+  }
   for(const mode of ["edit","captions"]){
-    const points=mode==="edit"?["scan","build-dtw-trial-plan.ps1","run-alignment.ps1","build-sentence-plan.ps1","build-speed-merge-trial-plan.ps1","edit-begin","edit-advance-1","edit-advance-2"]:["scan","export-begin","export-yield","export-advance-1","export-advance-2","run-captions.ps1","caption-import"];
+    const points=mode==="edit"?["scan","build-dtw-trial-plan.ps1","run-alignment.ps1","build-sentence-plan.ps1","build-speed-merge-trial-plan.ps1","edit-begin","edit-advance-1"]:["scan","export-begin","export-yield","export-advance-1","export-advance-2","run-captions.ps1","caption-import"];
     for(const stopAt of points){
       const f=fixture({stopAt});await settle(f,f.api[mode]());
       assert.equal(f.controls.workflowNoticeTitle.textContent,"Đã dừng tác vụ",mode+":"+stopAt);
@@ -81,8 +124,9 @@ if(require.main===module)(async()=>{
       assert.equal(!!f.api.recovery(),changed,mode+":"+stopAt+":recovery");
       if(changed)assert(f.controls.runSync.disabled&&f.controls.runCaptions.disabled);
       else assert(f.controls.workflowNoticeMessage.textContent.includes("Timeline chưa bị thay đổi"));
+      if(stopAt==="edit-advance-1")assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline và marker được giữ/);
       const hosts=f.calls.filter(c=>c[0]==="host").map(c=>c[1]);
-      if(["edit-begin","edit-advance-1","edit-advance-2"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
+      if(["edit-begin","edit-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
       if(["export-begin","export-yield","export-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortCaptionAudioExport")).length,1);
       if(stopAt==="caption-import")assert(!hosts.some(c=>c.includes("finishCaptionMarkerCleanup")),"Stop keeps legacy ruler markers");
       if(stopAt.startsWith("export"))assert(!f.calls.some(c=>c[0]==="engine"));
@@ -103,19 +147,23 @@ if(require.main===module)(async()=>{
     let saved;
     const active=fixture({storage,onPoint(point){if(point==="edit-advance-1")saved=storage.get(key);}});
     await settle(active,active.api.edit());
-    assert(JSON.parse(saved).markerSession && !storage.has(key));
+    assert(JSON.parse(saved).editSession && !storage.has(key));
     storage.set(key,saved);
     const reloaded=fixture({storage,lostSession});
     reloaded.api.reload();
     const checking=reloaded.api.check();reloaded.api.choose(true);await checking;
-    assert(reloaded.calls.some(c=>c[0]==="host" && c[1].includes(JSON.parse(saved).markerSession)));
-    assert.equal(storage.has(key),lostSession);
-    if(lostSession)assert(JSON.parse(storage.get(key)).markerManualReview && reloaded.api.recovery());
+    assert(reloaded.calls.some(c=>c[0]==="host" && c[1].includes(JSON.parse(saved).editSession)));
+    assert(!storage.has(key) && !reloaded.api.recovery());
   }
-  const failedRestore=fixture({stopAt:"edit-advance-2",markerRestoreError:true});
-  await settle(failedRestore,failedRestore.api.edit());
-  assert(failedRestore.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));
-  assert(failedRestore.api.recovery().markerSession);
+  const stopped=fixture({stopAt:"edit-advance-1"});
+  await settle(stopped,stopped.api.edit());
+  assert(stopped.api.recovery() && !stopped.api.recovery().editSession);
+  stopped.sequence.voices[0].end=3;
+  await stopped.api.check();
+  assert(stopped.api.recovery() && stopped.controls.runSync.disabled);
+  stopped.sequence.voices[0].end=4;
+  await stopped.api.check();
+  assert(!stopped.api.recovery());
   const quiet=policy.route({kind:"cancelled",impact:"changed"},{background:true});assert.equal(quiet.toast,"banner-and-center");assert.equal(quiet.attention,"none");assert.equal(policy.route({kind:"cancelled",observed:true},{background:true}).toast,"none");
   console.log("WORKFLOW_CANCELLATION_OK:both-workflows;preflight;engine;export-restoration;staged-abort;final-native-call;pending-lock;repeat-stop;recovery;error-precedence;quiet-cancel");
 })().catch(e=>{console.error(e);process.exitCode=1;});

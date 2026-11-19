@@ -8,8 +8,12 @@ const diagnostic = fs.readFileSync(path.join(root,"extension/jsx/diagnostic-exec
 let fixtureExecutor = diagnostic;
 const { output, generate } = require("../../tools/Build-DiagnosticExecutor.js");
 let fixtureHost = host;
-assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
 const TPF = 8467200000;
+if (require.main !== module) {
+  module.exports = { host, diagnostic, markerReferenceCases, markerReferenceFixture, finishTrial };
+  return;
+}
+assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
 // Run explicitly before the legacy assertions to capture the pre-fix failure.
 {
   const f=fixture(1),clip=f.seq.videoTracks[0].clips[0];
@@ -200,14 +204,13 @@ function chapterFixture(distinct=false) {
   f.plan.voiceClips=[{nodeId:first.nodeId,name:"Voice",start:0,end:boundary/30},{nodeId:second.nodeId,name:"Voice",start:boundary/30,end:second.end.seconds}];
   return f;
 }
-const markerCases=[()=>fixture(1),()=>fixture(6,false,false,1,true),()=>fixture(65,false,true,0.9),()=>fixture(6,false,true,1.1,false,true),()=>editedFixture(true,true),()=>cueFixture(6,true),chapterFixture];
 function collidingReviewPair(f) {
   f.plan.reviewMarkers=[{start:1,end:1.8,reason:"first"},{start:1.5,end:70/30,reason:"second"}];
   f.plan.markers.push({...f.plan.markers[0],Comments:"second voice reason"});
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
 }
-if(process.argv.includes("--record-marker-reference")||process.argv.includes("--marker-precommit")||!process.argv.slice(2).length){
-  const recording=process.argv.includes("--record-marker-reference"),goldenPath=path.join(__dirname,"fixtures/marker-before-cuts.json");
+function markerReferenceCases() {
+  const markerCases=[()=>fixture(1),()=>fixture(6,false,false,1,true),()=>fixture(65,false,true,0.9),()=>fixture(6,false,true,1.1,false,true),()=>editedFixture(true,true),()=>cueFixture(6,true),chapterFixture];
   markerCases.push(()=>chapterFixture(true),()=>fixture(6,false,true,1.1,false,false,false,true),()=>fixture(6,false,false,1,true,false,false,true));
   markerCases.push(()=>{
     const f=fixture(6,false,true),push=f.actions.push;
@@ -229,10 +232,19 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
   for(const size of [1,6,65]) for(const gaps of [true,false]) markerCases.push(()=>cueFixture(size,gaps));
   for(const one of [true,false]) for(const outside of [true,false]) markerCases.push(()=>editedFixture(one,outside));
   for(const [size,gaps,speed] of [[1,false,1],[6,false,1],[65,false,1],[65,true,1],[65,true,1.1],[65,true,0.9],[130,true,1.1],[130,true,0.9]]) markerCases.push(()=>fixture(size,false,gaps,speed));
+  return markerCases;
+}
+function markerReferenceFixture(make, index) {
+  const f=issue55Fixture(make);
+  if(index===2) collidingReviewPair(f);
+  return f;
+}
+if(process.argv.includes("--record-marker-reference")||process.argv.includes("--marker-precommit")||!process.argv.slice(2).length){
+  const recording=process.argv.includes("--record-marker-reference"),goldenPath=path.join(__dirname,"fixtures/marker-before-cuts.json");
+  const markerCases=markerReferenceCases();
   const expected=JSON.parse(fs.readFileSync(goldenPath,"utf8"));
   for(const [index,make] of markerCases.entries())for(const profile of recording?["direct"]:["direct","baseline","fast","no-delay"]){
-    const f=issue55Fixture(make);
-    if(index===2) collidingReviewPair(f);
+    const f=markerReferenceFixture(make,index);
     const result=profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
     assert(result.report.ok,JSON.stringify(result.report));
     const digest=value=>require("crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -301,14 +313,13 @@ function issue55Failures() {
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(empty.plan)+";};",empty.context);
   Object.assign(emptyBank.createMarker(2),{name:"VOICE SYNC - Can kiem tra",
     comments:"old\n[PremiereVoiceSync:review-marker:v2:edit:previous]",end:2.5,colorIndex:4});
-  const emptyBefore=markerRows(emptyBank).map(row=>row.slice(1));
   empty.seq.createCaptionTrack=function(){
     assert.equal(emptyBank.items.length,0);
     throw Error("caption after empty review cleanup");
   };
   const emptyReport=finishTrial(empty,"no-delay").report;
   assert(!emptyReport.ok && emptyReport.error.includes("caption after empty review cleanup"));
-  assert.deepStrictEqual(markerRows(emptyBank).map(row=>row.slice(1)),emptyBefore);
+  assert.deepStrictEqual(markerRows(emptyBank), [], "Completed review cleanup survives a later caption error");
   // A rerun may start with every planned marker already correct. Native review
   // can still change this owner before a failed postcheck.
   const seed=issue55Fixture(()=>fixture(1)),rerun=issue55Fixture(()=>fixture(1));
@@ -320,14 +331,14 @@ function issue55Failures() {
   rerun.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
   const failed=finishTrial(rerun,"no-delay").report;
   assert(!failed.ok && failed.linkMismatchCount===1,JSON.stringify(failed));
-  assert.deepStrictEqual(markerRows(bank),snapshot,"Postcheck restores an owner whose pre-commit was already up to date");
+  assert.notDeepStrictEqual(markerRows(bank),snapshot,"Failed postcheck keeps the final review changes");
   for (const fault of ["razor","speed","move","captionTrack","postcheck","stop","late-stop","manual-edit","restore-failure","reappeared"]) {
     const f = issue55Fixture(()=>fixture(6,false,true)), bank = f.voice.getMarkers();
     const ruler=f.seq.markers;
     for(const [i,name,tag] of [[0,"manual","note"],[1,"VOICE SYNC - Can kiem tra","review-marker:v2:edit:seq"],[2,"VOICE SYNC - Kiem tra toc do","owned-marker:sequence:v1:seq"]]){
       Object.assign(ruler.createMarker(i),{name,comments:"[PremiereVoiceSync:"+tag+"]",end:i+0.25,colorIndex:2});
     }
-    const rulerBefore=markerRows(ruler).map(row=>row.slice(1));
+    const rulerBefore=markerRows(ruler);
     function stale(seconds, guid, review) {
       const m = bank.createMarker(seconds);
       Object.assign(m,{guid,name:review?"VOICE SYNC - Can kiem tra":"VOICE SYNC - Kiem tra can voice",
@@ -340,7 +351,9 @@ function issue55Failures() {
     stale(4,"surplus-review",true);
     for(let n=0;n<7;n++)stale(1.7+n/10,"stale-"+n,false);
     const before=markerRows(bank),manual=bank.items.find(m=>m.guid==="manual"),originals=bank.items.slice();
-    let reappeared;
+    let reappeared, finalWriteState, restoreCalls=0;
+    const restore=f.api._markerTools.restore;
+    f.api._markerTools.restore=function(entries){restoreCalls++;return restore(entries);};
     const fields=rows=>rows.map(r=>r.slice(1));
     let progress=JSON.parse(f.api.beginDiagnosticEdit("fixture","fail","no-delay",fault==="late-stop"));
     while(!progress.done && progress.nextStage!=="Cắt V1–A1 linked")progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
@@ -349,17 +362,26 @@ function issue55Failures() {
     assert(moved && moved.start.seconds!==1.5,"review move keeps the old GUID");
     if(fault==="restore-failure")bank.failMove=true;
     if(fault==="manual-edit")moved.comments="user changed this warning";
-    if(fault==="postcheck")f.nested.clearInPoint=()=>{throw Error("MASTER_RESET");};
+    if(fault==="postcheck")f.nested.clearInPoint=()=>{finalWriteState=markerRows(bank);throw Error("MASTER_RESET");};
     const push=f.actions.push;
     f.actions.push=function(row){
       if(fault==="reappeared" && row[0]==="captionTrack"){
         reappeared=originals.find(m=>!bank.items.includes(m));
-        reappeared.comments="manual note after undo";bank.items.push(reappeared);throw Error("injected caption");
+        reappeared.comments="manual note after undo";bank.items.push(reappeared);
+        finalWriteState=markerRows(bank);
+        throw Error("injected caption");
       }
-      if(row[0]===fault)throw Error("injected "+fault);
+      if(row[0]===fault){
+        if(fault==="captionTrack")finalWriteState=markerRows(bank);
+        throw Error("injected "+fault);
+      }
       return push.apply(this,arguments);
     };
-    if(["stop","manual-edit","restore-failure"].includes(fault))progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));
+    if(["stop","manual-edit","restore-failure"].includes(fault)){
+      finalWriteState=markerRows(bank);
+      progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));
+      assert.equal(progress.result.error,"DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE");
+    }
     else {
       while(!progress.done)progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
       if(fault==="late-stop"){
@@ -367,27 +389,25 @@ function issue55Failures() {
         assert(moved.comments.endsWith("[PremiereVoiceSync:review-marker:v2:edit:seq]"));
         assert(bank.items.includes(moved));
         assert(!bank.items.some(m=>m.guid==="surplus-review"));
-        progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));
+        finalWriteState=markerRows(bank);
+        assert.deepStrictEqual(JSON.parse(f.api.abortDiagnosticEdit("fail")),progress);
       }
     }
-    assert(!progress.result.ok,fault);
-    assert.deepEqual(markerRows(ruler).map(row=>row.slice(1)),rulerBefore,fault+" ruler rollback");
+    assert.equal(progress.result.ok,fault==="late-stop",fault);
+    if(["captionTrack","postcheck","late-stop","reappeared"].includes(fault))assert.deepStrictEqual(markerRows(ruler),rulerBefore.slice(0,1),fault);
+    else assert.deepStrictEqual(markerRows(ruler),rulerBefore,fault);
     assert.strictEqual(bank.items.find(m=>m.guid==="manual"),manual);
-    if(["manual-edit","restore-failure","reappeared"].includes(fault)) {
-      if(fault==="reappeared")assert.equal(reappeared.comments,"manual note after undo");
-      assert(progress.result.markerRestorationFailures.length&&progress.result.clipMarkerFailureCount>0);
-      if(fault==="manual-edit")assert.equal(moved.comments,"user changed this warning");
-      if(fault==="restore-failure"){
-        bank.failMove=false;
-        const retry=JSON.parse(f.api.abortDiagnosticEdit("fail"));
-        assert.deepStrictEqual(retry.result.markerRestorationFailures,[]);
-        assert.deepStrictEqual(fields(markerRows(bank)),fields(before));
-      }
+    assert.equal(JSON.parse(f.api.abortDiagnosticEdit("fail")).error,"DIAGNOSTIC_SESSION_NOT_FOUND");
+    assert.equal(restoreCalls,0,fault);
+    if(finalWriteState)assert.deepStrictEqual(markerRows(bank),finalWriteState,fault);
+    if(["razor","speed","move"].includes(fault)){
+      assert.equal(progress.result.error,"injected "+fault);
+      assert(bank.items.includes(moved));
+      assert.notEqual(moved.start.seconds,1.5);
     } else {
       assert(!progress.result.markerRestorationFailures,JSON.stringify(progress.result));
-      assert.deepStrictEqual(fields(markerRows(bank)),fields(before),fault);
-      assert.equal(bank.items.find(m=>m.guid==="moved-review").start.seconds,1.5);
-      assert.equal(bank.items.find(m=>m.guid==="old").start.seconds,0);
+      if(fault==="manual-edit")assert.equal(moved.comments,"user changed this warning");
+      if(fault==="reappeared")assert.equal(reappeared.comments,"manual note after undo");
     }
   }
   for(const profile of ["baseline","fast","no-delay"]){
@@ -397,11 +417,13 @@ function issue55Failures() {
     assert.equal(r.nextStage,"Ghi trước marker voice");
     assert.equal(f.secondVoice.getMarkers().items.length,0);
     assert(!f.actions.some(a=>a[0]==="razor"));
+    const committed=issue55State(f);
+    assert.notDeepStrictEqual(committed,before);
     const stopped=JSON.parse(f.api.abortDiagnosticEdit("owners"));
-    assert(!stopped.result.markerRestorationFailures);
-    assert.deepStrictEqual(issue55State(f),before);
+    assert.equal(stopped.result.error,"DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE");
+    assert.deepStrictEqual(issue55State(f),committed);
   }
-  console.log("MARKER_RESTORATION_OK:razor-speed-move-caption-postcheck-stop-between-chapters-late-stop-conflict-native-restore-failure");
+  console.log("PARTIAL_MARKER_RETENTION_OK:razor-speed-move-caption-postcheck-stop-between-chapters-late-stop-manual-edits");
 }
 function nativeDigests(executor){
   const digests={},previous=fixtureExecutor;fixtureExecutor=executor;
@@ -607,7 +629,7 @@ function finishTrial(f,profile){
   assert.strictEqual(JSON.parse(api.diagnosticInfo()).active,false);
   return {report:r.result,checkpoints,calls,timings:r.timings};
 }
-function voiceProjectionCase({nativeVoiceSourceTicks=false, field, delta=0}={}) {
+function voiceProjectionCase({nativeVoiceSourceTicks=false, field, delta=0, reversalError}={}) {
   const f=issue55Fixture(()=>fixture(nativeVoiceSourceTicks ? 42 : 2,false,!nativeVoiceSourceTicks,
     nativeVoiceSourceTicks ? 1.1 : 1,false,false,false,false,{nativeVoiceSourceTicks})), api=f.api;
   let result=JSON.parse(api.beginDiagnosticEdit("fixture","float-drift","no-delay"));
@@ -615,6 +637,7 @@ function voiceProjectionCase({nativeVoiceSourceTicks=false, field, delta=0}={}) 
     result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));
   }
   assert(!result.done,"Voice projection and marker pre-commit must run before injecting drift.");
+  const preCommittedRows=markerRows(f.voice.getMarkers());
   const clipMapping=api._clipMarkerMapping, restore=api._markerTools.restore;
   let driftRestores=0;
   api._clipMarkerMapping=function(item, allowNested) {
@@ -624,10 +647,19 @@ function voiceProjectionCase({nativeVoiceSourceTicks=false, field, delta=0}={}) 
   };
   api._markerTools.restore=function(entries) {
     if (entries.length) driftRestores++;
+    if (reversalError) return [reversalError];
     return restore(entries);
   };
   do {result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));} while (!result.done);
-  assert(result.result.ok,JSON.stringify(result.result));
+  if (reversalError) {
+    assert(!result.result.ok);
+    assert.equal(result.result.error,"Voice projection mismatch ("+field+", piece 0); "+reversalError);
+    assert.equal(driftRestores,1,"A failed projection reversal must not trigger a retry");
+    assert.deepStrictEqual(markerRows(f.voice.getMarkers()),preCommittedRows);
+    assert(!JSON.parse(api.diagnosticInfo()).active);
+  } else {
+    assert(result.result.ok,JSON.stringify(result.result));
+  }
   const projection=result.result.voiceProjection;
   assert.deepStrictEqual(result.timings.find(t=>t.detail?.voiceProjection).detail.voiceProjection,projection);
   return {f, driftRestores, projection};
@@ -673,6 +705,10 @@ if (!process.argv.slice(2).length) {
       assert.equal(projection.maxAbsDeltaTicks[field],Math.abs(firstMismatch.deltaTicks));
     }
   }
+  const failed=voiceProjectionCase({field:"input",delta:2/(1000*30),reversalError:"Injected reversal failure"});
+  assert.equal(failed.projection.firstMismatch.reason,"input");
+  assert.equal(failed.projection.firstMismatch.pieceIndex,0);
+  console.log("VOICE_PROJECTION_REVERSAL_FAILURE_OK:mismatch-and-error;no-retry");
   console.log("VOICE_PROJECTION_TOLERANCE_OK:half-tick-input;larger-input-start-end-drift;exact-speed");
 }
 function reviewOnlyFixture(nativeWrappers) {

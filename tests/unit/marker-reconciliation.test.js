@@ -387,14 +387,11 @@ console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-writ
 // Owned V1/A2 ruler fallbacks reconcile only their tagged sequence/range.
 {
   const timeline=fixture([{seconds:1,name:"manual",comments:"keep"}]);timeline.seq.sequenceID="owned-rerun";
-  context.rulerJournal=[];
   const marker=timeline.marker({seconds:2,end:3,name:clipSpec.Name,comments:"[PremiereVoiceSync:owned-marker:sequence:v1:owned-rerun]"});
   timeline.marker({seconds:4,name:clipSpec.Name,comments:"foreign\n[PremiereVoiceSync:owned-marker:sequence:v1:other]"});
   timeline.marker({seconds:8,name:clipSpec.Name,comments:marker.comments});
-  const initial=state(timeline);r=context.cleanLegacyOwnedRulerMarkers(timeline.seq,6,30);assert.equal(r.count,0);assert.equal(timeline.values.length,3);assert(!timeline.values.includes(marker));
+  r=context.cleanLegacyOwnedRulerMarkers(timeline.seq,6,30);assert.equal(r.count,0);assert.equal(timeline.values.length,3);assert(!timeline.values.includes(marker));
   assert(timeline.values.some(m=>m.name==="manual"));assert(timeline.values.some(m=>m.start.seconds===8));
-  assert.deepEqual(api.restore(context.rulerJournal),[]);
-  assert.deepEqual(state(timeline),initial);
   console.log("LEGACY_RULER_CLEANUP_OK");
 
 }

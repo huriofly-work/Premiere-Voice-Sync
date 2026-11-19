@@ -1543,7 +1543,7 @@ $._PVS._applyReviewMarkers = function (seq, issues, ranges, workflow, captions, 
             if (tools.snapshotOwned(sequenceGroup, sequenceGroup.before).length) transaction.rulerGroup = sequenceGroup;
             return stats;
         }
-        var result = tools.commit(sequenceGroup, null, transaction && transaction.rulerJournal);
+        var result = tools.commit(sequenceGroup);
         for (var f = 0; f < result.failures.length; f++) failure(result.failures[f]);
     } catch (e) { failure(e.message || e); }
     return stats;
@@ -1679,41 +1679,14 @@ $._PVS.executePlan = function (planPath) {
     var clearedClipMarkerCount = 0;
     var markerColorFailures = [];
     var unattachedOwnedMarkers = [];
-    var rulerJournal = [];
     var reviewMarkerStats = { reviewMarkerCount: 0, reviewMarkerClipCount: 0, unattachedMarkers: [], unattachedMarkerCount: 0, reviewMarkerFailureCount: 0, reviewMarkerFailures: [], reviewMarkerColorFailureCount: 0 };
     var pendingNativeReview = null;
-    var markerTools = $._PVS._markerTools, markerRestorationFailures = [];
+    var markerTools = $._PVS._markerTools;
     var preOwners = [], reviewTimings = [], voiceProjection = null;
     function restoreEntries(entries) {
         var errors = markerTools.restore(entries);
-        for (var i = 0; i < errors.length; i++) markerRestorationFailures.push(errors[i]);
         // restore removes an entry only after successful read-back.
         if (errors.length) throw new Error(errors.join("; "));
-    }
-    function restorePreOwners(retry) {
-        if (rulerJournal.length) {
-            try {
-                if (!app.project || String(app.project.documentID || app.project.path || "") !== markerProjectId) throw new Error("Marker restoration: project changed.");
-                restoreEntries(rulerJournal);
-            } catch (rulerError) { markerRestorationFailures.push(String(rulerError)); }
-        }
-        for (var i = preOwners.length - 1; i >= 0; i--) {
-            var owner = preOwners[i];
-            if (!owner.trackChanges) continue;
-            try {
-                if (!app.project || String(app.project.documentID || app.project.path || "") !== markerProjectId) throw new Error("Marker restoration: project changed.");
-                var collection = owner.ProjectItem.getMarkers();
-                if (retry && markerTools.restoredRows(owner.snapshot, markerTools.read(collection), owner.journal)) continue;
-                restoreEntries(owner.journal);
-                var rows = markerTools.read(collection), diagnostic = { detail: "" };
-                if (retry && !markerTools.restoredRows(owner.snapshot, rows, owner.journal, diagnostic)) throw new Error("Marker restoration: source snapshot differs after retry." + diagnostic.detail);
-                var actual = markerTools.snapshotOwned(owner.Group, rows, owner.ownsReview);
-                var expected = markerTools.snapshotOwned(owner.Group, owner.snapshot, owner.ownsReview);
-                if (!markerTools.restoredRows(expected, actual, owner.journal, diagnostic)) throw new Error("Marker restoration: source snapshot differs." + diagnostic.detail);
-            } catch (error) {
-                if (!markerRestorationFailures.length || markerRestorationFailures[markerRestorationFailures.length - 1] !== error.message) markerRestorationFailures.push(error.message || String(error));
-            }
-        }
     }
     function phaseTiming(result, phase, kind, ownerIndex) {
         result.timings.phase = phase; result.timings.kind = kind; result.timings.ownerIndex = ownerIndex;
@@ -2017,16 +1990,13 @@ $._PVS.executePlan = function (planPath) {
         }
         return pieces;
     }
-    function recordRestorationFailures(result) {
-        for (var i = 0; i < result.failures.length; i++) if (/restoration/i.test(result.failures[i])) markerRestorationFailures.push(result.failures[i]);
-    }
     function preCommit(owner, group, kind, index) {
         if (!group || group.blocked || !markerTools.reversible(group)) return null;
-        owner.trackChanges = true;
+        owner.preCommitted = true;
         var result = markerTools.commit(group, function () { timelineMutated = true; }, owner.journal, true);
         if (result.failures.length) {
-            recordRestorationFailures(result);
-            if (markerRestorationFailures.length || /changed since preparation/i.test(result.failures.join("; "))) throw new Error(result.failures.join("; "));
+            var failure = result.failures.join("; ");
+            if (/restoration|changed since preparation/i.test(failure)) throw new Error(failure);
             result.timings.failed = true;
         } else owner.expected = group.after;
         return phaseTiming(result, "pre", kind, index);
@@ -2085,24 +2055,9 @@ $._PVS.executePlan = function (planPath) {
     }
     function commitFinalReview(clipOwner) {
         var owner = ownerByKey[clipOwner.key];
-        if (owner && owner.trackChanges) guardOwner(owner, clipOwner.group.before);
-        // Empty or deferred plans can first replace old review markers in this pass.
-        // Snapshot the review group here, after unrelated clip-marker commits.
-        else if (markerTools.snapshotOwned(clipOwner.group, clipOwner.group.before).length) {
-            if (!markerTools.reversible(clipOwner.group)) {
-                clipOwner.group.blocked = true;
-            } else {
-                owner = { ProjectItem: clipOwner.item, Group: clipOwner.group, snapshot: clipOwner.group.before,
-                    trackChanges: true, journal: [], index: owner ? owner.index : -1 };
-                preOwners.push(owner);
-            }
-        }
-        var result = markerTools.commit(clipOwner.group, null, owner && owner.trackChanges ? owner.journal : null);
-        if (owner && result.failures.length === 0) owner.expected = clipOwner.group.after;
-        if (owner && owner.trackChanges && result.failures.length) {
-            recordRestorationFailures(result);
-            undoEarlyReview(owner);
-        }
+        if (owner && owner.preCommitted) guardOwner(owner, clipOwner.group.before);
+        else if (markerTools.snapshotOwned(clipOwner.group, clipOwner.group.before).length && !markerTools.reversible(clipOwner.group)) clipOwner.group.blocked = true;
+        var result = markerTools.commit(clipOwner.group);
         reviewTimings.push(phaseTiming(result, "post", "review", owner ? owner.index : -1));
         return result;
     }
@@ -2115,7 +2070,7 @@ $._PVS.executePlan = function (planPath) {
             return (row.name === "VOICE SYNC - Kiem tra toc do" || row.name === "VOICE SYNC - Kiem tra can voice" || row.name === "VOICE SYNC - Da gop hinh" || row.name === "VOICE SYNC - Gop hinh / Kiem tra toc do") && String(row.comments || "").indexOf(tag) >= 0;
         }, 0.5 / fps);
         if (!tools.reversible(group)) throw new Error("Không đọc đủ dữ liệu để dọn marker cũ trên thước.");
-        return tools.commit(group, function () { timelineMutated = true; }, rulerJournal);
+        return tools.commit(group, function () { timelineMutated = true; });
     }
 
     try {
@@ -2165,7 +2120,6 @@ $._PVS.executePlan = function (planPath) {
         if (!originalMain || Math.abs(Number(originalMain.end.seconds) - mainEnd) > 0.1) throw new Error("V1 main clip no longer matches plan.");
         var originalMainName = String(originalMain.name), originalMainProjectItem = originalMain.projectItem;
         var clipMarkerGroups = {};
-        var markerProjectId = String(app.project.documentID || app.project.path || "");
         var chapters = [];
         var cleanupOwners = markerCleanupOwners(original, originalMain, linkedTrackIndex, linkedSpecs[0].name, voiceTrackIndex, voiceClips, chapters);
         for (var cleanupOwnerIndex = 0; cleanupOwnerIndex < cleanupOwners.length; cleanupOwnerIndex++) {
@@ -2251,10 +2205,8 @@ $._PVS.executePlan = function (planPath) {
             var preOwner = cleanupOwners[preOwnerIndex], preGroup = preOwner.Group;
             preOwner.index = preOwnerIndex; preOwner.journal = [];
             preOwner.expected = preGroup.before;
-            preOwner.ownsReview = markerTools.sourceReviewOwner("edit");
-            preOwner.snapshot = preGroup.before;
             ownerByKey[projectItemKey(preOwner.Item)] = preOwner;
-            preOwner.eligible = projectedPieces && !preOwner.picture && !preGroup.blocked && markerTools.reversible(preGroup, preOwner.ownsReview);
+            preOwner.eligible = projectedPieces && !preOwner.picture && !preGroup.blocked && markerTools.reversible(preGroup, markerTools.sourceReviewOwner("edit"));
             var preClipTiming = null;
             if (preOwner.eligible) {
                 preOwners.push(preOwner);
@@ -2589,13 +2541,18 @@ $._PVS.executePlan = function (planPath) {
             maxVoiceError = Math.max(maxVoiceError, Math.abs(frameOf(speechPieces[validateVoice].start) - expectedVoiceFrame));
         }
         if (preOwners.length && !sameVoiceProjection()) {
-            for (var drift = 0; drift < preOwners.length; drift++) {
-                var driftOwner = preOwners[drift];
-                guardOwner(driftOwner);
-                restoreEntries(driftOwner.journal);
-                driftOwner.expected = markerTools.read(driftOwner.ProjectItem.getMarkers());
-                markerTools.resetGroup(driftOwner.Group, driftOwner.expected);
-                driftOwner.reviewEntry = null;
+            try {
+                for (var drift = 0; drift < preOwners.length; drift++) {
+                    var driftOwner = preOwners[drift];
+                    guardOwner(driftOwner);
+                    restoreEntries(driftOwner.journal);
+                    driftOwner.expected = markerTools.read(driftOwner.ProjectItem.getMarkers());
+                    markerTools.resetGroup(driftOwner.Group, driftOwner.expected);
+                    driftOwner.reviewEntry = null;
+                }
+            } catch (reversalError) {
+                var mismatch = voiceProjection.firstMismatch;
+                throw new Error("Voice projection mismatch (" + mismatch.reason + ", piece " + mismatch.pieceIndex + "); " + (reversalError.message || String(reversalError)));
             }
         }
         var markerCount = 0;
@@ -2648,7 +2605,7 @@ $._PVS.executePlan = function (planPath) {
             var markerOwner = cleanupOwners[markerOwnerIndex];
             try {
                 markerOwner.Group.collection = markerOwner.ProjectItem.getMarkers();
-                var clipMarkerResult = $._PVS._markerTools.commit(markerOwner.Group, function () { timelineMutated = true; }, markerOwner.trackChanges ? markerOwner.journal : null);
+                var clipMarkerResult = $._PVS._markerTools.commit(markerOwner.Group, function () { timelineMutated = true; });
                 if (!markerOwner.picture && !clipMarkerResult.failures.length) voiceReservations[projectItemKey(markerOwner.Item)] = markerOwner.Group.reserved;
                 if (clipMarkerResult.failures.length === 0) markerOwner.expected = markerOwner.Group.after;
                 phaseTiming(clipMarkerResult, "post", markerOwner.picture ? "picture" : "voice", markerOwnerIndex);
@@ -2656,12 +2613,10 @@ $._PVS.executePlan = function (planPath) {
                 mergeClipMarkerCount += clipMarkerResult.merged;
                 clearedClipMarkerCount += clipMarkerResult.deleted;
                 if (clipMarkerResult.failures.length) {
-                    if (markerOwner.trackChanges) {
-                        recordRestorationFailures(clipMarkerResult);
-                        restoreEntries(markerOwner.journal);
+                    // Keep what was written; later review steps compare against the rows now on the source.
+                    if (markerOwner.preCommitted) {
                         markerOwner.expected = markerTools.read(markerOwner.ProjectItem.getMarkers());
                         markerOwner.reviewEntry = null;
-                        // Final review planning will see the restored source rows.
                     }
                     var failedTargets = markerOwner.Group.markerTargets || [];
                     for (var ft = 0; ft < failedTargets.length; ft++) {
@@ -2678,7 +2633,7 @@ $._PVS.executePlan = function (planPath) {
                 // Failure before a transaction starts still needs visible warnings.
                 var unreadableTargets = markerOwner.Group.markerTargets || [];
                 for (var ut = 0; ut < unreadableTargets.length; ut++) { unreadableTargets[ut].reason = clipMarkerOwnerError.message; unattachedOwnedMarkers.push(unreadableTargets[ut]); }
-                if (markerRestorationFailures.length || (!unreadableTargets.length && !markerOwner.Group.hasUnattached)) markerFailures.push("Marker source " + markerOwnerIndex + ": " + clipMarkerOwnerError.message);
+                if (!unreadableTargets.length && !markerOwner.Group.hasUnattached) markerFailures.push("Marker source " + markerOwnerIndex + ": " + clipMarkerOwnerError.message);
             }
         }
         try {
@@ -2720,7 +2675,7 @@ $._PVS.executePlan = function (planPath) {
                 undoEarlyReview(ro);
             }
         }
-        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview, voiceReservations:voiceReservations, rulerJournal:rulerJournal});
+        reviewMarkerStats = $._PVS._applyReviewMarkers(workingSequence, plan.reviewMarkers !== undefined || reviewIssues.length ? reviewIssues : undefined, [{start:0,end:plannedEndFrame/fps}], "edit", plan.captions, speechPieces, {commit:commitFinalReview, voiceReservations:voiceReservations});
         var captionFile = new File(plan.captionSrtPath);
         var captionCreated = false;
         var captionTemporaryBinRemoved = false;
@@ -2911,12 +2866,6 @@ $._PVS.executePlan = function (planPath) {
     report.unattachedMarkerCount = report.unattachedMarkers.length;
     if (reviewMarkerStats.reviewMarkerFailureCount) report.ok = false;
     if (cleanupError !== "") report.ok = false;
-    if (!report.ok) restorePreOwners();
-    if (markerRestorationFailures.length) {
-        report.ok = false; report.markerRestorationFailures = markerRestorationFailures;
-        report.clipMarkerFailures = (report.clipMarkerFailures || []).concat(markerRestorationFailures);
-        report.clipMarkerFailureCount = report.clipMarkerFailures.length;
-    }
     if (voiceProjection) report.voiceProjection = voiceProjection;
     return $._PVS._result(report);
 };
