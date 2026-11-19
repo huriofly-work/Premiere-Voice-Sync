@@ -416,7 +416,7 @@
       }catch(ignore){localFeedback("notificationTestFeedback","Chưa dùng được thông báo Windows. Kết quả tác vụ vẫn nằm trong panel.",true);}
     },5000);
   }
-  var stageLabels = { preflight: "Kiểm tra đầu vào", alignment: "Nhận diện và căn lời", planning: "Lập kế hoạch", timeline: "Dựng timeline và hậu kiểm", export: "Xuất audio", captions: "Thêm Caption Track", cleanup: "Dọn file tạm", unknown: "Chưa xác định" };
+  var stageLabels = { preflight: "Kiểm tra đầu vào", alignment: "Nhận diện và căn lời", planning: "Lập kế hoạch", timeline: "Dựng timeline, hậu kiểm và gắn marker", export: "Xuất audio", captions: "Thêm Caption Track", cleanup: "Dọn file tạm", unknown: "Chưa xác định" };
   function noticeAttribute(element, name, value) {
     if (element && element.setAttribute) element.setAttribute(name, value);
   }
@@ -1718,7 +1718,7 @@
           if (mutation === true) runContext.impact = "changed";
           else if (mutation === false && runContext.impact !== "changed") runContext.impact = "unchanged";
         }
-        record({ type: "response", call: nextCall, wallMilliseconds: Date.now() - requestedAt, ok: response.ok, done: response.done, stage: response.stage || "", hostMilliseconds: response.milliseconds, checkpoint: response.checkpoint || "" });
+        record({ type: "response", call: nextCall, wallMilliseconds: Date.now() - requestedAt, ok: response.ok, done: response.done, stage: response.stage || nextStage, hostMilliseconds: response.milliseconds, checkpoint: response.checkpoint || "" });
         if (response.done) {
           record({ type: "finish", ok: !!(response.result && response.result.ok), timings: response.timings || [] });
           if (!response.result) throw new Error("Chẩn đoán không trả về hậu kiểm.");

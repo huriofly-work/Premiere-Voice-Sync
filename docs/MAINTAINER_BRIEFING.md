@@ -14,7 +14,9 @@ A Windows Adobe Premiere Pro CEP panel (id `com.premierevoicesync.local`, runtim
 - **Dựng theo voice (Auto edit):** from a template (one V1/A1 nest, A2 voice chapters)
   and a Vietnamese SRT, align the new voice to SRT cues and rebuild picture/audio
   timing: cut/keep gaps, retime pairs (speed 70–130% is a warning/merge threshold, not
-  a clamp), marker the rest.
+  a clamp). Build V1/A1 and then A2, import captions and clean the temporary bin.
+  Check the finished timeline, captions, preserved items and master In/Out, then
+  reconcile source markers, clean the ruler, apply review markers and report.
 - **Chỉ tạo subtitle (caption-only):** make captions from the selected voice track/range
   without touching the edit. SRT optional: matched cues keep SRT text, genuine extra
   speech is captioned from ASR, unread cues go to review.

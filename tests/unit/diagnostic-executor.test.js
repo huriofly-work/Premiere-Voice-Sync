@@ -10,7 +10,7 @@ const { output, generate } = require("../../tools/Build-DiagnosticExecutor.js");
 let fixtureHost = host;
 const TPF = 8467200000;
 if (require.main !== module) {
-  module.exports = { host, diagnostic, markerReferenceCases, markerReferenceFixture, finishTrial };
+  module.exports = { host, diagnostic, markerReferenceCases, markerReferenceFixture, finishTrial, issue55State, setSources(h, d) { fixtureHost=h; fixtureExecutor=d; } };
   return;
 }
 assert.strictEqual(diagnostic,output().text,"Generated source must match stable executor exactly.");
@@ -169,8 +169,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
   return {context,actions,seq,plan,nested,voice,nativeRows,nativeCalls,nativeMutations,api:context.$._PVS,get qeReads(){return qeReads;}};
 }
-// Timeline evidence is frozen at 9dc6534. Include original identities so a
-// nearby reusable marker cannot silently become a replacement.
+// Preserve seeded identities for move and steady-rerun checks.
 function issue55Fixture(make) {
   const f = make(), markers = f.voice.getMarkers();
   f.plan.reviewMarkers = [{start:0,end:0.8,reason:"rà cue"}];
@@ -212,14 +211,7 @@ function collidingReviewPair(f) {
 function markerReferenceCases() {
   const markerCases=[()=>fixture(1),()=>fixture(6,false,false,1,true),()=>fixture(65,false,true,0.9),()=>fixture(6,false,true,1.1,false,true),()=>editedFixture(true,true),()=>cueFixture(6,true),chapterFixture];
   markerCases.push(()=>chapterFixture(true),()=>fixture(6,false,true,1.1,false,false,false,true),()=>fixture(6,false,false,1,true,false,false,true));
-  markerCases.push(()=>{
-    const f=fixture(6,false,true),push=f.actions.push;
-    f.actions.push=function(row){
-      if(row[0]==="razor" && row[1]==="A")f.seq.audioTracks[1].clips[0].speed=1.1;
-      return push.apply(this,arguments);
-    };
-    return f;
-  });
+  markerCases.push(()=>fixture(6,false,true));
   markerCases.push(()=>{
     const f=fixture(6),push=f.actions.push;
     f.actions.push=function(row){
@@ -239,17 +231,26 @@ function markerReferenceFixture(make, index) {
   if(index===2) collidingReviewPair(f);
   return f;
 }
-if(process.argv.includes("--record-marker-reference")||process.argv.includes("--marker-precommit")||!process.argv.slice(2).length){
+if(process.argv.includes("--record-marker-reference")||process.argv.includes("--marker-reference")||!process.argv.slice(2).length){
   const recording=process.argv.includes("--record-marker-reference"),goldenPath=path.join(__dirname,"fixtures/marker-before-cuts.json");
   const markerCases=markerReferenceCases();
   const expected=JSON.parse(fs.readFileSync(goldenPath,"utf8"));
   for(const [index,make] of markerCases.entries())for(const profile of recording?["direct"]:["direct","baseline","fast","no-delay"]){
     const f=markerReferenceFixture(make,index);
+    const commitMarkers=f.api._markerTools.commit;
+    f.api._markerTools.commit=function(){
+      assert(f.actions.some(action=>action[0]==="captionTrack"), "Caption track must exist before marker commit");
+      assert(f.actions.some(action=>action[0]==="clearOut"), "Master reset must precede marker commit");
+      return commitMarkers.apply(this,arguments);
+    };
     const result=profile==="direct"?{report:JSON.parse(f.api.executePlan("fixture"))}:finishTrial(f,profile);
     assert(result.report.ok,JSON.stringify(result.report));
     const digest=value=>require("crypto").createHash("sha256").update(JSON.stringify(value)).digest("hex");
     const timeline=f.actions.filter(a=>!["deleteMarker","marker","markerColor","markerStart","markerEnd"].includes(a[0]));
-    const evidence={markers:digest(issue55State(f)),timeline:digest(timeline)};
+    for(const field of ["captionReady","captionCreated","captionTemporaryBinRemoved","masterInOutReset","unrelatedPreserved"])
+      assert.strictEqual(result.report[field],true,field);
+    assert.equal(result.report.captionProjectItemCountAfter,result.report.captionProjectItemCountBefore);
+    const evidence={markers:digest(issue55State(f).map(rows=>rows.map(row=>row.slice(1)))),timeline:digest(timeline)};
     if(f.plan.markers.some(m=>m.Comments==="Sentence cues 1-1 needs review")){
       const voiceRows=markerRows(f.voice.getMarkers()).filter(r=>r[3]==="VOICE SYNC - Kiem tra can voice");
       assert(voiceRows.some(r=>r[4].includes("Sentence cues 1-1 needs review\ncheck 0")));
@@ -262,22 +263,27 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
       assert(voice[4].includes("check 0\nsecond voice reason"));
       assert(Math.abs(voice[1]-50/30*0.9)<1e-8);
       assert(Math.abs(review[0][1]-51/30*0.9)<1e-8);
-      if(profile==="no-delay"){
-        const repeat=issue55Fixture(make);
-        collidingReviewPair(repeat);
-        const bank=repeat.voice.getMarkers();
-        bank.items.length=0;
-        for(const [guid,start,end,name,comments,type,colorIndex] of rows)
-          Object.assign(bank.createMarker(start),{guid,end,name,comments,type,colorIndex});
-        const rerun=finishTrial(repeat,profile);
-        assert(rerun.report.ok);
-        assert.deepEqual(markerRows(bank),rows);
-        const commits=rerun.timings.flatMap(t=>[t.detail&&t.detail.markerCommit].concat(t.detail&&t.detail.reviewCommits||[]))
-          .filter(c=>c&&(c.kind==="voice"||c.kind==="review"));
-        assert(commits.length>=4);
-        for(const c of commits) for(const key of ["creates","deletes","moves","nameWrites","commentsWrites","endWrites","colorWrites"]) assert.equal(c[key],0,c.phase+" "+c.kind+" "+key);
-      }
     }
+    const repeat=markerReferenceFixture(make,index);
+    const banks=[repeat.nested.getMarkers(),repeat.voice.getMarkers(),...(repeat.secondVoice?[repeat.secondVoice.getMarkers()]:[]),repeat.seq.markers];
+    issue55State(f).forEach((rows,i)=>{
+      banks[i].items.length=0;
+      for(const [guid,start,end,name,comments,type,colorIndex] of rows)
+        Object.assign(banks[i].createMarker(start),{guid,end,name,comments,type,colorIndex});
+    });
+    const tools=repeat.api._markerTools, commit=tools.commit;
+    const counters=[];
+    tools.commit=function(){
+      const result=commit.apply(this,arguments);
+      counters.push(result.timings);
+      return result;
+    };
+    const repeatReport=profile==="direct"?JSON.parse(repeat.api.executePlan("fixture")):finishTrial(repeat,profile).report;
+    assert(repeatReport.ok,JSON.stringify(repeatReport));
+    assert.deepStrictEqual(issue55State(repeat),issue55State(f));
+    assert(counters.length);
+    for(const c of counters) for(const key of ["creates","deletes","moves","nameWrites","commentsWrites","endWrites","colorWrites"])
+      assert.equal(c[key],0,"Steady rerun "+index+" "+profile+" "+key);
     if(f.nativeMutations.length) {
       const edits=f.nativeMutations.filter(row=>row[0]==="call"?!["createMarker","deleteMarker","setColorByIndex"].includes(row[1]):row[1]!==null);
       evidence.nativeArguments=digest(edits);
@@ -288,38 +294,29 @@ if(process.argv.includes("--record-marker-reference")||process.argv.includes("--
       expected[index].markers=evidence.markers;
     }else {
       assert.deepStrictEqual(evidence,expected[index],"marker and timeline parity "+index+" "+profile);
-      if(index===2){
-        assert(f.actions.findIndex(a=>a[0]==="marker")<f.actions.findIndex(a=>a[0]==="razor"),"Voice writes must precede the first cut");
-        if(result.timings){
-          const commits=result.timings.flatMap(t=>[t.detail&&t.detail.markerCommit].concat(t.detail&&t.detail.reviewCommits||[])).filter(Boolean);
-          for(const kind of ["voice","review"]){
-            const post=commits.filter(c=>c.phase==="post"&&c.kind===kind);
-            assert(post.length&&post.every(c=>["creates","deletes","moves","nameWrites","commentsWrites","endWrites","colorWrites"].every(key=>c[key]===0)),kind+" post writes");
-            assert(commits.some(c=>c.phase==="pre"&&c.kind===kind&&c.creates>0),kind+" pre writes");
-          }
-        }
-      }
     }
   }
   if(recording){fs.writeFileSync(goldenPath,JSON.stringify(expected,null,2)+"\n");process.exit(0);}
   console.log("MARKER_REFERENCE_PARITY_OK:"+markerCases.length+" fixtures x 4 executors");
-  issue55Failures();
-  if(process.argv.includes("--marker-precommit"))process.exit(0);
+  markerFailureCases();
+  if(process.argv.includes("--marker-reference"))process.exit(0);
 }
-function issue55Failures() {
-  // An empty plan can first touch earlier review markers during final cleanup.
-  const empty=fixture(1), emptyBank=empty.voice.getMarkers();
-  empty.plan.reviewMarkers=[];
-  vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(empty.plan)+";};",empty.context);
-  Object.assign(emptyBank.createMarker(2),{name:"VOICE SYNC - Can kiem tra",
-    comments:"old\n[PremiereVoiceSync:review-marker:v2:edit:previous]",end:2.5,colorIndex:4});
-  empty.seq.createCaptionTrack=function(){
-    assert.equal(emptyBank.items.length,0);
-    throw Error("caption after empty review cleanup");
-  };
-  const emptyReport=finishTrial(empty,"no-delay").report;
-  assert(!emptyReport.ok && emptyReport.error.includes("caption after empty review cleanup"));
-  assert.deepStrictEqual(markerRows(emptyBank), [], "Completed review cleanup survives a later caption error");
+function markerFailureCases() {
+  for(const failCaption of [false,true]){
+    const f=markerReferenceFixture(()=>fixture(6),0);
+    const ruler=f.seq.markers;
+    for(const [i,name,tag] of [[0,"manual","note"],[1,"VOICE SYNC - Can kiem tra","review-marker:v2:edit:seq"],[2,"VOICE SYNC - Kiem tra toc do","owned-marker:sequence:v1:seq"]]){
+      Object.assign(ruler.createMarker(i),{name,comments:"[PremiereVoiceSync:"+tag+"]",end:i+0.25,colorIndex:2});
+    }
+    const before=issue55State(f);
+    if(failCaption) f.seq.createCaptionTrack=()=>{throw Error("injected caption failure");};
+    const report=finishTrial(f,"no-delay").report;
+    assert.equal(report.ok,!failCaption);
+    if(failCaption){
+      assert.equal(report.error,"injected caption failure");
+      assert.deepStrictEqual(issue55State(f),before,"Caption failure preserves source and ruler markers");
+    }else assert.deepStrictEqual(markerRows(ruler),before[before.length-1].slice(0,1));
+  }
   // A rerun may start with every planned marker already correct. Native review
   // can still change this owner before a failed postcheck.
   const seed=issue55Fixture(()=>fixture(1)),rerun=issue55Fixture(()=>fixture(1));
@@ -332,98 +329,20 @@ function issue55Failures() {
   const failed=finishTrial(rerun,"no-delay").report;
   assert(!failed.ok && failed.linkMismatchCount===1,JSON.stringify(failed));
   assert.notDeepStrictEqual(markerRows(bank),snapshot,"Failed postcheck keeps the final review changes");
-  for (const fault of ["razor","speed","move","captionTrack","postcheck","stop","late-stop","manual-edit","restore-failure","reappeared"]) {
-    const f = issue55Fixture(()=>fixture(6,false,true)), bank = f.voice.getMarkers();
-    const ruler=f.seq.markers;
-    for(const [i,name,tag] of [[0,"manual","note"],[1,"VOICE SYNC - Can kiem tra","review-marker:v2:edit:seq"],[2,"VOICE SYNC - Kiem tra toc do","owned-marker:sequence:v1:seq"]]){
-      Object.assign(ruler.createMarker(i),{name,comments:"[PremiereVoiceSync:"+tag+"]",end:i+0.25,colorIndex:2});
-    }
-    const rulerBefore=markerRows(ruler);
-    function stale(seconds, guid, review) {
-      const m = bank.createMarker(seconds);
-      Object.assign(m,{guid,name:review?"VOICE SYNC - Can kiem tra":"VOICE SYNC - Kiem tra can voice",
-        comments:review?"x\n[PremiereVoiceSync:review-marker:v2:edit:previous]":"old\n[PremiereVoiceSync:owned-marker:v1]",colorIndex:2});
-      const bounds=markerBounds({},seconds,seconds+0.25);
-      Object.defineProperty(m,"start",{get:()=>bounds.start,set(v){if(bank.failMove)throw Error("restore move failed");bounds.start=v;}});
-      Object.defineProperty(m,"end",{get:()=>bounds.end,set(v){bounds.end=v;}});
-    }
-    stale(1.5,"moved-review",true);
-    stale(4,"surplus-review",true);
-    for(let n=0;n<7;n++)stale(1.7+n/10,"stale-"+n,false);
-    const before=markerRows(bank),manual=bank.items.find(m=>m.guid==="manual"),originals=bank.items.slice();
-    let reappeared, finalWriteState, restoreCalls=0;
-    const restore=f.api._markerTools.restore;
-    f.api._markerTools.restore=function(entries){restoreCalls++;return restore(entries);};
-    const fields=rows=>rows.map(r=>r.slice(1));
-    let progress=JSON.parse(f.api.beginDiagnosticEdit("fixture","fail","no-delay",fault==="late-stop"));
-    while(!progress.done && progress.nextStage!=="Cắt V1–A1 linked")progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
-    assert(!progress.done);assert.notDeepStrictEqual(fields(markerRows(bank)),fields(before));
-    const moved=bank.items.find(m=>m.guid==="moved-review");
-    assert(moved && moved.start.seconds!==1.5,"review move keeps the old GUID");
-    if(fault==="restore-failure")bank.failMove=true;
-    if(fault==="manual-edit")moved.comments="user changed this warning";
-    if(fault==="postcheck")f.nested.clearInPoint=()=>{finalWriteState=markerRows(bank);throw Error("MASTER_RESET");};
-    const push=f.actions.push;
-    f.actions.push=function(row){
-      if(fault==="reappeared" && row[0]==="captionTrack"){
-        reappeared=originals.find(m=>!bank.items.includes(m));
-        reappeared.comments="manual note after undo";bank.items.push(reappeared);
-        finalWriteState=markerRows(bank);
-        throw Error("injected caption");
-      }
-      if(row[0]===fault){
-        if(fault==="captionTrack")finalWriteState=markerRows(bank);
-        throw Error("injected "+fault);
-      }
-      return push.apply(this,arguments);
-    };
-    if(["stop","manual-edit","restore-failure"].includes(fault)){
-      finalWriteState=markerRows(bank);
-      progress=JSON.parse(f.api.abortDiagnosticEdit("fail"));
-      assert.equal(progress.result.error,"DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE");
-    }
-    else {
-      while(!progress.done)progress=JSON.parse(f.api.advanceDiagnosticEdit("fail",progress.nextCall));
-      if(fault==="late-stop"){
-        assert(progress.result.ok);assert.equal(ruler.items.length,1);
-        assert(moved.comments.endsWith("[PremiereVoiceSync:review-marker:v3:edit]"));
-        assert(bank.items.includes(moved));
-        assert(!bank.items.some(m=>m.guid==="surplus-review"));
-        finalWriteState=markerRows(bank);
-        assert.deepStrictEqual(JSON.parse(f.api.abortDiagnosticEdit("fail")),progress);
-      }
-    }
-    assert.equal(progress.result.ok,fault==="late-stop",fault);
-    if(["captionTrack","postcheck","late-stop","reappeared"].includes(fault))assert.deepStrictEqual(markerRows(ruler),rulerBefore.slice(0,1),fault);
-    else assert.deepStrictEqual(markerRows(ruler),rulerBefore,fault);
-    assert.strictEqual(bank.items.find(m=>m.guid==="manual"),manual);
-    assert.equal(JSON.parse(f.api.abortDiagnosticEdit("fail")).error,"DIAGNOSTIC_SESSION_NOT_FOUND");
-    assert.equal(restoreCalls,0,fault);
-    if(finalWriteState)assert.deepStrictEqual(markerRows(bank),finalWriteState,fault);
-    if(["razor","speed","move"].includes(fault)){
-      assert.equal(progress.result.error,"injected "+fault);
-      assert(bank.items.includes(moved));
-      assert.notEqual(moved.start.seconds,1.5);
-    } else {
-      assert(!progress.result.markerRestorationFailures,JSON.stringify(progress.result));
-      if(fault==="manual-edit")assert.equal(moved.comments,"user changed this warning");
-      if(fault==="reappeared")assert.equal(reappeared.comments,"manual note after undo");
-    }
-  }
   for(const profile of ["baseline","fast","no-delay"]){
     const f=issue55Fixture(()=>chapterFixture(true)),before=issue55State(f);
     let r=JSON.parse(f.api.beginDiagnosticEdit("fixture","owners",profile));
     while(!r.done && !f.voice.getMarkers().items.some(m=>m.comments.includes("check 0")))r=JSON.parse(f.api.advanceDiagnosticEdit("owners",r.nextCall));
-    assert.equal(r.nextStage,"Ghi trước marker voice");
+    assert.equal(r.nextStage,"Gắn marker");
     assert.equal(f.secondVoice.getMarkers().items.length,0);
-    assert(!f.actions.some(a=>a[0]==="razor"));
+    assert(f.actions.some(a=>a[0]==="captionTrack"));
     const committed=issue55State(f);
     assert.notDeepStrictEqual(committed,before);
     const stopped=JSON.parse(f.api.abortDiagnosticEdit("owners"));
     assert.equal(stopped.result.error,"DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE");
     assert.deepStrictEqual(issue55State(f),committed);
   }
-  console.log("PARTIAL_MARKER_RETENTION_OK:razor-speed-move-caption-postcheck-stop-between-chapters-late-stop-manual-edits");
+  console.log("PARTIAL_MARKER_RETENTION_OK:native-review-on-failed-check;stop-between-chapters");
 }
 function nativeDigests(executor){
   const digests={},previous=fixtureExecutor;fixtureExecutor=executor;
@@ -483,9 +402,9 @@ for(const [count,gaps,voiceSpeed,merged] of [[6,false,1,true],[65,false,1,false]
   assert(noDelay.nativeMutations.some(row=>row[0]==="set")&&noDelay.nativeMutations.some(row=>row[0]==="call"));
   assert.deepStrictEqual(noDelay.actions,baseline.actions);
   assert.deepStrictEqual(actual.report,expected.report);
-  const stages=actual.timings.filter(t=>!["Cập nhật marker nguồn","Ghi trước marker voice","Ghi trước marker review"].includes(t.stage));
+  const stages=actual.timings.filter(t=>!["Gắn marker"].includes(t.stage));
   assert(stages.every(t=>t.complete),"No-delay must complete every loop stage in one host call, except marker owners.");
-  for(const label of ["Đọc marker nguồn","Cắt V1–A1 linked","Bỏ hình–A1 theo SRT đã lược","Tăng speed V1–A1","Dồn vị trí V1–A1","Giảm speed V1–A1","Đối chiếu mép V1–A1","Cắt voice A2","Bỏ lát khoảng lặng A2","Dồn voice A2","Chuẩn bị marker voice","Chuẩn bị marker tốc độ"])assert.equal(stages.filter(t=>t.stage===label).length,1,label);
+  for(const label of ["Cắt V1–A1 linked","Bỏ hình–A1 theo SRT đã lược","Tăng speed V1–A1","Dồn vị trí V1–A1","Giảm speed V1–A1","Đối chiếu mép V1–A1","Cắt voice A2","Bỏ lát khoảng lặng A2","Dồn voice A2","Chuẩn bị marker voice","Chuẩn bị marker tốc độ"])assert.equal(stages.filter(t=>t.stage===label).length,1,label);
 }
 console.log("NO_DELAY_STAGE_PARITY_OK:one-call-per-loop;native-set-call-mutations-equal-baseline;marker-owner-boundary-preserved");
 // Freeze time to isolate iteration caps, then advance it beyond every budget
@@ -497,7 +416,7 @@ for(const profile of ["baseline","fast","no-delay"])for(const clock of ["frozen"
   assert(r.result.ok);
   if(profile==="no-delay"){
     assert.deepStrictEqual(cuts,[129]);
-    assert(r.timings.filter(t=>!["Cập nhật marker nguồn","Ghi trước marker voice","Ghi trước marker review"].includes(t.stage)).every(t=>t.complete));
+    assert(r.timings.filter(t=>!["Gắn marker"].includes(t.stage)).every(t=>t.complete));
   }else{
     const limit=clock==="elapsed"?1:profile==="fast"?100:20;
     assert.equal(Math.max(...cuts),limit,profile+":"+clock);
@@ -520,13 +439,13 @@ for(const profile of ["baseline","fast","no-delay"]){
   assert.equal(cut.nameReads,20);assert.equal(cut.sortCalls,2);
   assert(cut.comparatorCalls>0);
   assert.equal(cut.startSecondsReads,24,"12 collection-filter reads plus one key read per V1/A1 item; comparators read only keys");
-  const coverage=r.timings.find(t=>t.stage==="Chuẩn bị hậu kiểm").detail;
-  assert.equal(coverage.sortCalls,1);assert(coverage.comparatorCalls>0);
-  assert.equal(coverage.startSecondsReads,6,"One coverage key read per item");
+  const coverage=r.timings.find(t=>t.stage==="Hậu kiểm").detail;
+  assert.equal(coverage.sortCalls,2);assert(coverage.comparatorCalls>0);
+  assert.equal(coverage.startSecondsReads,8,"Six coverage keys and two preserved clip starts");
   const voice=r.timings.find(t=>t.stage==="Chuẩn bị sau Cắt voice A2").detail;
   assert.equal(voice.clipEnumerationPasses,1);assert.equal(voice.clipEnumerationItems,6);assert.equal(voice.nameReads,6);
-  for(const label of ["Chuẩn bị sau Cập nhật marker nguồn","Chuẩn bị hậu kiểm"])assert(r.timings.some(t=>t.stage===label&&t.detail.ticksReads>0),label);
-  const markers=r.timings.filter(t=>t.stage==="Cập nhật marker nguồn");
+  for(const label of ["Hậu kiểm"])assert(r.timings.some(t=>t.stage===label&&t.detail.ticksReads>0),label);
+  const markers=r.timings.filter(t=>t.stage==="Gắn marker");
   assert.equal(markers.reduce((n,t)=>n+t.detail.ownerGroups,0),2);
   assert(markers.every(t=>t.detail.ownerGroups===1&&t.detail.ownerGroupsTotal===2&&t.detail.markersPerGroup.length===1));
   assert.equal(markers.reduce((n,t)=>n+t.detail.markersPerGroup[0],0),4);
@@ -629,88 +548,6 @@ function finishTrial(f,profile){
   assert.strictEqual(JSON.parse(api.diagnosticInfo()).active,false);
   return {report:r.result,checkpoints,calls,timings:r.timings};
 }
-function voiceProjectionCase({nativeVoiceSourceTicks=false, field, delta=0, reversalError}={}) {
-  const f=issue55Fixture(()=>fixture(nativeVoiceSourceTicks ? 42 : 2,false,!nativeVoiceSourceTicks,
-    nativeVoiceSourceTicks ? 1.1 : 1,false,false,false,false,{nativeVoiceSourceTicks})), api=f.api;
-  let result=JSON.parse(api.beginDiagnosticEdit("fixture","float-drift","no-delay"));
-  while (!result.done && result.nextStage !== "Cắt V1–A1 linked") {
-    result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));
-  }
-  assert(!result.done,"Voice projection and marker pre-commit must run before injecting drift.");
-  const preCommittedRows=markerRows(f.voice.getMarkers());
-  const clipMapping=api._clipMarkerMapping, restore=api._markerTools.restore;
-  let driftRestores=0;
-  api._clipMarkerMapping=function(item, allowNested) {
-    const mapping=clipMapping(item, allowNested);
-    if (field && mapping && item.projectItem===f.voice) mapping[field]+=delta;
-    return mapping;
-  };
-  api._markerTools.restore=function(entries) {
-    if (entries.length) driftRestores++;
-    if (reversalError) return [reversalError];
-    return restore(entries);
-  };
-  do {result=JSON.parse(api.advanceDiagnosticEdit("float-drift",result.nextCall));} while (!result.done);
-  if (reversalError) {
-    assert(!result.result.ok);
-    assert.equal(result.result.error,"Voice projection mismatch ("+field+", piece 0); "+reversalError);
-    assert.equal(driftRestores,1,"A failed projection reversal must not trigger a retry");
-    assert.deepStrictEqual(markerRows(f.voice.getMarkers()),preCommittedRows);
-    assert(!JSON.parse(api.diagnosticInfo()).active);
-  } else {
-    assert(result.result.ok,JSON.stringify(result.result));
-  }
-  const projection=result.result.voiceProjection;
-  assert.deepStrictEqual(result.timings.find(t=>t.detail?.voiceProjection).detail.voiceProjection,projection);
-  return {f, driftRestores, projection};
-}
-if (!process.argv.slice(2).length) {
-  const {f, driftRestores, projection}=voiceProjectionCase({nativeVoiceSourceTicks:true});
-  const clips=f.seq.audioTracks[1].clips;
-  assert.equal(clips.length,42);
-  for (const [i, clip] of clips.entries()) {
-    const segment=f.plan.segments[i];
-    assert.deepStrictEqual(clip.start,time(segment.NewVoiceStartFrame));
-    assert.deepStrictEqual(clip.end,time(segment.NewVoiceStartFrame+segment.OutputDurationFrames));
-    assert.equal(clip.speed,1.1);
-    assert.equal(Number(clip.outPoint.ticks),segment.OriginalVoiceEndFrame*TPF-2);
-    assert.equal(clip.outPoint.seconds,Number(clip.outPoint.ticks)/254016000000);
-  }
-  const inputOffset=Math.abs(Number(clips.at(-1).inPoint.ticks)-f.plan.segments.at(-1).OriginalVoiceStartFrame*TPF);
-  assert(inputOffset>=20 && inputOffset<=80,inputOffset);
-  assert.equal(driftRestores,0,"Speed-1.1 whole-tick source readback must not restore the journal: "+JSON.stringify(projection));
-  assert.equal(projection.piecesCompared,clips.length);
-  assert.equal(projection.firstMismatch,null);
-  assert(Math.abs(projection.maxAbsDeltaTicks.input-inputOffset)<0.01);
-  assert.equal(projection.maxAbsDeltaTicks.start,0);
-  assert.equal(projection.maxAbsDeltaTicks.end,0);
-  console.log("VOICE_PROJECTION_SPEED_DIVIDED_TICKS_OK");
-}
-if (!process.argv.slice(2).length) {
-  const {driftRestores, projection}=voiceProjectionCase({field:"input",delta:0.5/254016000000});
-  assert.equal(driftRestores,0,"A half-tick source input offset must not restore the journal.");
-  assert.equal(projection.piecesCompared,2);
-  assert.equal(projection.firstMismatch,null);
-  assert(Math.abs(projection.maxAbsDeltaTicks.input-0.5)<0.001);
-  for (const [field,delta] of [["input",1.001/(1000*30)],["start",2/254016000000],["end",2/254016000000],["speed",1e-12]]) {
-    const {driftRestores, projection}=voiceProjectionCase({field,delta});
-    assert.equal(driftRestores,1,field);
-    assert.equal(projection.piecesCompared,1);
-    const {firstMismatch}=projection;
-    assert.equal(firstMismatch.pieceIndex,0);
-    assert.equal(firstMismatch.reason,field);
-    if (field!=="speed") {
-      assert.equal(firstMismatch.deltaTicks,(firstMismatch.actual-firstMismatch.predicted)*254016000000);
-      assert.equal(firstMismatch.deltaFrames,(firstMismatch.actual-firstMismatch.predicted)*30);
-      assert.equal(projection.maxAbsDeltaTicks[field],Math.abs(firstMismatch.deltaTicks));
-    }
-  }
-  const failed=voiceProjectionCase({field:"input",delta:2/(1000*30),reversalError:"Injected reversal failure"});
-  assert.equal(failed.projection.firstMismatch.reason,"input");
-  assert.equal(failed.projection.firstMismatch.pieceIndex,0);
-  console.log("VOICE_PROJECTION_REVERSAL_FAILURE_OK:mismatch-and-error;no-retry");
-  console.log("VOICE_PROJECTION_TOLERANCE_OK:half-tick-input;larger-input-start-end-drift;exact-speed");
-}
 function reviewOnlyFixture(nativeWrappers) {
   const f = fixture(65, false, true, 1.1, false, false, false, false, {nativeWrappers});
   f.plan.markers = [];
@@ -738,24 +575,10 @@ if (!process.argv.slice(2).length) {
     }
     const {report, timings} = finishTrial(f, "no-delay");
     assert(report.ok, JSON.stringify(report));
-    const detailFor = stage => timings.filter(t => t.stage === stage).map(t => t.detail);
-    const {preKey, picture, eligible, blocked, desired, projected, markerCommit} = detailFor("Ghi trước marker voice")[1];
-    assert.deepStrictEqual({preKey, picture, eligible, blocked, desired, projected, markerCommit},
-      {preKey:sourceKey, picture:false, eligible:true, blocked:false, desired:0, projected:true, markerCommit:null});
-    const [{unattachedMarkerCount, unattachedReasons, reviewOwnersLength, reviewOwners}] = detailFor("Chuẩn bị sau Ghi trước marker voice");
-    assert.deepStrictEqual({unattachedMarkerCount, unattachedReasons, reviewOwnersLength, reviewOwners},
-      {unattachedMarkerCount:0, unattachedReasons:[], reviewOwnersLength:1,
-        reviewOwners:[{key:sourceKey, defer:false, error:false, desired:2, targets:2}]});
-    const [{reviewKey, sourceOwnerFound, sourceEligible, defer, desired:reviewDesired, markerCommit:early}] = detailFor("Ghi trước marker review");
-    assert.deepStrictEqual({reviewKey, sourceOwnerFound, sourceEligible, defer, reviewDesired},
-      {reviewKey:sourceKey, sourceOwnerFound:true, sourceEligible:true, defer:false, reviewDesired:2});
-    assert.deepStrictEqual([early.phase, early.kind, early.creates], ["pre", "review", 2]);
-    const [{reviewCommits:[post]}] = detailFor("Chuẩn bị sau Cập nhật marker nguồn");
-    assert.deepStrictEqual([post.phase, post.kind, post.ownerIndex, post.ownerKey, post.ownerKnown, post.ownerKeys],
-      ["post", "review", 1, sourceKey, true, ["node:nested", sourceKey]]);
+    assert.equal(report.reviewMarkerClipCount,2);
     assert(!JSON.stringify(timings).includes(privatePath));
   }
-  console.log("MARKER_PRECOMMIT_TRACE_OK:fresh-wrappers;path-redaction");
+  console.log("MARKER_REVIEW_TRACE_OK:fresh-wrappers;path-redaction");
 }
 for(const profile of [undefined,"baseline","fast","no-delay"])for(const [count,gaps,voiceSpeed] of [[1,false,1],[6,false,1],[65,false,1],[65,true,1],[65,true,1.1],[65,true,0.9],[130,true,1.1]]){
   const stable=fixture(count,false,gaps,voiceSpeed),trial=fixture(count,false,gaps,voiceSpeed);
@@ -764,8 +587,8 @@ for(const profile of [undefined,"baseline","fast","no-delay"])for(const [count,g
   assert(stableReport.ok,JSON.stringify(stableReport));assert(result.report.ok,JSON.stringify(result.report));
   assert.deepStrictEqual(result.report,stableReport,"Scheduling must preserve full postcheck report.");
   assert.deepStrictEqual(trial.actions,stable.actions,"Every native editing call must stay identical and in order.");
-  assert.deepStrictEqual(result.checkpoints,["Hình V1–A1","Voice A2","Marker","Caption"]);
-  if(count>=65&&profile!=="no-delay")assert(result.timings.some(t=>!t.complete&&t.stage!=="Cập nhật marker nguồn"),"Baseline/fast retain bounded native batches.");
+  assert.deepStrictEqual(result.checkpoints,["Hình V1–A1","Voice A2","Caption","Hậu kiểm","Marker"]);
+  if(count>=65&&profile!=="no-delay")assert(result.timings.some(t=>!t.complete&&t.stage!=="Gắn marker"),"Baseline/fast retain bounded native batches.");
   for(const timing of result.timings)for(const field of ["checkMs","rebindMs","workMs","snapshotMs","qeLookupMs","qeQueries","qeHits","qeBuilds","qeFallbacks","qeCacheReuses","qeCountChanges","qeCandidateMisses","qeInvalidLayouts","qeItemReads","qeEarlyHits","qeNearestScans"])assert(timing[field]>=0,field);
   if((profile==="fast" || profile==="no-delay") && count>=65)assert(trial.qeReads<stable.qeReads,"Fast exact-start lookup must reduce native QE reads without changing edits.");
   if(profile==="fast" || profile==="no-delay"){
@@ -775,7 +598,7 @@ for(const profile of [undefined,"baseline","fast","no-delay"])for(const [count,g
     assert(result.timings.every(t=>t.snapshotDetailReads>=0));
     assert(result.timings.some(t=>t.snapshotStrategy==="incremental-speed"));
     assert(result.timings.some(t=>t.snapshotStrategy==="read-only"));
-    assert(result.timings.filter(t=>t.stage.includes("Cắt")||t.stage.includes("Dồn")||t.stage.includes("caption")||t.stage.includes("hậu kiểm")).every(t=>t.snapshotStrategy==="full"),"Structural, move, caption and audit stages must keep full post-scan.");
+    assert(result.timings.filter(t=>t.stage.includes("Cắt")||t.stage.includes("Dồn")||t.stage.includes("caption")||t.stage==="Hậu kiểm").every(t=>t.snapshotStrategy==="full"),"Structural, move, caption and audit stages must keep full post-scan.");
   }
 }
 for(const profile of ["baseline","fast","no-delay"]){
@@ -1069,16 +892,16 @@ for(const profile of ["baseline","fast","no-delay"]){
 
   f=fixture(6,false,false,1,false,true);const beforeVoice=sourceMarkerState(f,f.voice),beforeNested=sourceMarkerState(f,f.nested);
   response=JSON.parse(f.api.beginDiagnosticEdit("fixture","token",profile));
-  do{response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);}while(response.nextStage!=="Cập nhật marker nguồn");
+  do{response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);}while(response.nextStage!=="Gắn marker");
   assert.deepStrictEqual(sourceMarkerState(f,f.nested),beforeNested);assert.deepStrictEqual(sourceMarkerState(f,f.voice),beforeVoice);
-  response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);assert.equal(response.nextStage,"Cập nhật marker nguồn");
+  response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);assert.equal(response.nextStage,"Gắn marker");
   assert.notDeepStrictEqual(sourceMarkerState(f,f.nested),beforeNested);assert.deepStrictEqual(sourceMarkerState(f,f.voice),beforeVoice);
   const committed=sourceMarkerState(f,f.nested),actions=f.actions.length;
   JSON.parse(f.api.abortDiagnosticEdit("token"));assert.equal(f.actions.length,actions);assert.deepStrictEqual(sourceMarkerState(f,f.nested),committed);assert.deepStrictEqual(sourceMarkerState(f,f.voice),beforeVoice);
 
   // A user modification between preparation and commit is not overwritten.
   f=fixture(6,false,false,1,false,true);response=JSON.parse(f.api.beginDiagnosticEdit("fixture","token",profile));
-  do{response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);}while(response.nextStage!=="Cập nhật marker nguồn");
+  do{response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));assert(!response.done);}while(response.nextStage!=="Gắn marker");
   f.nested.getMarkers().items[0].comments="user changed while paused";
   const manualState=sourceMarkerState(f,f.nested);
   while(!response.done)response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));
@@ -1108,7 +931,7 @@ console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-
     if(profile!=="direct"&&executor===diagnostic){
       const commits=r.timings.map(t=>t.detail&&t.detail.markerCommit).filter(Boolean);
       assert.equal(commits.reduce((n,c)=>n+c.moves,0),2);
-      assert(commits.some(c=>c.phase==="pre" && c.kind==="voice" && c.moves===1));
+      assert(commits.some(c=>c.phase==="post" && c.kind==="voice" && c.moves===1));
       assert(commits.some(c=>c.phase==="post" && c.kind==="picture" && c.moves===1));
     }
     const calls=JSON.stringify(f.nativeCalls);
@@ -1118,4 +941,4 @@ console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-
   }
   console.log("MARKER_MOVE_EXECUTOR_PARITY_OK:measured-unmeasured;direct-baseline-fast-no-delay;two-owner-moves");
 }
-console.log("DIAGNOSTIC_EXECUTOR_MOCK_OK:exact-native-call-parity;exact-report-parity;profile-batch-policy;four-checkpoints;duplicate-call-guard;timeline-and-sequence-guard;abort-no-new-edit;no-save-or-Undo-clear;generated-source-current;review-markers-all-profiles;marker-failure-reports-partial-result");
+console.log("DIAGNOSTIC_EXECUTOR_MOCK_OK:exact-native-call-parity;exact-report-parity;profile-batch-policy;five-checkpoints;duplicate-call-guard;timeline-and-sequence-guard;abort-no-new-edit;no-save-or-Undo-clear;generated-source-current;review-markers-all-profiles;marker-failure-reports-partial-result");

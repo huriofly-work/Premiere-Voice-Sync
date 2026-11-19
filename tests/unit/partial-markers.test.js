@@ -32,18 +32,17 @@ function instrument(source, direct) {
   source = source.replace('noteNative("after", "razor");',
     'noteNative("after", "razor"); partialProbe.hit("first-razor");');
   after(/for \((?:var voiceCutIndex = 0)?; voiceCutIndex < voiceCuts.length; voiceCutIndex\+\+\) \{/g,
-    'if (chapters.length > 1 && voiceCuts[voiceCutIndex] >= Math.round(chapters[1].start * fps)) partialProbe.hit("between-chapters");');
+    'if (voiceClips.length > 1 && voiceCuts[voiceCutIndex] >= Math.round(voiceClips[1].start * fps)) partialProbe.hit("between-chapters");');
   if (direct) {
-    after("for (var preOwnerIndex = 0; preOwnerIndex < cleanupOwners.length; preOwnerIndex++) {",
-      'if (chapters.length > 1 && cleanupOwners[preOwnerIndex].Item.projectItem === chapters[1].item.projectItem && chapters[0].item.projectItem !== chapters[1].item.projectItem) partialProbe.hit("between-chapter-pre-commits");');
-    before("if (projectedPieces && asArray(plan.reviewMarkers).length) {", 'partialProbe.hit("after-pre-voice");');
-    before("for (var cutIndex = 0; cutIndex < cuts.length; cutIndex++) {", 'partialProbe.hit("after-pre-review");');
+    after("for (var markerOwnerIndex = 0; markerOwnerIndex < cleanupOwners.length; markerOwnerIndex++) {",
+      'if (markerOwnerIndex === 2) partialProbe.hit("between-chapter-commits");');
+    before("var plannedClipMarkers = voiceMarkerSpecs(asArray(plan.markers));", 'partialProbe.hit("after-post-check");');
     before(/try \{\s+var rulerCleanup = cleanLegacyOwnedRulerMarkers\(workingSequence, plannedEndFrame \/ fps, fps\);/g,
       'partialProbe.hit("after-source-markers");');
-    before("var captionFile = new File(plan.captionSrtPath);", 'partialProbe.hit("after-post-review");');
-    before("var masterInOutReset = false;", 'partialProbe.hit("after-caption");');
+    before("report = {\n            ok: masterInOutReset", 'partialProbe.hit("after-post-review");');
+    before("var maxVideoError = 0;", 'partialProbe.hit("after-caption");');
     before(/\n    \} catch \(e\) \{\n        report = \{ ok: false, executorVersion: 25, timelineMutated/g,
-      '\n        partialProbe.hit("after-post-check");');
+      '\n        partialProbe.hit("after-report");');
   }
   return new vm.Script(source, { filename: direct ? "host.jsx" : "diagnostic-executor.jsx" });
 }
@@ -221,17 +220,16 @@ function prepare(make, index, profile, stop, { seed, surplus = false, longRange 
 
   const tools = api._markerTools;
   const { point, commit } = tools;
-  tools.point = function (group, start, end, fps, map, onBlocked) {
-    const spec = point(group, start, end, fps, map, onBlocked);
+  tools.point = function (group, start, end, fps, map) {
+    const spec = point(group, start, end, fps, map);
     if (spec && map) spans.set(spec, [map.source(start), map.source(end)]);
     return spec;
   };
   tools.commit = function (group, ...args) {
-    activeGroup = { desired: group.desired, phase: args[2] ? "pre" : "post" };
+    activeGroup = { desired: group.desired, phase: "post" };
     try {
       const result = commit(group, ...args);
-      const [,, keepSurplus] = args;
-      if (keepSurplus && result.count && group.desired.some(spec => spec.comments.includes(ownedTag))) {
+      if (result.count && group.desired.some(spec => spec.name === "VOICE SYNC - Kiem tra can voice")) {
         probe.voiceCommits++;
       }
       if (!result.failures.length && group.after) {
@@ -268,11 +266,9 @@ function prepare(make, index, profile, stop, { seed, surplus = false, longRange 
 }
 
 const stages = {
-  "after-pre-voice": "Ghi trước marker voice",
-  "after-pre-review": "Ghi trước marker review",
-  "after-source-markers": "Cập nhật marker nguồn"
+  "after-source-markers": "Gắn marker"
 };
-const checkpoints = { "after-post-review": "Marker", "after-caption": "Caption" };
+const checkpoints = { "after-post-review": "Marker", "after-post-check": "Hậu kiểm", "after-caption": "Caption" };
 
 function run(test, profile, stop) {
   const { f, probe } = test;
@@ -290,7 +286,7 @@ function run(test, profile, stop) {
   for (let calls = 0; calls < 500; calls++) {
     response = JSON.parse(f.api.advanceDiagnosticEdit(token, response.nextCall));
     if (response.done) {
-      if (stop === "after-post-check") {
+      if (stop === "after-report") {
         assert(response.result.ok);
         const closed = JSON.parse(f.api.abortDiagnosticEdit(token));
         assert.deepStrictEqual(closed, response, "Closing after completion returns the successful result");
@@ -303,7 +299,7 @@ function run(test, profile, stop) {
     }
     if ((stages[stop] === response.stage && response.nextStage !== response.stage) ||
         (checkpoints[stop] && checkpoints[stop] === response.checkpoint) ||
-        (stop === "between-chapter-pre-commits" && response.nextStage === stages["after-pre-voice"] &&
+        (stop === "between-chapter-commits" && response.nextStage === stages["after-source-markers"] &&
           probe.voiceCommits === 1)) return abort();
   }
   assert.fail("Missing terminal host response");
@@ -403,11 +399,11 @@ function repeatedWrites(actual, baseline) {
 }
 
 const stopPoints = [
-  "after-pre-voice", "after-pre-review", "first-razor", "first-speed", "between-chapters",
+  "first-razor", "first-speed", "between-chapters",
   "after-source-markers", "after-post-review", "after-caption", "during-post-check",
-  "after-post-check", "end-write-fault"
+  "after-post-check", "after-report", "end-write-fault"
 ];
-const classes = ["pre-existing", "intended-early", "transient-surplus", "partial-worse"];
+const classes = ["pre-existing", "final-marker", "transient-surplus", "partial-worse"];
 const counts = () => Object.fromEntries(classes.map(name => [name, 0]));
 const summary = {};
 const classifiedChecks = counts();
@@ -450,9 +446,9 @@ for (const [index, make] of cases.entries()) {
     const scenarios = stopPoints.map(stop => ({ stop }));
     if (index === 0) {
       scenarios.push({ stop: "end-write-fault", longRange: true });
-      scenarios.push({ stop: "after-pre-review", surplus: true });
+      scenarios.push({ stop: "after-post-review", surplus: true });
     }
-    if (index === 7) scenarios.push({ stop: "between-chapter-pre-commits" });
+    if (index === 7) scenarios.push({ stop: "between-chapter-commits" });
     const clean = new Map();
     for (const { stop, surplus, longRange } of scenarios) {
       const row = { fixture: index, executor: profile, stop: stop +
@@ -478,7 +474,7 @@ for (const [index, make] of cases.entries()) {
             seedProblems.some(problem => problem.owner === write.owner && problem.guid === write.guid));
           console.log(JSON.stringify({ fixture: index, executor: profile, reference: flagsKey, seedProblems,
             cleanPositions: positions, writesToSeedProblems, cleanIsolation: isolation, cleanRepeat: { writes: repeat.writes,
-              trace: repeat.writeTrace, diff: repeatDiff, projection: repeatResult.voiceProjection } }));
+              trace: repeat.writeTrace, diff: repeatDiff } }));
         }
         const baseline = clean.get(flagsKey);
         const expected = baseline.state;
@@ -501,11 +497,11 @@ for (const [index, make] of cases.entries()) {
         }
         if (stop !== "end-write-fault") {
           assert.equal(test.probe.hits, 1, "Stop boundary did not run exactly once");
-          assert.equal(report.ok, stop === "after-post-check" && profile !== "direct",
+          assert.equal(report.ok, stop === "after-report" && profile !== "direct",
             "Only a completed staged run survives Stop as success");
           if (stop === "during-post-check") assert.strictEqual(report.masterInOutReset, false);
           else if (!report.ok) assert([fault + ":" + stop, stopped].includes(report.error), "Unexpected interruption: " + report.error);
-          if (stop === "between-chapter-pre-commits") {
+          if (stop === "between-chapter-commits") {
             assert.equal(test.probe.voiceCommits, 1);
             assert(!test.snapshot()[1].some(marker => kind(marker) && kind(marker) !== "review:captions"));
           }
@@ -545,7 +541,7 @@ for (const [index, make] of cases.entries()) {
           a: a.map(error => ({ class: sameEvidence(baseline.positions, error) ||
             sameEvidence(baseline.seedProblems, error) ? "pre-existing" : "partial-worse", ...error })),
           b: b.map(error => ({ class: sameEvidence(baseline.seedIsolation, error) ? "pre-existing" :
-            sameEvidence(baseline.isolation, error) ? (error.overlap ? "pre-existing" : "intended-early") :
+            sameEvidence(baseline.isolation, error) ? (error.overlap ? "pre-existing" : "final-marker") :
               "partial-worse", ...error })),
           c: c.errors
         };
@@ -560,18 +556,8 @@ for (const [index, make] of cases.entries()) {
           row.review = { owner: test.labels[0], seed: select(test.original), partial: select(state),
             clean: select(expected), reconciled: select(c.reconciled),
             rerunWrites: c.writes.filter(write => write.kind === "review:edit") };
-          const [point, stale] = row.review.partial;
-          assert.deepStrictEqual(row.review.partial, [row.review.clean[0], row.review.seed[1]]);
-          assert.equal(point.start, point.end);
-          assert(stale.start < point.start && point.start < stale.end);
+          assert.deepStrictEqual(row.review.partial, row.review.clean);
           assert.deepStrictEqual(row.review.reconciled, row.review.clean);
-          assert.deepStrictEqual(row.review.rerunWrites.map(({ guid, operation, phase }) => [guid, operation, phase]),
-            [[stale.guid, "delete", "post"]]);
-          const overlap = row.checks.b.find(error => error.class === "partial-worse" &&
-            error.owner === row.review.owner && error.kind === "review:edit" &&
-            error.overlap?.join() === [stale.guid, point.guid].join());
-          assert(overlap, "Expected the one stale review range to overlap the new point");
-          overlap.class = "transient-surplus";
         }
         if (test.probe.half) {
           const half = test.probe.half;
@@ -596,7 +582,7 @@ for (const [index, make] of cases.entries()) {
 }
 console.log(JSON.stringify({ summary, classifiedCases, classifiedChecks,
   compensatedOnly, injectedFaults, compensatedFaults, survivingHalfWrites, harnessFailures }));
-assert.equal(classifiedCases["transient-surplus"], profiles.length);
+assert.equal(classifiedCases["transient-surplus"], 0);
 assert.equal(classifiedCases["partial-worse"], 0);
 assert.equal(harnessFailures, 0);
 assert.equal(injectedFaults, 172);
