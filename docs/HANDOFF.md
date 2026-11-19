@@ -166,6 +166,10 @@ marker review 17 → 6.
   dựng dừng ở bước kiểm template): `ok=true`, nhóm hình 0 dời / 0 ghi end (49 ms), "Cập nhật marker nguồn" 0,64 s (lượt đổi
   marker cũ: 14,6 s), tổng các bước timeline 62,1 s (72,5 s). Xác nhận nguyên nhân #75. Còn nhỏ: ghi trước marker review vẫn
   ghi lại comments của 21 marker mỗi lượt (0,47 s, 0 dời), chưa rõ vì sao comments khác.
+- Quyết định user 19/11: **nâng 2.20.98 lên stable/Latest** (thay 2.20.91), dựa trên các lượt chạy thật trong ngày (Sông
+  Congo ba lượt, project thứ hai một lượt, 0 lỗi marker). Package và tag `v2.20.98` giữ nguyên (`e5bd29f`); chỉ đổi
+  `docs/releases/2.20.98.json` (channel stable, nativeAcceptance accepted), tài liệu trạng thái và nhãn release trên GitHub.
+  Giới hạn: phần sửa #83 mới kiểm trên một project.
 
 ## Việc còn lại (14/11/2026)
 

@@ -1,6 +1,16 @@
 # 2.20.98 — Bản vá: marker review ghi trước khi cắt không bị trả về vì làm tròn tick
 
-Prerelease; 2.20.91 vẫn là stable/Latest. Bản vá cho 2.20.97: không dùng 2.20.97 cho Dựng theo voice. Chưa chạy bản này trên Premiere.
+Stable/Latest từ 19/11/2026 (công bố prerelease, nâng stable cùng ngày theo quyết định của user). Bản vá cho 2.20.97: không dùng 2.20.97 cho Dựng theo voice.
+
+## Nghiệm thu trên Premiere
+
+User cài bản này và chạy Dựng theo voice trên Premiere 26.2.2 ngày 19/11/2026, xem timeline và xác nhận marker đúng:
+
+- Sông Congo (có marker review): ba lượt `ok=true`. Phép so ánh xạ voice không báo lệch trên 100 đoạn (input lệch tối đa khoảng 80 tick). 21 marker review gắn clip voice, 0 marker chưa gắn, 0 lỗi marker.
+- Project thứ hai: `ok=true`, 0 lỗi. Project này không có cảnh báo review nên không đi qua phần sửa của bản này.
+- Mở bản lưu có marker từ trước 2.20.94 thì lượt đầu đổi marker cũ một lần: 19 marker hình, khoảng 14 giây. Lượt chạy lại không ghi marker hình nào (#75).
+
+Giới hạn: phần sửa mới được kiểm trên một project. Các template, frame rate và tốc độ khác chưa kiểm.
 
 ## Lỗi đã sửa
 
