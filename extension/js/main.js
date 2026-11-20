@@ -6,7 +6,7 @@
   var path = nodeRequire("path");
   var childProcess = nodeRequire("child_process");
   var security = window.PvsSecurity;
-  var toolVersion = "2.20.98";
+  var toolVersion = "3.0.0";
   // Keep proof/text diagnostics in the full engine output. ExtendScript
   // needs geometry, identities and native checks, not the recognition graph.
   function projectHostInput(value, workflow) {

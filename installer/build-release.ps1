@@ -1,4 +1,4 @@
-param([string]$Version = '2.20.98')
+param([string]$Version = '3.0.0')
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -51,9 +51,10 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'licenses\whisper.cpp-LICENSE.txt
 $readme=[IO.File]::ReadAllText((Join-Path $projectRoot 'README.md'),[Text.Encoding]::UTF8)
 $guide=[IO.File]::ReadAllText((Join-Path $projectRoot 'docs\USER_GUIDE.md'),[Text.Encoding]::UTF8)
 # Keep the notification/test handoff readable inside the standalone ZIP.
-[IO.File]::WriteAllText((Join-Path $staging 'README.md'),($readme -replace '\(docs/releases/notes/(?:ASR_TURBO_|AUTO_EDIT_ACOUSTIC_|NOTIFICATIONS_|SUBTITLE_TIMING_|REVIEW_MARKERS_|SRT_PRIORITY_|EDITED_VOICE_|SRT_JOIN_)\d+\.\d+\.\d+\.md\)','(THONG_BAO.md)'),(New-Object Text.UTF8Encoding($false)))
-[IO.File]::WriteAllText((Join-Path $staging 'HUONG_DAN_SU_DUNG.md'),($guide -replace '\(releases/notes/(?:ASR_TURBO_|AUTO_EDIT_ACOUSTIC_|NOTIFICATIONS_|SUBTITLE_TIMING_|REVIEW_MARKERS_|SRT_PRIORITY_|EDITED_VOICE_|SRT_JOIN_)\d+\.\d+\.\d+\.md\)','(THONG_BAO.md)'),(New-Object Text.UTF8Encoding($false)))
-$handoff=Join-Path $projectRoot "docs\releases\notes\AUTO_EDIT_ACOUSTIC_$Version.md"
+[IO.File]::WriteAllText((Join-Path $staging 'README.md'),($readme -replace '\(docs/releases/notes/(?:RELEASE_|ASR_TURBO_|AUTO_EDIT_ACOUSTIC_|NOTIFICATIONS_|SUBTITLE_TIMING_|REVIEW_MARKERS_|SRT_PRIORITY_|EDITED_VOICE_|SRT_JOIN_)\d+\.\d+\.\d+\.md\)','(THONG_BAO.md)'),(New-Object Text.UTF8Encoding($false)))
+[IO.File]::WriteAllText((Join-Path $staging 'HUONG_DAN_SU_DUNG.md'),($guide -replace '\(releases/notes/(?:RELEASE_|ASR_TURBO_|AUTO_EDIT_ACOUSTIC_|NOTIFICATIONS_|SUBTITLE_TIMING_|REVIEW_MARKERS_|SRT_PRIORITY_|EDITED_VOICE_|SRT_JOIN_)\d+\.\d+\.\d+\.md\)','(THONG_BAO.md)'),(New-Object Text.UTF8Encoding($false)))
+$handoff=Join-Path $projectRoot "docs\releases\notes\RELEASE_$Version.md"
+if(-not (Test-Path -LiteralPath $handoff)){$handoff=Join-Path $projectRoot "docs\releases\notes\AUTO_EDIT_ACOUSTIC_$Version.md"}
 if(-not (Test-Path -LiteralPath $handoff)){$handoff=Join-Path $projectRoot "docs\releases\notes\SRT_JOIN_$Version.md"}
 if(-not (Test-Path -LiteralPath $handoff)){$handoff=Join-Path $projectRoot "docs\releases\notes\EDITED_VOICE_$Version.md"}
 if(-not (Test-Path -LiteralPath $handoff)){$handoff=Join-Path $projectRoot "docs\releases\notes\SRT_PRIORITY_$Version.md"}

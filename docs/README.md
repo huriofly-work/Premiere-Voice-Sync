@@ -25,7 +25,8 @@ và tài liệu của luồng bị ảnh hưởng trước khi sửa mã.
 
 Repo khởi tạo lại ngày 14/11/2026 ([lý do](maintenance/REPO_RESTART_2026-11-14.md));
 stable/Latest hiện tại là [2.20.98](releases/notes/REVIEW_MARKERS_2.20.98.md), user chạy thật
-với hai project ngày 19/11/2026. Bản public đầu tiên là [2.20.91](releases/notes/REVIEW_MARKERS_2.20.91.md)
+với hai project ngày 19/11/2026; bản ứng viên [3.0.0](releases/notes/RELEASE_3.0.0.md)
+(chưa công bố, chưa chạy trên Premiere). Bản public đầu tiên là [2.20.91](releases/notes/REVIEW_MARKERS_2.20.91.md)
 (stable đến 19/11/2026, user đã chạy thật ngày 15/11/2026); các prerelease
 [2.20.92](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md),
 [2.20.93](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md),

@@ -1,4 +1,4 @@
-# Hướng dẫn Premiere Voice Sync 2.20.98
+# Hướng dẫn Premiere Voice Sync 3.0.0
 
 ## Khi báo lỗi
 
@@ -17,6 +17,8 @@ từ, không khác số và chỉ có một ứng viên cue/chuỗi cue liên ti
 trong chính khối. Khi đó không báo chữ ASR chưa khớp SRT; timing ước lượng
 vẫn cần rà. Thừa/thiếu từ, khác nhiều từ, số, tên riêng tách từ hoặc mơ hồ
 vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POLICY.md).
+
+**3.0.0:** Chỉ còn ba loại marker: `VOICE SYNC - Video` trên nest V1 cho vấn đề của hình, `VOICE SYNC - Voice` và `VOICE SYNC - Caption` trên file voice. Dựng theo voice tạo caption, hậu kiểm một lần rồi mới gắn marker. Marker do 2.20.x ghi không được nhận ra: xóa tay một lần hoặc dùng template sạch. Bản ứng viên, chưa kiểm trên Premiere thật; 2.20.98 vẫn là stable. Xem [thay đổi và cách chuyển](releases/notes/RELEASE_3.0.0.md).
 
 **2.20.98:** Bản vá cho 2.20.97. Dựng theo voice không còn trả marker review đã ghi trước khi cắt về như cũ chỉ vì Premiere làm tròn vị trí nguồn của clip đổi tốc độ. Đã chạy thật trên Premiere 26.2.2 ngày 19/11/2026 với hai project; là bản stable. Xem [phạm vi và kiểm chứng](releases/notes/REVIEW_MARKERS_2.20.98.md).
 
