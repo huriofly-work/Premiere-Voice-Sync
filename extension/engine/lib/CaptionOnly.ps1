@@ -531,6 +531,19 @@ function Repair-PvsSubtitleRecognitionEdge {
     return [pscustomobject]@{Json=$Json;Retried=$true}
 }
 
+function Find-PvsSubtitleScope {
+    param([string[]]$Reference,[string[]]$Audio)
+    try {
+        [PvsSubtitleScopeV2]::Find($Reference,$Audio)
+    } catch [System.Management.Automation.MethodInvocationException] {
+        $inner=$_.Exception.InnerException
+        if($null -eq $inner -or $inner.Message -notmatch '^SUBTITLE_REFERENCE_SCOPE_'){throw}
+        # Keep matcher failures fatal when the caller allows unmatched ranges.
+        $inner.Data['PvsSubtitleScopeMatcherFailure']=$true
+        throw $inner
+    }
+}
+
 function Select-PvsSubtitleReference {
     param([object[]]$Cues,[object[]]$Words,[object[]]$Sources,[bool]$CharacterMode=$false,[string]$Language='vi',[switch]$AllowAudioOutsideReference,[switch]$SkipUnverifiedCues,[scriptblock]$RecognizeReferenceWindow,[switch]$AllowUnmatchedRanges,[switch]$AllowEditedReference)
     $Words=@($Words | Where-Object {$null -ne $_})
@@ -825,7 +838,7 @@ public static class PvsSubtitleScopeV2 {
         try {
             $audio=@($Words | Where-Object {[int]$_.Chapter -eq $chapter})
             if($audio.Count -eq 0){throw "SUBTITLE_REFERENCE_SCOPE_NO_SPEECH:range-$($chapter+1)"}
-            $matches=@([PvsSubtitleScopeV2]::Find($targets.ToArray(),[string[]]$audio.Text))
+            $matches=@(Find-PvsSubtitleScope -Reference $targets.ToArray() -Audio $audio.Text)
             $candidates=@{}
             $partial=$false
             foreach($match in $matches) {
@@ -851,7 +864,7 @@ public static class PvsSubtitleScopeV2 {
             # and strong 8-word anchors; never skip reference cues or internal audio.
             if($candidates.Count -eq 0 -and $AllowAudioOutsideReference -and $Sources.Count -eq 1){
                 $spans=@{}
-                foreach($reverse in @([PvsSubtitleScopeV2]::Find([string[]]$audio.Text,$targets.ToArray()))){
+                foreach($reverse in @(Find-PvsSubtitleScope -Reference $audio.Text -Audio $targets.ToArray())){
                     if($reverse.Exact/[double]$targets.Count -lt 0.7 -or $reverse.Cost -gt [Math]::Max(2,$targets.Count*0.3)){continue}
                     $mapping=New-Object 'int[]' $targets.Count
                     for($word=0;$word -lt $mapping.Length;$word++){$mapping[$word]=-1}
@@ -897,7 +910,7 @@ public static class PvsSubtitleScopeV2 {
         } catch {
             # One unsafe scope must not discard good SRT from other sources.
             # Resource/compiler/native failures are never text mismatches.
-            if(-not $AllowUnmatchedRanges -or $_.Exception.Message -notmatch 'SUBTITLE_REFERENCE_SCOPE_(MISMATCH|PARTIAL_CUE|AMBIGUOUS|ORDER|NO_SPEECH)(:|$)'){throw}
+            if(-not $AllowUnmatchedRanges -or $_.Exception.Data.Contains('PvsSubtitleScopeMatcherFailure') -or $_.Exception.Message -notmatch 'SUBTITLE_REFERENCE_SCOPE_(MISMATCH|PARTIAL_CUE|AMBIGUOUS|ORDER|NO_SPEECH)(:|$)'){throw}
             $fallbackRanges.Add([pscustomobject]@{sourceIndex=$chapter;start=[double]$Sources[$chapter].start;end=[double]$Sources[$chapter].end;cueIndices=@();reason=$_.Exception.Message})
         }
     }

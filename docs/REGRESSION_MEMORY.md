@@ -1,5 +1,12 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #105 — Thông báo lỗi đối chiếu phạm vi SRT
+
+- **Nguyên nhân.** Khi tạo phụ đề ở chế độ trộn audio, track tiếng gốc đang bật có thể làm lời nhận diện lệch SRT. PowerShell bọc ngoại lệ từ matcher C# thành `Exception calling "Find"` và panel thiếu thông báo cho nhóm mã `SUBTITLE_REFERENCE_SCOPE_*`.
+- **Bất biến.** Cả hai hướng đối chiếu đưa mã lỗi C# ra đầu thông báo. Dấu trên ngoại lệ giữ lỗi matcher ở nhánh dừng tác vụ, kể cả khi `run-captions.ps1` hoặc đường thử lại bật `AllowUnmatchedRanges`. Lỗi phạm vi do PowerShell phát sinh vẫn đi qua phân loại từng vùng như trước. Panel hiện hướng xử lý theo mã và giữ nguyên lỗi gốc trong Chi tiết.
+- **Hồi quy.** [PowerShell](../tests/unit/Test-SubtitleRangeFallback.ps1) dùng 513 điểm kết thúc đồng hạng cho cả hai hướng, bật và tắt `AllowUnmatchedRanges`, đồng thời kiểm lỗi mơ hồ do PowerShell vẫn đưa vùng vào fallback. [Mock panel](../tests/unit/notification-ux.test.js) kiểm đủ bảy mã và lỗi gốc trong Chi tiết.
+- **Kết quả.** Trước sửa, PowerShell còn trả wrapper và panel hiện lỗi SRT chung. Sau sửa, hai test và kiểm cú pháp JavaScript đều đạt. Bộ chuẩn đạt 78 nhóm, parse 139 file PowerShell và bỏ qua sáu nhóm tích hợp Windows. Chưa nghiệm thu trên Premiere.
+
 ## Issue #103 — Chọn lát clip khi độ chồng lấp bằng nhau
 
 Bản 3.0.0 chạy ở 25 fps để một cảnh báo Caption (cue 240–245) ở trạng thái chưa
