@@ -1,5 +1,24 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #103 — Chọn lát clip khi độ chồng lấp bằng nhau
+
+Bản 3.0.0 chạy ở 25 fps để một cảnh báo Caption (cue 240–245) ở trạng thái chưa
+gắn vì hai lát A2 có cùng độ chồng lấp. Planner dùng chung lý do này cho cả clip
+phát đồng thời.
+
+Giữ cảnh báo không gắn khi clip phát đồng thời. Trong nhóm có độ chồng lấp lớn
+nhất theo dung sai 0,000001 giây, chọn lát chứa trung điểm theo khoảng
+`[start, end)`, hoặc lát bắt đầu sớm nhất nếu trung điểm nằm ngoài các lát đó.
+Quy tắc dùng chung cho Video, Voice và Caption, giữ nguyên chọn trước bằng
+`issue.piece` và chỉ xét hạng track đầu tiên có giao với cảnh báo.
+
+[Hồi quy](../tests/unit/marker-reconciliation.test.js) ở 25 fps kiểm tra hai lát
+liền nhau, khoảng trống giữa hai lát và clip phát đồng thời trong cả hai workflow.
+Bản cũ trượt 4 ca chọn lát, đạt 2 ca clip phát đồng thời. Bản sửa đạt cả 6 ca.
+Executor sinh lại khớp nguồn. Kiểm tra ES3 và mock executor đạt. Bộ test chuẩn
+đạt 78 nhóm, phân tích cú pháp 139 tệp PowerShell, bỏ qua 6 nhóm tích hợp Windows.
+Nghiệm thu trên Premiere còn chờ.
+
 ## Issue #98 — Bỏ chuyển đổi dữ liệu và bản cài cũ trong 3.0.0
 
 - Giá trị tốc độ 110% đã lưu được nạp nguyên giá trị. Chỉ điền mặc định cho trường còn thiếu. Planner dùng tên trường ngưỡng hiện tại, revision căn lời v2 và khoảng trống nguồn do alignment xuất.

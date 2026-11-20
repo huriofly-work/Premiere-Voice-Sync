@@ -163,7 +163,33 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     assert.equal(v.sources[0].values.length,0,"Previous tail must not own the issue");
     const point=state(v.sources[1])[0];assert(Math.abs(point.seconds-(10+23/30))<1e-8);assert.equal(point.end,point.seconds);
   });
-  test("#3 equal overlaps are reported",()=>{const v=setup([[0,2],[3,5]]);const r=v.invoke([{start:1,end:4,reason:"tie"}]);assert.equal(r.unattachedMarkerCount,1);});
+  for(const workflow of ["edit","captions"]){
+    for(const [scenario,ranges,expected] of [
+      ["adjacent",[[425,435],[435,445]],1],
+      ["centred gap, later clip first",[[437,445],[425,433]],1],
+      ["simultaneous",[[425,437],[433,445]],-1]
+    ])test("#103 "+workflow+" "+scenario,()=>{
+      const host=context.$._PVS, fps=25;
+      const v=setup(workflow==="captions"?ranges.concat([[425,445]]):ranges);
+      const issue={start:430,end:440,reason:"Caption review",severity:"warning",color:4};
+      v.timeline.seq.timebase=254016000000/fps;
+      let stats;
+      if(workflow==="captions"){
+        stats=apply(v.timeline.seq,[issue],[{start:425,end:445}],null,v.clips,[0,0,1]);
+      }else{
+        const owners=[], byKey={};
+        for(const clip of v.clips)host._addMarkerSource(owners,byKey,clip,"voice");
+        const index=host._prepareMarkerSources(owners,fps,workflow);
+        stats=host._markerStats();
+        host._planClipMarkers(index,v.clips,[issue],"Caption",workflow,fps,null,stats);
+        for(const owner of owners)host._commitMarkerSource(owner,stats,null);
+      }
+      assert.equal(stats.unattachedMarkerCount,expected<0?1:0,"unattached warning count");
+      if(expected<0)assert.equal(stats.unattachedMarkers[0].reason,"Nhiều clip cùng phù hợp.");
+      assert.equal(stats.captionMarkerCount,expected<0?0:1);
+      assert.deepEqual(v.sources.map(source=>source.values.length),v.sources.map((_,i)=>i===expected?1:0));
+    });
+  }
   test("#3 overlapping tracks are reported despite unique largest",()=>{
     const v=setup([[1,2.5],[2,5]]);v.timeline.seq.audioTracks=[{clips:[v.clips[0]]},{clips:[v.clips[1]]}];
     assert.equal(v.invoke().unattachedMarkerCount,1);
