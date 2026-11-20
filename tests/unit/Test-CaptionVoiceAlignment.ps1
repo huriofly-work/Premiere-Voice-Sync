@@ -342,7 +342,7 @@ try {
     '{"ffmpeg":"fake-ffmpeg.ps1"}' | Set-Content -LiteralPath (Join-Path $engineRoot 'runtime\engine.json') -Encoding ASCII
     $wave = Join-Path $temp 'voice.wav'
     Set-Content -LiteralPath $wave -Value '' -Encoding ASCII
-    [ordered]@{voiceChapterCount=1;cues=$aligned} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
+    [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$aligned} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
     $job = [ordered]@{
         outputFolder=$temp;speedWarningMinPercent=70;speedWarningMaxPercent=130
         algorithm=[ordered]@{maxCaptionCharacters=24;useWhisperCache=$false}
@@ -364,7 +364,7 @@ try {
 
     $breathAlignedCue = $aligned[0].PSObject.Copy()
     $breathAlignedCue.Text = $breathCue.Text
-    [ordered]@{voiceChapterCount=1;cues=@($breathAlignedCue)} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
+    [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=@($breathAlignedCue)} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
     @("Write-Output 'silence_start: 1.4'", "Write-Output 'silence_end: 2.8'") | Set-Content -LiteralPath (Join-Path $engineRoot 'runtime\fake-ffmpeg.ps1') -Encoding ASCII
     & (Join-Path $engineRoot 'build-sentence-plan.ps1') -JobPath $jobPath | Out-Null
     $breathPlan = Get-Content -LiteralPath (Join-Path $temp 'sentence-edit-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -379,7 +379,7 @@ try {
     })
     $job.sequence.mainVideoClip.end=7;$job.sequence.voices[0].start=0;$job.sequence.voices[0].end=7
     $job | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $jobPath -Encoding UTF8
-    [ordered]@{voiceChapterCount=1;cues=$displaced} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
+    [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$displaced} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
     @("Write-Output 'silence_start: 4.8'", "Write-Output 'silence_end: 5.2'") | Set-Content -LiteralPath (Join-Path $engineRoot 'runtime\fake-ffmpeg.ps1') -Encoding ASCII
     & (Join-Path $engineRoot 'build-sentence-plan.ps1') -JobPath $jobPath | Out-Null
     $displacedPlan=Get-Content -LiteralPath (Join-Path $temp 'sentence-edit-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json

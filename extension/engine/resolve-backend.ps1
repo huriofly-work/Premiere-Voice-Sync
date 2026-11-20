@@ -24,10 +24,6 @@ $stateRoot = Join-Path $env:LOCALAPPDATA 'PremiereVoiceSync'
 $statePath = Join-Path $stateRoot 'backend-state.json'
 Assert-PvsSafePath -Path $stateRoot -Tree
 New-Item -ItemType Directory -Path $backendRoot,$stateRoot -Force | Out-Null
-$legacyTempModels = Join-Path $env:TEMP 'PremiereVoiceSync\models'
-if (Test-Path -LiteralPath $legacyTempModels -PathType Container) {
-    Remove-PvsSafeTree -Path $legacyTempModels -Root (Join-Path $env:TEMP 'PremiereVoiceSync')
-}
 $previousState = $null
 if (Test-Path -LiteralPath $statePath) {
     try { $previousState = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json } catch {}
@@ -143,8 +139,7 @@ function Get-BackendFingerprint {
         [Parameter(Mandatory)][string]$BackendVersion
     )
     $file = Get-Item -LiteralPath $WhisperPath
-    # A probe proves CUDA for one model's memory footprint. Changing the model
-    # (Small -> large-v3-turbo) must re-probe instead of reusing a cached pass.
+    # Reuse a CUDA probe only for the same GPU, driver, backend executable and model fingerprint.
     # The runtime lock has already verified this model file's hash.
     $model = Get-Item -LiteralPath $modelPath
     return '{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}' -f $NvidiaInfo.Name,$NvidiaInfo.Driver,$NvidiaInfo.ComputeCapability,$BackendVersion,$file.Length,$file.LastWriteTimeUtc.Ticks,$model.Name,$model.Length

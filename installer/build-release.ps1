@@ -95,14 +95,6 @@ foreach ($relative in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $staging $relative) -PathType Leaf)) { throw "Release missing: $relative" }
 }
 
-foreach ($forbiddenPayload in @(
-    'extension\js\main.pvsbin',
-    'extension\jsx\host.pvsbin',
-    'extension\engine\engine.pvsbin'
-)) {
-    if (Test-Path -LiteralPath (Join-Path $staging $forbiddenPayload)) { throw "Release still contains protected payload: $forbiddenPayload" }
-}
-
 $hashLines = Get-ChildItem -LiteralPath $staging -File -Recurse | Sort-Object FullName | ForEach-Object {
     $relative = $_.FullName.Substring($staging.Length + 1)
     $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash

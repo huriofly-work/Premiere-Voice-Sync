@@ -197,7 +197,7 @@ try {
     Set-Content -LiteralPath "$engine\runtime\engine.json" -Encoding ASCII -Value '{"ffmpeg":"fixture"}'
     $wav=Join-Path $temp 'voice.wav';Set-Content -LiteralPath $wav -Value '' -Encoding ASCII
     $voices=@([pscustomobject]@{start=$sources[0].start;end=$sources[0].end;path=$wav;speedPercent=100;name='fixture';inPoint=0})
-    [ordered]@{voiceChapterCount=1;cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=$refs.Count} | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath "$temp\alignment-result.json" -Encoding UTF8
+    [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=$refs.Count} | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath "$temp\alignment-result.json" -Encoding UTF8
     $job=@{outputFolder=$temp;speedWarningMinPercent=70;speedWarningMaxPercent=130;algorithm=@{useWhisperCache=$false};sequence=@{frameRate=30;sequenceId='manual';name='manual';mainVideoClip=@{start=0;end=35};voices=$voices;linkedAudio=@();voiceTrackIndex=1}}
     $jobPath=Join-Path $temp 'job.json';$job | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $jobPath -Encoding UTF8
     & "$engine\build-sentence-plan.ps1" -JobPath $jobPath | Out-Null
@@ -227,7 +227,7 @@ try {
         if(-not $failed){throw "MANUAL_PLAN_TAMPER_ACCEPTED:$fault"}
     }
     $result.Cues[-1].Confidence=0.4
-    [ordered]@{voiceChapterCount=1;cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=$refs.Count} | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath "$temp\alignment-result.json" -Encoding UTF8
+    [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=$refs.Count} | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath "$temp\alignment-result.json" -Encoding UTF8
     & "$engine\build-sentence-plan.ps1" -JobPath $jobPath | Out-Null
     $weakPlan=Get-Content "$temp\sentence-edit-plan.json" -Raw -Encoding UTF8 | ConvertFrom-Json
     if(-not @($weakPlan.markers | Where-Object Owner -eq 'A2').Count){throw 'REAL_LOW_CONFIDENCE_VOICE_MARKER_SUPPRESSED'}

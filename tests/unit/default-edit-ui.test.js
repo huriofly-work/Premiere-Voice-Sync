@@ -50,11 +50,13 @@ async function scenario(options={}){
   assert(preserved.controls.workflowNoticeTechnical.textContent.includes("00:00:01.000"),"The review includes the preserved voice range.");
   const fresh=await scenario({});assert.equal(fresh.calls.find(c=>c[0]==="job")[1].algorithm.minNoDialogueGapSeconds,0.5,"Fresh/default settings must reach the job as 0.5s.");
   const custom=await scenario({settings:{minDialogueGap:1.5}});assert.equal(custom.calls.find(c=>c[0]==="job")[1].algorithm.minNoDialogueGapSeconds,1.5,"A saved/custom threshold must override the default.");
-  for(const stored of [null,{maxSpeed:130},{minDialogueGap:1,maxSpeed:130},{minDialogueGap:2,maxSpeed:130}]){
+  for(const stored of [null,{maxSpeed:110},{maxSpeed:130},{minDialogueGap:1,maxSpeed:130},{minDialogueGap:2,maxSpeed:130}]){
     const storage=new Map();if(stored)storage.set("pvs.algorithm",JSON.stringify(stored));
     const context={require:n=>({fs:{},path,child_process:{}}[n]),window:{},document:{addEventListener(){}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
     vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);','window.settingsTest={load:loadSettings};'),context);
-    assert.equal(context.window.settingsTest.load().minDialogueGap,stored&&stored.minDialogueGap!==undefined?stored.minDialogueGap:0.5,"Missing values inherit the new default; saved values are preserved.");
+    const loaded=context.window.settingsTest.load();
+    assert.strictEqual(loaded.maxSpeed,stored?stored.maxSpeed:130,"A saved speed warning threshold of 110 must stay 110.");
+    assert.equal(loaded.minDialogueGap,stored&&stored.minDialogueGap!==undefined?stored.minDialogueGap:0.5,"Missing values inherit the new default; saved values are preserved.");
   }
   for(const commaGap of [false,true]){
     const r=await scenario({commaGap,settings:{minSpeed:60,maxSpeed:180,minDialogueGap:0.5,voiceGroupGap:3.5,maxCaptionCharacters:40}}),job=r.calls.find(c=>c[0]==="job")[1];

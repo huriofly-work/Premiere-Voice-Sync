@@ -28,7 +28,7 @@ try{
         $folder=Join-Path $temp ([string]$fps);New-Item -ItemType Directory -Path $folder | Out-Null
         $main=[pscustomobject]@{start=0.0;end=21.0}
         $map=New-PvsEditedSourceMap $edited $cues $main $fps
-        [ordered]@{voiceChapterCount=1;cues=$edited.Cues;editedSourceMap=$map;omittedReferenceCueIndices=$edited.OmittedCueIndices} | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $folder 'alignment-result.json') -Encoding UTF8
+        [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$edited.Cues;editedSourceMap=$map;omittedReferenceCueIndices=$edited.OmittedCueIndices} | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $folder 'alignment-result.json') -Encoding UTF8
         $job=[ordered]@{algorithm=[ordered]@{useWhisperCache=$false};outputFolder=$folder;speedWarningMinPercent=70;speedWarningMaxPercent=130;sequence=[ordered]@{sequenceId='edited';name='edited';frameRate=$fps;mainVideoClip=$main;linkedAudio=@();voiceTrackIndex=1;voices=$voices}}
         $jobPath=Join-Path $folder 'job.json';$job | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $jobPath -Encoding UTF8
         & "$engine\build-sentence-plan.ps1" -JobPath $jobPath | Out-Null

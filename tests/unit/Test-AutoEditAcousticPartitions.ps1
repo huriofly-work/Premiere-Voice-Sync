@@ -133,7 +133,7 @@ try {
     Set-Content "$engine\runtime\engine.json" -Encoding ASCII -Value '{"ffmpeg":"fixture"}'
     $voices[0].path="$temp\voice.wav";Set-Content $voices[0].path '' -Encoding ASCII
     $task=[pscustomobject]@{cueIndex=1;cueIndices=@(1,2,3,4);chapter=0;sourceStart=0;sourceEnd=13;start=10;end=22;captionCells=$cells;pendingReferenceCueIndices=@();status='manual-review-pending'}
-    $alignment=[ordered]@{voiceChapterCount=1;cues=$cues;autoEditManualReviewBlocks=@($task);referenceCueCount=4;acousticEditBoundaryRevision='raw-dtw-quiet-partition-v1';acousticEditWords=$words;acousticEditReferenceCues=$refs}
+    $alignment=[ordered]@{voiceChapterCount=1;cues=$cues;sourceSubtitleGaps=@([pscustomobject]@{leftCue=1;rightCue=2;sourceStart=$refs[0].End;sourceEnd=$refs[1].Start});autoEditManualReviewBlocks=@($task);referenceCueCount=4;acousticEditBoundaryRevision='dtw-cue-quiet-partition-v2';acousticEditWords=$words;acousticEditReferenceCues=$refs}
     $job=@{outputFolder=$temp;speedWarningMinPercent=70;speedWarningMaxPercent=130;algorithm=@{useWhisperCache=$false};sequence=@{frameRate=30;sequenceId='acoustic';name='acoustic';mainVideoClip=@{start=0;end=13};voices=$voices;linkedAudio=@();voiceTrackIndex=1}}
     $job|ConvertTo-Json -Depth 12|Set-Content "$temp\job.json" -Encoding UTF8
     $oldAlignment=Copy-Json ([pscustomobject]$alignment)
@@ -173,7 +173,7 @@ try {
     }
     # The shipping v2 planner must refine picture even without a single
     # permitted physical-voice cut; a long source gap remains protected.
-    $alignment.acousticEditBoundaryRevision='dtw-cue-quiet-partition-v2'
+
     Set-Content "$engine\lib\Native.ps1" -Encoding ASCII -Value '. "$PSScriptRoot\Security.ps1"; . "$PSScriptRoot\AudioCache.ps1"; function Invoke-NativeCapture {param($FilePath,$Arguments);[pscustomobject]@{ExitCode=0;Output=""}}'
     $alignment|ConvertTo-Json -Depth 25|Set-Content "$temp\alignment-result.json" -Encoding UTF8
     & "$engine\build-sentence-plan.ps1" -JobPath "$temp\job.json"|Out-Null

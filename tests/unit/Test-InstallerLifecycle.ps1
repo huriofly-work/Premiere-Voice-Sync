@@ -6,11 +6,12 @@ $temp=Join-Path $env:TEMP ('PVS-InstallerLifecycle-'+[guid]::NewGuid().ToString(
 $package=Join-Path $temp 'package'; $roaming=Join-Path $temp 'roaming'; $local=Join-Path $temp 'local'
 $extensions=Join-Path $roaming 'Adobe\CEP\extensions'
 $neighbor=Join-Path $extensions 'com.other.panel'
-$legacyTemp=Join-Path $temp 'temporary\PremiereVoiceSync-cuda-123'
+$temporaryRoot=Join-Path $temp 'temporary'
+$tempSentinel=Join-Path $temporaryRoot 'PremiereVoiceSync-cuda-123'
 $target=Join-Path $extensions 'com.premierevoicesync.local'
 try {
     New-PvsPackageFixture -Root $package -SourceRoot $root
-    New-Item -ItemType Directory -Path (Join-Path $neighbor 'CSXS'),$legacyTemp -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $neighbor 'CSXS'),$tempSentinel -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $neighbor 'CSXS\manifest.xml') -Value '<ExtensionManifest ExtensionBundleName="Premiere Voice Sync" />'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $package 'scripts\install.ps1') -ApplicationDataRoot $roaming -LocalApplicationDataRoot $local -SkipRegistry -SkipProcessCheck
     if ($LASTEXITCODE -ne 0) { throw 'INSTALL_FAILED' }
@@ -20,9 +21,13 @@ try {
     if (-not (Test-Path -LiteralPath $neighbor)) { throw 'INSTALL_DELETED_OTHER_ID' }
     if (Test-Path -LiteralPath (Join-Path $local 'Programs\PremiereVoiceSync')) { throw 'INSTALL_CREATED_WINDOWS_APP' }
     New-Item -ItemType Directory -Path (Join-Path $local 'PremiereVoiceSync\Cache\Whisper') -Force | Out-Null
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $package 'scripts\uninstall.ps1') -ApplicationDataRoot $roaming -LocalApplicationDataRoot $local -TemporaryRoot (Split-Path $legacyTemp -Parent) -SkipRegistry -SkipProcessCheck -Quiet
+    $previousTemp=$env:TEMP
+    try {
+        $env:TEMP=$temporaryRoot
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $package 'scripts\uninstall.ps1') -ApplicationDataRoot $roaming -LocalApplicationDataRoot $local -SkipRegistry -SkipProcessCheck -Quiet
+    } finally { $env:TEMP=$previousTemp }
     if ($LASTEXITCODE -ne 0 -or (Test-Path $target) -or (Test-Path (Join-Path $local 'PremiereVoiceSync'))) { throw 'REMOVE_FAILED' }
-    if (-not (Test-Path $neighbor) -or -not (Test-Path $legacyTemp)) { throw 'REMOVAL_DELETED_UNRELATED_DIRECTORY' }
+    if (-not (Test-Path $neighbor) -or -not (Test-Path $tempSentinel)) { throw 'REMOVAL_DELETED_UNRELATED_DIRECTORY' }
     [xml]$manifest=Get-Content -LiteralPath (Join-Path $root 'extension\CSXS\manifest.xml') -Raw
     if ($manifest.ExtensionManifest.ExtensionBundleId -ne 'com.premierevoicesync.local') { throw 'NEUTRAL_ID_MISSING' }
     $brand=[string]::Concat('null','seek'); $owner=[string]::Concat('hu','rio')

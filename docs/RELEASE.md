@@ -4,7 +4,7 @@
 2. Chạy `tests\Run-Tests.ps1` trên checkout sạch.
 3. Nghiệm thu trong Premiere Pro 26.2.2 theo `TESTING.md`.
 4. Tạo ZIP bằng `installer\build-release.ps1`.
-5. Kiểm tra Setup-Panel.cmd/Remove-Panel.cmd: thiết lập mới, lặp lại, chuyển từ bản EXE cũ không mất cache, gỡ sạch và khôi phục PlayerDebugMode trên tài khoản Windows thử nghiệm.
+5. Kiểm tra Setup-Panel.cmd/Remove-Panel.cmd: thiết lập mới, thiết lập lại và giữ cache, gỡ sạch và khôi phục PlayerDebugMode trên tài khoản Windows thử nghiệm.
 6. Xác nhận không tạo mục Installed apps, không có EXE installer trong gói và không đóng gói dữ liệu riêng.
 7. Đưa duy nhất Premiere-Voice-Sync-<version>-Panel.zip cùng SHA-256 trong ghi chú GitHub Release. Không phát hành Setup.exe.
 8. Kiểm mandatory checksum/exact allowlist, file thừa, junction ở root/parent/tree và rollback cập nhật. Không dùng hash nằm trong chính gói như bằng chứng nguồn gốc.

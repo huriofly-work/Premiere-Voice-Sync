@@ -75,7 +75,7 @@ try{
     Set-Content "$engine\runtime\engine.json" -Encoding ASCII -Value '{"ffmpeg":"fixture"}'
     $wav=Join-Path $temp 'voice.wav';Set-Content $wav '' -Encoding ASCII
     $voices=@(foreach($s in $sources){[pscustomobject]@{start=$s.start;end=$s.end;path=$wav;speedPercent=100;name='fixture';inPoint=0}})
-    @{voiceChapterCount=2;cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=9} | ConvertTo-Json -Depth 18 | Set-Content "$temp\alignment-result.json" -Encoding UTF8
+    @{voiceChapterCount=2;sourceSubtitleGaps=@();cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=9} | ConvertTo-Json -Depth 18 | Set-Content "$temp\alignment-result.json" -Encoding UTF8
     $job=@{outputFolder=$temp;speedWarningMinPercent=70;speedWarningMaxPercent=130;algorithm=@{useWhisperCache=$false};sequence=@{frameRate=30;sequenceId='partition';name='partition';mainVideoClip=@{start=0;end=36};voices=$voices;linkedAudio=@();voiceTrackIndex=1}}
     $job | ConvertTo-Json -Depth 12 | Set-Content "$temp\job.json" -Encoding UTF8
     & "$engine\build-sentence-plan.ps1" -JobPath "$temp\job.json" | Out-Null
@@ -89,7 +89,7 @@ try{
     foreach($c in $result.Cues){if($c.PSObject.Properties['ManualEditBlock'] -and $c.ManualEditBlock -and ($c.WordTimings.Count -or -not $c.EditBoundaryReviewRequired)){throw 'PARTITION_TIMING_PROMOTED'}}
     $result=New-PartitionFixture -Unbounded -Preserve
     $voices=@([pscustomobject]@{start=$sources[0].start-0.1;end=$sources[0].end+0.1;path=$wav;speedPercent=100;name='fixture';inPoint=0})
-    @{voiceChapterCount=1;cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=9} | ConvertTo-Json -Depth 18 | Set-Content "$temp\alignment-result.json" -Encoding UTF8
+    @{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$result.Cues;autoEditManualReviewBlocks=$result.Blocks;referenceCueCount=9} | ConvertTo-Json -Depth 18 | Set-Content "$temp\alignment-result.json" -Encoding UTF8
     $job.sequence.voices=$voices;$job | ConvertTo-Json -Depth 12 | Set-Content "$temp\job.json" -Encoding UTF8
     & "$engine\build-sentence-plan.ps1" -JobPath "$temp\job.json" | Out-Null
     $plan=Get-Content "$temp\sentence-edit-plan.json" -Raw -Encoding UTF8 | ConvertFrom-Json

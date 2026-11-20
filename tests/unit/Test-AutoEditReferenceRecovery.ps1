@@ -83,7 +83,7 @@ try{
     Set-Content -LiteralPath "$engine\runtime\engine.json" -Encoding ASCII -Value '{"ffmpeg":"fixture"}'
     $wav=Join-Path $temp 'voice.wav';Set-Content -LiteralPath $wav -Value '' -Encoding ASCII
     $voices=@([pscustomobject]@{start=10.0;end=14.4;path=$wav;speedPercent=100;name='fixture';inPoint=0})
-    [ordered]@{voiceChapterCount=1;cues=$ok.Cues} | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
+    [ordered]@{voiceChapterCount=1;sourceSubtitleGaps=@();cues=$ok.Cues} | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $temp 'alignment-result.json') -Encoding UTF8
     $job=@{outputFolder=$temp;speedWarningMinPercent=70;speedWarningMaxPercent=130;algorithm=@{useWhisperCache=$false};sequence=@{frameRate=30;sequenceId='recovery';name='recovery';mainVideoClip=@{start=0;end=30};voices=$voices;linkedAudio=@();voiceTrackIndex=1}}
     $jobPath=Join-Path $temp 'job.json';$job | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $jobPath -Encoding UTF8
     & "$engine\build-sentence-plan.ps1" -JobPath $jobPath | Out-Null

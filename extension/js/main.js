@@ -76,8 +76,6 @@
   };
   var settingsStorageKey = "pvs.algorithm";
   var srtJoin = window.PvsSrtJoin ? window.PvsSrtJoin.panel({ state: state, document: document, window: window, fs: fs, path: path, security: security, inputError: inputError, changed: function () { if (inlineValidation && inlineValidation.fieldId === "srtJoinEnabled") closeWorkflowNotice(); } }) : null;
-  var settingsSchemaKey = "pvs.algorithmSchema";
-  var settingsSchemaVersion = "3";
   var settingDefaults = {
     minSpeed: 70, maxSpeed: 130, minDialogueGap: 0.5, voiceGroupGap: 2, maxCaptionCharacters: 42
   };
@@ -1388,7 +1386,6 @@
     if (values.minSpeed > values.maxSpeed) throw inputError("Ngưỡng cảnh báo chậm không được lớn hơn ngưỡng cảnh báo nhanh.", "minSpeed");
     if (!readOnly) {
       localStorage.setItem(settingsStorageKey, JSON.stringify(values));
-      localStorage.setItem(settingsSchemaKey, settingsSchemaVersion);
     }
     return values;
   }
@@ -1411,19 +1408,15 @@
     catch (ignoreStoredSettings) { localStorage.removeItem(settingsStorageKey); }
     if (!stored || typeof stored !== "object") return settingDefaults;
 
-    var migrated = {
+    var values = {
       minSpeed: stored.minSpeed === undefined ? settingDefaults.minSpeed : stored.minSpeed,
       maxSpeed: stored.maxSpeed === undefined ? settingDefaults.maxSpeed : stored.maxSpeed,
       minDialogueGap: stored.minDialogueGap === undefined ? settingDefaults.minDialogueGap : stored.minDialogueGap,
       voiceGroupGap: stored.voiceGroupGap === undefined ? settingDefaults.voiceGroupGap : stored.voiceGroupGap,
       maxCaptionCharacters: stored.maxCaptionCharacters === undefined ? settingDefaults.maxCaptionCharacters : stored.maxCaptionCharacters
     };
-    if (localStorage.getItem(settingsSchemaKey) !== settingsSchemaVersion && Number(migrated.maxSpeed) === 110) {
-      migrated.maxSpeed = settingDefaults.maxSpeed;
-    }
-    localStorage.setItem(settingsStorageKey, JSON.stringify(migrated));
-    localStorage.setItem(settingsSchemaKey, settingsSchemaVersion);
-    return migrated;
+    localStorage.setItem(settingsStorageKey, JSON.stringify(values));
+    return values;
   }
   function applySettings(values) {
     values = values || settingDefaults;
@@ -2530,7 +2523,6 @@
     byId("resetSettings").addEventListener("click", function () {
       applySettings(settingDefaults);
       localStorage.setItem(settingsStorageKey, JSON.stringify(settingDefaults));
-      localStorage.setItem(settingsSchemaKey, settingsSchemaVersion);
       localFeedback("settingsFeedback", "Đã khôi phục thiết lập mặc định.");
     });
     byId("scanSequence").addEventListener("click", function () {

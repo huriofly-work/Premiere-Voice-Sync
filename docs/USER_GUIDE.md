@@ -112,7 +112,7 @@ Trong panel chỉ hiển thị hướng dẫn sử dụng từng chức năng: *
 
 Panel sắp theo **Chọn nguồn → Tùy chọn → Chạy và xem kết quả**. **Cập nhật đầu vào** đọc lại SRT và timeline của chế độ hiện tại, không thay đổi project; chương trình luôn kiểm đầu vào khi chạy. CPU/GPU và tùy chọn thông báo nằm trong **Thiết lập**. Lịch sử cảnh báo, hướng dẫn và **Hỗ trợ và nhật ký** ở phần phụ thu gọn.
 
-Gói ZIP chứa sẵn Whisper CPU, FFmpeg, model và từ vựng offline; không cần cài riêng các tài nguyên đó. Panel được chép vào `%APPDATA%\Adobe\CEP\extensions\com.premierevoicesync.local`. Không tạo ứng dụng trong Windows Installed apps. Nếu máy có bản EXE cũ của chính tool, Setup-Panel.cmd chuyển sang bản ZIP và gỡ mục Installed apps cũ, giữ lại cache/model/backend. Nếu thông tin bản cũ không đúng với tool, tác vụ dừng thay vì xóa.
+Gói ZIP chứa sẵn Whisper CPU, FFmpeg, model và từ vựng offline; không cần cài riêng các tài nguyên đó. Panel được chép vào `%APPDATA%\Adobe\CEP\extensions\com.premierevoicesync.local`. Không tạo ứng dụng trong Windows Installed apps.
 
 Giữ lại gói ZIP hoặc thư mục giải nén để dùng **Remove-Panel.cmd** (Gỡ panel) khi cần. Có thể chuyển thư mục giải nén sang ổ khác sau khi thiết lập vì Premiere dùng bản panel đã chép vào thư mục Adobe. Đây không phải portable hoàn toàn: tool vẫn ghi cấu hình CEP và dữ liệu trong AppData. Chỉ xóa thư mục ZIP không gỡ panel đã thiết lập.
 
@@ -274,4 +274,4 @@ Setup bắt buộc gói đầy đủ checksum và danh sách file chính xác; t
 
 Đóng Premiere, mở thư mục gói ZIP đã giải nén và chạy **Remove-Panel.cmd** (Gỡ panel). Đọc xác nhận rồi chọn **Y** để gỡ sạch. Script chỉ xóa đúng panel ID và thư mục dữ liệu của tool, gồm cache/backend/log/job, không xóa extension trùng tên hoặc thư mục TEMP bên ngoài theo tên. `PlayerDebugMode` được khôi phục nếu chưa bị thay đổi kể từ Setup. Whisper/FFmpeg của chương trình khác được giữ nguyên. Thư mục ZIP giải nén không bị xóa; có thể tự xóa sau khi gỡ xong.
 
-Nếu đã xóa gói ZIP, giải nén lại gói để lấy Remove-Panel.cmd. Nếu chưa chuyển từ bản EXE cũ, chạy Setup-Panel.cmd trước rồi mới gỡ; script gỡ mới không tự xóa một bản chưa được nhận diện là panel ZIP.
+Nếu đã xóa gói ZIP, giải nén lại gói để lấy Remove-Panel.cmd.

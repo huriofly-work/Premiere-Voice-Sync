@@ -32,6 +32,12 @@ function Invoke-BoundaryCase {
         )
     }
     if ($CustomCues.Count) { $alignment.cues = $CustomCues }
+    $alignment.sourceSubtitleGaps = @(for ($i=0; $i+1 -lt $alignment.cues.Count; $i++) {
+        $left=$alignment.cues[$i]; $right=$alignment.cues[$i+1]
+        if ($right.OriginalStart -gt $left.OriginalEnd) {
+            [pscustomobject]@{leftCue=$left.Index;rightCue=$right.Index;sourceStart=$left.OriginalEnd;sourceEnd=$right.OriginalStart}
+        }
+    })
     $alignment | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $caseRoot 'alignment-result.json') -Encoding UTF8
     $job = [ordered]@{
         algorithm=[ordered]@{useWhisperCache=$false;minNoDialogueGapSeconds=$GapThreshold}

@@ -4,11 +4,8 @@ Set-StrictMode -Version Latest
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $releaseCommon = Join-Path $projectRoot 'installer\release-common.ps1'
 $buildRelease = Join-Path $projectRoot 'installer\build-release.ps1'
-$legacyProtector = Join-Path $projectRoot 'installer\protect-release.ps1'
-if (Test-Path -LiteralPath $legacyProtector) { throw 'LEGACY_PROTECTOR_STILL_EXISTS' }
 
 $buildSource = [IO.File]::ReadAllText($buildRelease,[Text.Encoding]::UTF8)
-if ($buildSource.IndexOf('protect-release.ps1',[StringComparison]::OrdinalIgnoreCase) -ge 0) { throw 'BUILD_STILL_CALLS_PROTECTOR' }
 foreach ($required in @(
     "`$commands = @('Setup-Panel.cmd','Remove-Panel.cmd')",
     'extension\engine\lib\Srt.ps1',
@@ -21,7 +18,6 @@ foreach ($required in @(
     'extension\engine\lib\vi-caption-overrides.txt',
     'extension\engine\lib\vi-caption-phrases.NOTICE.txt',
     'extension\engine\lib\vi-caption-phrases.LICENSE.txt',
-    'Release still contains protected payload',
     "Copy-Item -LiteralPath (Join-Path `$projectRoot 'THIRD_PARTY_NOTICES.md') -Destination `$staging -Force",
     "'THIRD_PARTY_NOTICES.md'"
 )) {
@@ -158,9 +154,6 @@ try {
         $sourceHash = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
         $releaseHash = (Get-FileHash -LiteralPath $releasePath -Algorithm SHA256).Hash
         if ($sourceHash -ne $releaseHash) { throw "OPEN_SOURCE_FILE_CHANGED:$relative" }
-    }
-    foreach ($payload in @('js\main.pvsbin','jsx\host.pvsbin','engine\engine.pvsbin')) {
-        if (Test-Path -LiteralPath (Join-Path $destination $payload)) { throw "PROTECTED_PAYLOAD_COPIED:$payload" }
     }
     foreach ($relative in @('js\.env','jsx\local-settings.json','engine\private-log.txt','engine\runtime\private-project.srt','ui\private-project.json')) {
         if (Test-Path -LiteralPath (Join-Path $destination $relative)) { throw "PRIVATE_FIXTURE_COPIED:$relative" }

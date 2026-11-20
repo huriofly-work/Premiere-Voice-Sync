@@ -29,6 +29,7 @@ try {
     Set-Content -LiteralPath (Join-Path $temp 'missing.wav') -Value '' -Encoding ASCII
     $alignment = [ordered]@{
         voiceChapterCount = 1
+        sourceSubtitleGaps = @()
         cues = @(
             [ordered]@{ Index=1;Text='Cau mot;';Start=0.0;End=1.0;OriginalStart=0.0;OriginalEnd=1.0;Chapter=0;Confidence=1.0 },
             [ordered]@{ Index=2;Text='Cau hai,';Start=1.0;End=2.0;OriginalStart=1.0;OriginalEnd=2.0;Chapter=0;Confidence=1.0 },
