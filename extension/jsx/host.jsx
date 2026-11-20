@@ -201,28 +201,36 @@ $._PVS._error = function (e) {
     return $._PVS._result({ ok: false, error: e && e.message ? e.message : String(e) });
 };
 
+$._PVS._findLinkedTrack = function (sequence, spec, mainEnd) {
+    for (var ti = 0; ti < sequence.audioTracks.numTracks; ti++) {
+        var track = sequence.audioTracks[ti];
+        for (var ci = 0; ci < track.clips.numItems; ci++) {
+            var clip = track.clips[ci];
+            if (String(clip.name) === String(spec.name) && Math.abs(Number(clip.start.seconds)) < 0.05 && Math.abs(Number(clip.end.seconds) - mainEnd) < 0.1) return ti;
+        }
+    }
+    return -1;
+};
+
 $._PVS.scanSequence = function () {
     try {
         var seq = app.project && app.project.activeSequence;
-        if (!seq) return $._PVS._result({ ok: false, error: "Không có sequence đang mở." });
-        if (seq.videoTracks.numTracks < 1) return $._PVS._result({ ok: false, error: "Sequence không có V1." });
-        if (seq.audioTracks.numTracks < 2) return $._PVS._result({ ok: false, error: "Sequence cần có A2 chứa voice mới." });
+        if (!seq) return $._PVS._result({ ok: true, hasSequence: false });
 
-        var v1 = seq.videoTracks[0];
-        var v1Count = v1.clips.numItems;
+        var v1 = seq.videoTracks.numTracks > 0 ? seq.videoTracks[0] : null;
+        var v1Count = v1 ? v1.clips.numItems : 0;
         var mainVideoPieceCount = 0;
         var looksNested = false;
         var mainVideoClip = null;
         var linkedAudio = [];
-        var fps = 30;
+        var fps = null;
+        var captionTrackCount = null;
         try { fps = 254016000000 / Number(seq.timebase); } catch (ignoreFps) {}
+        try { if (seq.captionTracks && typeof seq.captionTracks.numTracks === "number") captionTrackCount = seq.captionTracks.numTracks; } catch (ignoreCaptions) {}
         if (v1Count > 0) {
             var main = v1.clips[0];
-            var mainSpeed = 100;
-            try {
-                mainSpeed = Number(main.getSpeed());
-                if (mainSpeed > 0 && mainSpeed <= 10) mainSpeed *= 100;
-            } catch (ignoreMainSpeed) { mainSpeed = 100; }
+            var mainSpeed = $._PVS._speedFactor(main);
+            var mainMapping = $._PVS._clipTimeMapping(main);
             mainVideoClip = {
                 name: main.name,
                 nodeId: main.nodeId,
@@ -231,7 +239,9 @@ $._PVS.scanSequence = function () {
                 duration: main.duration.seconds,
                 inPoint: main.inPoint.seconds,
                 outPoint: main.outPoint.seconds,
-                speedPercent: mainSpeed
+                speedPercent: mainSpeed === null ? null : mainSpeed * 100,
+                isSpeedReversed: mainMapping.isSpeedReversed,
+                timeRemap: mainMapping.timeRemap
             };
             try {
                 var linked = main.getLinkedItems();
@@ -260,17 +270,14 @@ $._PVS.scanSequence = function () {
             }
         }
 
-        var a2 = seq.audioTracks[1];
+        var a2 = seq.audioTracks.numTracks > 1 ? seq.audioTracks[1] : null;
         var voices = [];
-        for (var i = 0; i < a2.clips.numItems; i++) {
+        for (var i = 0; a2 && i < a2.clips.numItems; i++) {
             var clip = a2.clips[i];
             var mediaPath = "";
-            var speed = 100;
             try { mediaPath = clip.projectItem.getMediaPath(); } catch (ignorePath) {}
-            try {
-                speed = Number(clip.getSpeed());
-                if (speed > 0 && speed <= 10) speed *= 100;
-            } catch (ignoreSpeed) { speed = 100; }
+            var speed = $._PVS._speedFactor(clip);
+            var mapping = $._PVS._clipTimeMapping(clip);
             voices.push({
                 index: i,
                 name: clip.name,
@@ -280,32 +287,30 @@ $._PVS.scanSequence = function () {
                 duration: clip.duration.seconds,
                 inPoint: clip.inPoint.seconds,
                 outPoint: clip.outPoint.seconds,
-                speedPercent: speed
+                speedPercent: speed === null ? null : speed * 100,
+                isSpeedReversed: mapping.isSpeedReversed,
+                timeRemap: mapping.timeRemap
             });
         }
-        var mainVoiceCount = voices.length ? 1 : 0;
-        for (var voiceIndex = 1; voiceIndex < voices.length; voiceIndex++) {
-            if (Number(voices[voiceIndex].start) - Number(voices[voiceIndex - 1].end) > 2.0) break;
-            mainVoiceCount++;
-        }
-
+        var linkedTrackIndex = linkedAudio.length ? $._PVS._findLinkedTrack(seq, linkedAudio[0], Number(mainVideoClip.end)) : -1;
         return $._PVS._result({
             ok: true,
+            hasSequence: true,
             name: seq.name,
             projectId: String(app.project.documentID || app.project.path || ""),
             applicationFolder: Folder.startup.fsName,
             sequenceId: seq.sequenceID,
             videoTrackCount: seq.videoTracks.numTracks,
             audioTrackCount: seq.audioTracks.numTracks,
-            captionTrackCount: seq.captionTracks ? seq.captionTracks.numTracks : 0,
+            captionTrackCount: captionTrackCount,
             frameRate: fps,
             v1ClipCount: v1Count,
             mainVideoPieceCount: mainVideoPieceCount,
             v1LooksNested: looksNested,
             mainVideoClip: mainVideoClip,
             linkedAudio: linkedAudio,
+            linkedTrackIndex: linkedTrackIndex,
             voiceTrackIndex: 1,
-            mainVoiceCount: mainVoiceCount,
             voices: voices
         });
     } catch (e) { return $._PVS._error(e); }
@@ -1182,27 +1187,38 @@ $._PVS._projectItemKey = function (projectItem) {
     return ""; // A display name is not a durable source identity.
 };
 
+$._PVS._clipTimeMapping = function (item) {
+    var mapping = { isSpeedReversed: false, timeRemap: "none" };
+    try { if (item.isSpeedReversed) mapping.isSpeedReversed = !!item.isSpeedReversed(); }
+    catch (ignoreReverse) { mapping.isSpeedReversed = null; }
+    try {
+        var components = item.components;
+        if (components) for (var c = 0; c < (components.numItems === undefined ? components.length : components.numItems); c++) {
+            var component = components[c];
+            if (!/time[\s_-]*remap/i.test(String(component.matchName || "") + " " + String(component.displayName || ""))) continue;
+            if (mapping.timeRemap === "none") mapping.timeRemap = "static";
+            var properties = component.properties;
+            if (!properties || !properties.numItems) { mapping.timeRemap = "unknown"; continue; }
+            for (var p = 0; p < properties.numItems; p++) {
+                if (typeof properties[p].isTimeVarying !== "function") mapping.timeRemap = "unknown";
+                else if (properties[p].isTimeVarying()) { mapping.timeRemap = "varying"; return mapping; }
+            }
+        }
+    } catch (ignoreRemap) { mapping.timeRemap = "unknown"; }
+    return mapping;
+};
+
 $._PVS._clipMarkerMapping = function (item, allowNested) {
     try {
         if (!item || !item.projectItem || typeof item.projectItem.getMarkers !== "function" || typeof item.getSpeed !== "function") return null;
         if (!allowNested && item.projectItem.isSequence && item.projectItem.isSequence()) return null;
-        if (item.isSpeedReversed && item.isSpeedReversed()) return null;
+        var mapping = $._PVS._clipTimeMapping(item);
+        if (mapping.isSpeedReversed !== false) return null;
         var speed = $._PVS._speedFactor(item);
         if (speed === null) return null;
-        var components = item.components;
-        if (components) for (var c = 0; c < (components.numItems === undefined ? components.length : components.numItems); c++) {
-            var component = components[c];
-            if (/time[\s_-]*remap/i.test(String(component.matchName || "") + " " + String(component.displayName || ""))) {
-                // No voice time-remap mapping was proven by #34, including a
-                // static remap. Existing V1 nest warnings retain their adapter.
-                if (!allowNested) return null;
-                // Premiere may expose the built-in static effect too. Only a
-                // readable, entirely non-varying effect is a constant mapping.
-                var properties = component.properties;
-                if (!properties || !properties.numItems) return null;
-                for (var p = 0; p < properties.numItems; p++) if (typeof properties[p].isTimeVarying !== "function" || properties[p].isTimeVarying()) return null;
-            }
-        }
+        // #34 proved no voice time-remap mapping. V1 permits a readable,
+        // entirely non-varying built-in effect as a constant mapping.
+        if (mapping.timeRemap !== "none" && !(allowNested && mapping.timeRemap === "static")) return null;
         var start = Number(item.start.seconds), end = Number(item.end.seconds), input = Number(item.inPoint.seconds), output = Number(item.outPoint.seconds);
         if (!isFinite(start) || !isFinite(end) || !isFinite(input) || !isFinite(output) || start < 0 || input < 0 || end <= start || output <= input) return null;
         return { start: start, end: end, input: input, speed: speed,
@@ -1592,16 +1608,6 @@ $._PVS.executePlan = function (planPath) {
         for (i = 0; i < keyed.length; i++) items[i] = keyed[i].item;
         return items;
     }
-    function findLinkedTrack(sequence, spec, mainEnd) {
-        for (var ti = 0; ti < sequence.audioTracks.numTracks; ti++) {
-            var track = sequence.audioTracks[ti];
-            for (var ci = 0; ci < track.clips.numItems; ci++) {
-                var clip = track.clips[ci];
-                if (String(clip.name) === String(spec.name) && Math.abs(Number(clip.start.seconds)) < 0.05 && Math.abs(Number(clip.end.seconds) - mainEnd) < 0.1) return ti;
-            }
-        }
-        return -1;
-    }
     function preservedSignatures(sequence, linkedTrackIndex, voiceTrackIndex, mainName, linkedName, voiceNames) {
         var values = [];
         function add(kind, trackIndex, clip) {
@@ -1731,7 +1737,7 @@ $._PVS.executePlan = function (planPath) {
         var voiceEnd = Number(voiceClips[voiceClips.length - 1].end);
         var linkedSpecs = asArray(plan.linkedAudio);
         if (!linkedSpecs.length) throw new Error("Plan has no linked original audio.");
-        var linkedTrackIndex = findLinkedTrack(original, linkedSpecs[0], mainEnd);
+        var linkedTrackIndex = $._PVS._findLinkedTrack(original, linkedSpecs[0], mainEnd);
         if (linkedTrackIndex < 0) throw new Error("Could not locate linked original audio.");
         var originalMain = original.videoTracks[0].clips[0];
         if (!originalMain || Math.abs(Number(originalMain.end.seconds) - mainEnd) > 0.1) throw new Error("V1 main clip no longer matches plan.");

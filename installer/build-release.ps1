@@ -66,7 +66,7 @@ Copy-Item -LiteralPath $handoff -Destination (Join-Path $staging 'THONG_BAO.md')
 
 $required = @(
     'extension\js\srt-join.js',
-    'extension\CSXS\manifest.xml', 'extension\index.html', 'extension\js\main.js', 'extension\js\caption-input.js',
+    'extension\CSXS\manifest.xml', 'extension\index.html', 'extension\js\main.js', 'extension\js\caption-input.js', 'extension\js\edit-input.js',
     'extension\jsx\host.jsx', 'extension\jsx\diagnostic-executor.jsx',
     'extension\engine\run-alignment.ps1', 'extension\engine\build-sentence-plan.ps1', 'extension\engine\resolve-backend.ps1',
     'extension\engine\run-captions.ps1', 'extension\engine\run-workflow.ps1', 'extension\engine\request-attention.ps1', 'extension\engine\lib\CaptionOnly.ps1',

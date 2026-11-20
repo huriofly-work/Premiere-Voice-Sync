@@ -47,7 +47,10 @@ async function paused(mode,point,extras={}){
     r=await paused(mode,point);r.options.snapshotVersion=1;r.f.api.pause();await settle(r.f,r.running);
     assert(r.f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));assert(!r.f.controls.runSync.disabled&&!r.f.controls.runCaptions.disabled);
     assert(!r.f.calls.some(c=>c[0]==="host"&&c[1].includes("applyCaptionOnly")));
-    if(mode==="edit")assert.equal(r.f.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1,"Changed timeline cannot receive next stage");
+    if(mode==="edit"){
+      assert.equal(r.f.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1,"Changed timeline cannot receive next stage");
+      assert.match(r.f.controls.workflowNoticeMessage.textContent,/Template đã thay đổi trong lúc tạm dừng/);
+    }
     r=await paused(mode,point);r.f.api.fatal(Error("FATAL_PAUSED"));await settle(r.f,r.running);
     assert(r.f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất")||r.f.controls.workflowNoticeTitle.textContent.includes("lỗi"));
     r=await paused(mode,point);r.options.pauseReadFailure=true;r.f.api.pause();await settle(r.f,r.running);

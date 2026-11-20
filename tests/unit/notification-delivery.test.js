@@ -13,13 +13,13 @@ function fixture(options={}) {
   }
   const element=id=>elements[id]||(elements[id]=makeElement(id));
   const bridge={publish:(item,toast)=>native.push({type:"publish",item,toast}),clear:item=>native.push({type:"clear",item}),observe:(item,visible)=>native.push({type:"observe",item,visible}),hideToast:()=>native.push({type:"hide-toast"}),stop(){}};
-  const context={require:name=>({fs:{},path:path.win32,crypto,child_process:{spawn(){},execFile(file,args,opts,callback){helper.push({file,args,opts,callback});}}}[name]),
-    window:{PvsSecurity:{assertNoLinks(){}},PvsNotificationPolicy:policy,PvsNativeNotifications:{create(options){bridgeOptions=options;return bridge;}},__adobe_cep__:{requestOpenExtension(){opened.push("panel");} }},
+  const context={require:name=>({fs:{existsSync:p=>p==="voice.mp3"},path:path.win32,crypto,child_process:{spawn(){},execFile(file,args,opts,callback){helper.push({file,args,opts,callback});}}}[name]),
+    window:{PvsEditInput:require("../../extension/js/edit-input.js"),PvsSecurity:{assertNoLinks(){}},PvsNotificationPolicy:policy,PvsNativeNotifications:{create(options){bridgeOptions=options;return bridge;}},__adobe_cep__:{requestOpenExtension(){opened.push("panel");} }},
     process:{pid:123,env:{SystemRoot:"C:\\Windows"}},document:{getElementById:element,createElement:()=>makeElement("dynamic"),addEventListener(){},hasFocus:()=>focused,visibilityState:"visible"},
-    localStorage:{getItem:key=>settings.get(key)||null,setItem:(key,value)=>settings.set(key,value)},console};
+    fixtureSequence:require("./edit-input.test.js")(),localStorage:{getItem:key=>settings.get(key)||null,setItem:(key,value)=>settings.set(key,value)},console};
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',`
     extensionRoot=function(){return 'C:\\\\panel';};status=log=function(){};
-    state.captionPlan={key:'fixture',input:{sourceMode:'tracks',trackIndices:[1]},ranges:[{start:0,end:10}]};scanSequence=async function(){return {sequenceId:'fixture',voices:[]};};scanCaptionRange=async function(){return {sequenceId:'fixture',snapshot:'baseline',plan:state.captionPlan};};captionTrackCount=async function(){return JSON.stringify({count:0,bins:0,inPoint:0,outPoint:10});};
+    state.captionPlan={key:'fixture',input:{sourceMode:'tracks',trackIndices:[1]},ranges:[{start:0,end:10}]};readSequenceScan=async function(){return fixtureSequence;};scanCaptionRange=async function(){return {sequenceId:'fixture',snapshot:'baseline',plan:state.captionPlan};};captionTrackCount=async function(){return JSON.stringify({count:0,bins:0,inPoint:0,outPoint:10});};
     window.test={show:showWorkflowNotice,close:closeWorkflowNotice,begin:beginRun,fail:reportRunFailure,unexpected:reportUnexpectedError,current:function(){return currentNotice;},context:function(){return runContext;},warning:runWarning,finish:finishRunNotice,readSettings:readSettings,display:displayNotice,setSound:setNotificationSoundPreference,setExternal:setExternalNotificationPreference,edit:runSync,captions:runCaptions,observe:observeCurrentNotice};
   `),context);
   return {api:context.window.test,elements,helper,native,focuses,opened,element,focus:value=>{focused=value;},bridgeOptions:()=>bridgeOptions};

@@ -7,16 +7,6 @@ function Get-PvsSpeedDistance([double]$Speed,[double]$Minimum,[double]$Maximum) 
     return 0.0
 }
 
-function Assert-PvsSpeedMergeInput($Job) {
-    if(-not $Job.PSObject.Properties['speedMergeTrial'] -or $Job.speedMergeTrial -cne 'adjacent-speed-v2' -or $Job.workflow -cnotin @('experimental-dtw-direct','one-click-dtw-direct')){throw 'SPEED_MERGE_EXPLICIT_OPT_IN_REQUIRED'}
-    foreach($field in @('speedWarningMinPercent','speedWarningMaxPercent')){
-        if(-not $Job.PSObject.Properties[$field]){throw 'SPEED_MERGE_THRESHOLDS_REQUIRED'}
-        $value=[double]$Job.$field
-        if([double]::IsNaN($value) -or [double]::IsInfinity($value) -or $value -le 0){throw 'SPEED_MERGE_THRESHOLDS_INVALID'}
-    }
-    if($Job.speedWarningMinPercent -gt $Job.speedWarningMaxPercent){throw 'SPEED_MERGE_THRESHOLDS_INVALID'}
-}
-
 function New-PvsVisualSpeedGroup($Plan,[int[]]$Indices) {
     $items=@(foreach($index in $Indices){$Plan.segments[$index]})
     $first=$items[0];$last=$items[-1]
@@ -93,8 +83,6 @@ function Get-PvsSpeedMergeTrial($Plan) {
     if(-not $Plan.ok -or $Plan.schemaVersion -ne 8 -or $Plan.plannerRevision -ne 18){throw 'SPEED_MERGE_STABLE_PLAN_REQUIRED'}
     if($Plan.PSObject.Properties['visualSegments'] -or $Plan.PSObject.Properties['speedMergeTrial']){throw 'SPEED_MERGE_ALREADY_APPLIED'}
     $minimum=[double]$Plan.speedWarningMinPercent;$maximum=[double]$Plan.speedWarningMaxPercent
-    $validationJob=[pscustomobject]@{workflow='experimental-dtw-direct';speedMergeTrial='adjacent-speed-v2';speedWarningMinPercent=$minimum;speedWarningMaxPercent=$maximum}
-    Assert-PvsSpeedMergeInput $validationJob
     $fps=[double]$Plan.frameRate
     if([double]::IsNaN($fps) -or [double]::IsInfinity($fps) -or $fps -le 0){throw 'SPEED_MERGE_FRAME_RATE_INVALID'}
     $groups=New-Object System.Collections.Generic.List[object]

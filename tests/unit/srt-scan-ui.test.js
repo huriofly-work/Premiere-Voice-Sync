@@ -7,7 +7,7 @@ function fixture(options={}){
   const host=script=>{
     calls.push(script);
     if(script.includes("scanSequence")) {
-      const result={ok:false,error:options.sequenceError||"Sequence này có vẻ đã được dựng. Hãy mở lại sequence template sạch."};
+      const result=options.scan || require("./edit-input.test.js")({mainVideoPieceCount:2});
       return options.deferSequence?new Promise(resolve=>{sequenceReply=()=>resolve(result);}):Promise.resolve(result);
     }
     if(script.includes("scanCaptionRange")) return Promise.resolve({ok:true,inputVersion:1,projectId:"project",sequenceId:"seq",name:"Caption sequence",snapshot:"base",frameRate:30,sequenceEnd:5,selectionRanges:[{start:1,end:5}],selectedAudio:[],audioTracks:[{index:1,key:"A2",clipCount:1,muted:false,clips:[{nodeId:"voice",start:1,end:5,disabled:false}]}]});
@@ -16,18 +16,23 @@ function fixture(options={}){
     const result=begin?{ok:true,done:false,candidates:[]}:{ok:true,done:true,candidates:options.candidates||[{name:"renamed",path:"\\\\offline\\share\\reference.srt"},{name:"duplicate",path:"\\\\OFFLINE\\share\\reference.srt"}]};
     return new Promise(resolve=>setImmediate(()=>resolve(result)));
   };
-  const context={require:n=>({fs:{existsSync(){throw Error("SCAN_MUST_NOT_TOUCH_DISK");}},path:path.win32,child_process:{}}[n]),
-    window:{PvsSecurity:{},PvsCaptionInput:require("../../extension/js/caption-input.js"),setTimeout(fn,ms){const id=++timerId;if(ms===0)setImmediate(fn);else timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);}},
+  const context={require:n=>({fs:{existsSync(file){assert.strictEqual(file,"voice.mp3","SRT discovery must not probe SRT paths");return true;}},path:path.win32,child_process:{}}[n]),
+    window:{PvsEditInput:require("../../extension/js/edit-input.js"),PvsSecurity:{},PvsCaptionInput:require("../../extension/js/caption-input.js"),setTimeout(fn,ms){const id=++timerId;if(ms===0)setImmediate(fn);else timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);}},
     document:{getElementById(id){return controls[id]||(controls[id]=element());},createElement:element,addEventListener(){}},localStorage:{getItem(){return null;},setItem(){}},process:{env:{}},console,fixture:{host,messages}};
-  vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',`evalHost=fixture.host;log=function(t){fixture.messages.push(t);};window.scanApi={detect:detectSrt,read:readProjectSrtCandidates,refresh:typeof refreshProjectInputs==='function'?refreshProjectInputs:null,backend:renderBackend,caption:setCaptionSrt,edit:setTargetSrt,state:state};`),context);
+  vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',`applySettings(settingDefaults);evalHost=fixture.host;log=function(t){fixture.messages.push(t);};window.scanApi={detect:detectSrt,read:readProjectSrtCandidates,refresh:typeof refreshProjectInputs==='function'?refreshProjectInputs:null,backend:renderBackend,caption:setCaptionSrt,edit:setTargetSrt,state:state};`),context);
   return {api:context.window.scanApi,controls,calls,messages,timers,replySequence(){sequenceReply();},reply(){late({ok:true,done:true,candidates:[{name:"late",path:"C:\\late.srt"}]});}};
 }
 (async()=>{
   assert(!source.includes('scanSequence().then(function () { return detectSrt(true); })'),"Project SRT discovery must not depend on a valid clean Auto edit sequence");
   assert(source.includes('refreshProjectInputs(true);') && source.includes('refreshProjectInputs(false);'),"startup and Read again must use independent Project discovery");
-  for(const sequenceError of ["Sequence này có vẻ đã được dựng.","Không có sequence đang mở.","Không tìm thấy voice mới trên A2."]){
-    const invalid=fixture({sequenceError});await invalid.api.refresh(true);
-    assert.strictEqual(invalid.api.state.targetSrt,"\\\\offline\\share\\reference.srt");assert.strictEqual(invalid.calls.length,3);assert(invalid.calls[0].includes('beginSrtScan'));assert(invalid.calls[2].includes('scanSequence'));assert(invalid.messages.some(m=>m.includes(sequenceError)));assert.strictEqual(invalid.api.state.sequence,null);
+  const timelineFixtures = [
+    [{hasSequence:false}, "NO_SEQUENCE"],
+    [{mainVideoPieceCount:2}, "ALREADY_CUT"],
+    [{voices:[]}, "NO_A2_VOICE"]
+  ];
+  for(const [data, code] of timelineFixtures){
+    const invalid=fixture({scan:require("./edit-input.test.js")(data)});await invalid.api.refresh(true);
+    assert.strictEqual(invalid.api.state.targetSrt,"\\\\offline\\share\\reference.srt");assert.strictEqual(invalid.calls.length,3);assert(invalid.calls[0].includes('beginSrtScan'));assert(invalid.calls[2].includes('scanSequence'));const expected=require("../../extension/js/edit-input.js").validateEditInput(require("./edit-input.test.js")(data),{voiceGroupGap:2},()=>true).reasons.filter(r=>r.code===code)[0].message;assert(invalid.controls.sequenceSummary.textContent.includes(expected),code+": refresh shows the reason in the summary");assert(invalid.controls.sequenceSummary.className.includes("error"));assert(!invalid.controls.workflowNotice||invalid.controls.workflowNotice.hidden!==false,code+": refresh must not open the notice");
     assert(invalid.controls.sequenceSummary.className.includes('edit-only'));
   }
   const captions=fixture();captions.api.state.mode="captions";

@@ -80,8 +80,7 @@ try {
   `$pvsArguments=@([string[]]`$pvsRequest.args)
   for (`$pvsIndex=0; `$pvsIndex -lt `$pvsArguments.Count; `$pvsIndex++) {
     `$pvsKey=`$pvsArguments[`$pvsIndex]
-    if (`$pvsKey -ceq '-ValidateOnly') { `$pvsParameters.ValidateOnly=`$true }
-    elseif (`$pvsKey -cin @('-JobPath','-PlanPath') -and `$pvsIndex+1 -lt `$pvsArguments.Count) {
+    if (`$pvsKey -cin @('-JobPath','-PlanPath') -and `$pvsIndex+1 -lt `$pvsArguments.Count) {
       `$pvsIndex++; `$pvsParameters[`$pvsKey.Substring(1)]=`$pvsArguments[`$pvsIndex]
     } else { throw 'WORKFLOW_ARGUMENT_NOT_ALLOWED' }
   }

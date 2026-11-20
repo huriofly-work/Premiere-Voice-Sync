@@ -12,7 +12,7 @@ const fixture = `
     if (script.indexOf('workflowPauseState') >= 0) return {ok:true,state:'fixture-pause-state'};
     if (script.indexOf('beginSrtScan') >= 0) return {ok:true,done:false,candidates:[]};
     if (script.indexOf('advanceSrtScan') >= 0) return {ok:true,done:true,candidates:[{name:'Video mẫu.vi.srt',path:'C:\\\\Fixture\\\\Video mẫu.vi.srt'},{name:'Phần 02 — phụ đề tiếng Việt với tên khá dài để kiểm tra bố cục.srt',path:'C:\\\\Fixture\\\\Phần 02 — phụ đề tiếng Việt với tên khá dài để kiểm tra bố cục.srt'}]};
-    if (script.indexOf('scanSequence') >= 0) return {ok:true,name:'Video mẫu',mainVideoPieceCount:1,captionTrackCount:0,mainVideoClip:{name:'Video gốc'},linkedAudio:[{}],voices:[{name:'Video mẫu.mp3'}]};
+    if (script.indexOf('scanSequence') >= 0) return {ok:true,name:'Video mẫu',mainVideoPieceCount:1,captionTrackCount:0,frameRate:30,mainVideoClip:{name:'Video gốc',start:0,end:10,inPoint:0,speedPercent:100,timeRemap:'none'},linkedTrackIndex:0,linkedAudio:[{start:0,end:10}],voices:[{name:'Video mẫu.mp3',path:'Video mẫu.mp3',start:0,end:10,inPoint:0,speedPercent:100,timeRemap:'none'}]};
     if (script.indexOf('scanCaptionRange') >= 0) return {ok:true,inputVersion:1,projectId:'fixture-project',sequenceId:'fixture',name:'Video mẫu',frameRate:30,sequenceEnd:60,snapshot:'fixture-snapshot',selectionRanges:[{start:10,end:40}],selectedAudio:[{trackIndex:1,nodeId:'voice'}],inOut:{start:20,end:30,valid:true},audioTracks:[{index:0,key:'A1',name:'Âm thanh gốc',clipCount:1,muted:false,clips:[{nodeId:'original',start:0,end:60,disabled:false}]},{index:1,key:'A2',name:'Voice tiếng Việt',clipCount:1,muted:true,clips:[{nodeId:'voice',start:10,end:40,disabled:false}]},{index:2,key:'A3',name:'Nhạc nền',clipCount:1,muted:false,clips:[{nodeId:'music',start:0,end:60,disabled:false}]}]};
     throw new Error('Unexpected host operation in layout fixture');
   };
@@ -33,7 +33,7 @@ const fixture = `
   document.addEventListener("DOMContentLoaded", wire);
 `;
 const js = source.replace('  document.addEventListener("DOMContentLoaded", wire);', fixture);
-const files = {'/': 'index.html', '/index.html':'index.html', '/css/styles.css':'css/styles.css', '/js/security.js':'js/security.js','/js/notification-policy.js':'js/notification-policy.js','/js/native-notifications.js':'js/native-notifications.js','/js/caption-input.js':'js/caption-input.js'};
+const files = {'/': 'index.html', '/index.html':'index.html', '/css/styles.css':'css/styles.css', '/js/security.js':'js/security.js','/js/notification-policy.js':'js/notification-policy.js','/js/native-notifications.js':'js/native-notifications.js','/js/caption-input.js':'js/caption-input.js','/js/edit-input.js':'js/edit-input.js'};
 files['/js/srt-join.js']='js/srt-join.js';
 function handle(req,res){
   if(req.url==='/js/main.js'){res.setHeader('Content-Type','text/javascript; charset=utf-8');res.end(js);return;}
@@ -54,7 +54,7 @@ if(require.main===module)(async()=>{
       await page.addInitScript(()=>{
         window.previewReads=[];
         window.require=function(name){
-          if(name==='fs')return {existsSync(){return false;}};
+          if(name==='fs')return {existsSync(file){return file==='Video mẫu.mp3';}};
           if(name==='path')return {sep:'\\',dirname(p){return p.replace(/[\\/][^\\/]*$/,'');},join(...p){return p.join('\\');},normalize(p){return p;},basename(p,ext){let n=p.split(/[\\/]/).pop();return ext&&n.endsWith(ext)?n.slice(0,-ext.length):n;},extname(p){return /\.[^.\\/]+$/.exec(p)?.[0]||'';}};
           if(name==='child_process')return {};
           throw new Error('Unexpected module in layout fixture: '+name);

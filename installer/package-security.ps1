@@ -8,7 +8,7 @@ function Get-PvsPackageFiles {
         'scripts\install.ps1','scripts\uninstall.ps1','scripts\package-security.ps1',
         'extension\CSXS\manifest.xml','extension\index.html','extension\css\styles.css',
         'extension\js\main.js','extension\js\security.js','extension\jsx\host.jsx','extension\jsx\diagnostic-executor.jsx',
-        'extension\js\notification-policy.js','extension\js\native-notifications.js','extension\js\caption-input.js',
+        'extension\js\notification-policy.js','extension\js\native-notifications.js','extension\js\caption-input.js','extension\js\edit-input.js',
         'extension\native\PvsNotifications.exe','extension\native\helper-lock.json','extension\native\NotificationIdentity.cs','extension\native\NotificationProtocol.cs','extension\native\NotificationHost.cs','extension\native\NotificationWindow.cs',
         'extension\engine\runtime-lock.json','extension\engine\cuda-lock.json','extension\engine\runtime\engine.json',
         'extension\js\srt-join.js'

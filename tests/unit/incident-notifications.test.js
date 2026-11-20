@@ -5,15 +5,16 @@ function fixture(options = {}) {
   const controls = {}, native = [], host = [], storage = new Map(), events = {}, callbacks = [];
   storage.set("pvs.focusOnIncident", options.disabled ? "false" : "true");
   const element = id => controls[id] || (controls[id] = { hidden: false, textContent: "", attrs: {}, setAttribute(k,v) { this.attrs[k]=v; }, focus() {}, addEventListener() {} });
-  const context = { require: n => ({ fs: {}, path: path.win32, child_process: { execFile(file,args,opts,done) { native.push({file,args,opts}); callbacks.push(done); } } }[n]),
-    window: { PvsSecurity: { assertNoLinks() {} }, __adobe_cep__: { requestOpenExtension(id) { host.push(id); } } },
+  const context = { require: n => ({ fs: {existsSync: () => true}, path: path.win32, child_process: { execFile(file,args,opts,done) { native.push({file,args,opts}); callbacks.push(done); } } }[n]),
+    window: { PvsEditInput:require("../../extension/js/edit-input.js"), PvsSecurity: { assertNoLinks() {} }, __adobe_cep__: { requestOpenExtension(id) { host.push(id); } } },
     document: { getElementById: element, addEventListener() {}, hasFocus() { return true; } },
     localStorage: { getItem(k) { return storage.get(k) || null; }, setItem(k,v) { if(options.storageFailure) throw Error("STORAGE_UNAVAILABLE"); storage.set(k,v); }, removeItem(k) { storage.delete(k); } },
     process: { pid: 123, env: { SystemRoot: "C:\\Windows" } }, console,
-    fixture: { options, events } };
+    fixture: { options, events, sequence: require("./edit-input.test.js")() } };
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);', `
     extensionRoot=function(){return "C:\\\\panel";}; status=log=function(){};
-    scanSequence=async function(){fixture.events.edit=(fixture.events.edit||0)+1;return {ok:true,sequenceId:"other"};};
+    readSettings=function(){return settingDefaults;};
+    readSequenceScan=async function(){fixture.events.edit=(fixture.events.edit||0)+1;return fixture.sequence;};
     scanCaptionRange=async function(){fixture.events.captions=(fixture.events.captions||0)+1;return {sequenceId:"other",plan:{}};};
     window.api={show:showWorkflowNotice,confirm:confirmWorkflowNotice,choose:chooseWorkflowNotice,close:closeWorkflowNotice,begin:beginRun,stage:runStage,fail:reportRunFailure,finish:finishRunNotice,cleanup:appendCleanupNotice,busy:setWorkflowBusy,check:checkInputs,unexpected:reportUnexpectedError,load:loadNoticeHistory,health:updateRunHealth,
       history:function(){return noticeHistory;},queue:function(){return noticeQueue;},current:function(){return currentNotice;},context:function(){return runContext;},end:function(){runContext=null;setWorkflowBusy(false);},setPending:function(n,engine){hostPending=engine?0:n;enginePending=engine?n:0;},state:state};

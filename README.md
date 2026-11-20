@@ -30,8 +30,8 @@ Audio xuất qua Premiere theo nguồn/phạm vi đã chốt. Trong chế độ 
 ## Đầu vào
 
 - Sequence template sạch đang mở.
-- V1: một nested video chính; A1: audio gốc đã linked với V1.
-- A2: các chapter voice tiếng Việt đặt liên tiếp theo thứ tự. CTA cách nhóm voice chính trên 2 giây được giữ nguyên.
+- V1: một nest hình chính còn nguyên phần đầu, bắt đầu ở mốc 0, phát xuôi ở 100%. Nếu có Time Remapping, tốc độ phải cố định và đọc được. A1 là audio gốc đã liên kết và khớp điểm đầu/cuối với V1.
+- A2: các clip voice của nhóm chính còn nguyên phần đầu, phát xuôi từ 1% trở lên, không Time Remapping, có đủ file nguồn và không chồng nhau. CTA cách nhóm voice chính trên 2 giây theo thiết lập mặc định được giữ nguyên.
 - Một file SRT cùng ngôn ngữ đã dùng để tạo voice (hoặc danh sách SRT nối).
 
 Không cần SRT ngôn ngữ gốc, không cần chọn thư mục làm việc và không cần xuất XML.
@@ -41,9 +41,9 @@ Không cần SRT ngôn ngữ gốc, không cần chọn thư mục làm việc v
 1. Mở sequence template sạch.
 2. Chọn SRT trong selectbox được tự động lấy từ Project, hoặc bấm **Chọn ngoài** để thêm một file từ ổ đĩa vào chính selectbox đó.
 3. Mở **Tùy chỉnh theo video** nếu cần; giữ mặc định nếu chưa chắc.
-4. Bấm **Phân tích và dựng tự động** rồi xác nhận. Đầu vào được kiểm lại khi chạy, không cần đọc/chẩn đoán trước.
+4. Bấm **Phân tích và dựng tự động** rồi xác nhận. Tool kiểm tra template trước khi hiện xác nhận. Nếu cần sửa nhiều chỗ, thông báo liệt kê tất cả lý do và cách xử lý.
 
-**Cập nhật đầu vào** dùng sau khi đổi sequence/chọn clip/import SRT; nó cập nhật danh sách SRT và thông tin timeline cho chế độ đang mở. **Chẩn đoán đầu vào** nằm trong **Hỗ trợ và nhật ký**, chỉ dành cho việc tìm nguyên nhân không chạy được, không sửa timeline. Lý do dùng CPU vẫn hiện ngay ngoài mục thiết lập GPU.
+**Cập nhật đầu vào** dùng sau khi đổi sequence/chọn clip/import SRT; nó cập nhật danh sách SRT và thông tin timeline cho chế độ đang mở. **Kiểm tra đầu vào** trên thông báo và **Chẩn đoán đầu vào** trong **Hỗ trợ và nhật ký** dùng cùng bộ kiểm tra template. Sequence đã có Caption Track vẫn có thể dựng nếu các điều kiện đầu vào đạt. Lý do dùng CPU vẫn hiện ngay ngoài mục thiết lập GPU.
 
 Panel tự nhận diện voice, lập kế hoạch câu với điểm cắt DTW an toàn, gộp hình một lần nếu vượt ngưỡng tốc độ, dựng trực tiếp theo đợt nhanh, tạo caption và hậu kiểm. Các cơ chế này là mặc định, không cần bật ô thử nghiệm. Project không tự lưu.
 

@@ -16,10 +16,10 @@ function fixture(options = {}) {
   };
   const context = {
     require: n => ({ fs: faultFs, path, child_process: {} }[n]),
-    window: { PvsSecurity: security },
+    window: { PvsEditInput:require("../../extension/js/edit-input.js"), PvsSecurity: security },
     document: { getElementById: id => controls[id] || (controls[id] = {}), addEventListener() {} },
     localStorage: { getItem: k => storage.get(k) || null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
-    process: { env: {} }, fixture: { home, options, logs }, console
+    process: { env: {} }, fixture: { home, options, logs, sequence: require("./edit-input.test.js")({ voices: [{ ...require("./edit-input.test.js")().voices[0], path: external }] }) }, console
   };
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);', `
     applicationDataRoot = function () { return fixture.home; };
@@ -29,7 +29,7 @@ function fixture(options = {}) {
     readSettings = function () { return settingDefaults; };
     readVoiceLanguage = function () { return "vi"; };
     readCaptionSettings = function () { return { maxCaptionCharacters: 42, language: "vi" }; };
-    scanSequence = async function () { return { name: "fixture", projectId: "project", sequenceId: "seq", voices: [{ start: 0, end: 10, speedPercent: 100, inPoint: 0 }] }; };
+    readSequenceScan= async function () { return fixture.sequence; };
     state.captionPlan = { key: "fixture", input: {}, ranges: [{ start: 0, end: 10 }] };
     scanCaptionRange = async function () { return { projectId: "project", sequenceId: "seq", snapshot: "base", frameRate: 30, plan: state.captionPlan }; };
     captionTrackCount = async function () { return JSON.stringify({ count: 0 }); };
@@ -44,7 +44,6 @@ function fixture(options = {}) {
     };
     executeStagedPlan = async function () { return { ok: true, executorVersion: 25 }; };
     runPowerShell = async function (script, args) {
-      if (args.indexOf("-ValidateOnly") >= 0) return;
       var folder = runContext.outputFolder;
       var nested = path.join(folder, "analysis"); fs.mkdirSync(nested, { recursive: true });
       ["timeline-0.wav", "recognition-000.wav", "analysis/retry-timing-1.wav", "analysis/converted.pcm"].forEach(function (name) { fs.writeFileSync(path.join(folder, name), "AUDIO"); });

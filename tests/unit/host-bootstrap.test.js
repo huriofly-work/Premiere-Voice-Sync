@@ -24,7 +24,7 @@ function fixture(options = {}) {
 (async () => {
   const f = fixture(); await f.load();
   assert.equal(f.adobe.bootstrapRevision, undefined);
-  assert.equal(f.adobe._PVS.bootstrapRevision, 3);
+  assert.equal(f.adobe._PVS.bootstrapRevision, 4);
   assert.equal(f.adobe._PVS.captionInput.revision, 1);
   assert.equal(f.reads.length, 2); assert.equal(f.closes.length, 2);
   // A later CEP call must see the planner even if no bare global survived eval.
@@ -35,7 +35,8 @@ function fixture(options = {}) {
   // Host source was decoded as UTF-8 as well as the model.
   assert(String(f.adobe._PVS.beginCaptionAudioExport).includes("Chưa nạp bộ lập kế hoạch nguồn audio."));
   await f.load(); f.reset(); await f.load(); assert.equal(f.reads.length, 2, "warm host stays loaded");
-  delete f.adobe._PVS.captionInput; f.reset(); await f.load(); assert.equal(f.reads.length, 4, "missing dependency reloads");
+  f.adobe._PVS.bootstrapRevision = 3; f.reset(); await f.load(); assert.equal(f.reads.length, 4, "old host scan contract reloads");
+  delete f.adobe._PVS.captionInput; f.reset(); await f.load(); assert.equal(f.reads.length, 6, "missing dependency reloads");
   for (const options of [{ brokenModel: true }, { denied: true }]) {
     const bad = fixture(options); await assert.rejects(bad.load(), /Không nạp được/);
     assert(!bad.adobe._PVS.bootstrapRevision, "partial bootstrap cannot mark ready");

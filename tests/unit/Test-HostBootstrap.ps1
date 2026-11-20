@@ -26,8 +26,8 @@ if ($source.IndexOf('if (raw === "EvalScript error.") { reject(new Error(raw)); 
 
 $hostPathIndex = $source.IndexOf('path.join(extensionRoot(), "jsx", "host.jsx")',[StringComparison]::Ordinal)
 $evalFileIndex = $source.IndexOf('eval(s);',[StringComparison]::Ordinal)
-$scanIndex = $source.IndexOf('var info = await evalHost("$._PVS.scanSequence()")',[StringComparison]::Ordinal)
-if ($hostPathIndex -lt 0 -or $evalFileIndex -lt $hostPathIndex -or $scanIndex -lt $evalFileIndex) {
+$scanIndex = $source.IndexOf('async function readSequenceScan()',[StringComparison]::Ordinal)
+if ($hostPathIndex -lt 0 -or $evalFileIndex -lt $hostPathIndex -or $scanIndex -lt $evalFileIndex -or $source.IndexOf('evalHost("$._PVS.scanSequence()")',[StringComparison]::Ordinal) -lt $scanIndex) {
     throw 'HOST_BOOTSTRAP_ORDER_INVALID'
 }
 

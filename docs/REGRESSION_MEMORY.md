@@ -1,5 +1,35 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #109 — Một bộ kiểm tra template cho Dựng theo voice
+
+- **Nguyên nhân.** Host, panel và bước kiểm trước nhận diện dùng các điều kiện
+  khác nhau. Chẩn đoán kiểm file nguồn và clip chồng lấn, còn lượt dựng chỉ
+  kiểm media In ở nhánh DTW. Caption Track bị nhầm với V1 đã cắt. Lượt quét
+  lại sau phân tích cũng đi qua điều kiện đầu vào nên có thể báo sai thời điểm.
+- **Quyết định.** Host trả dữ liệu timeline. Panel dùng cùng danh sách lý do
+  cho cập nhật, kiểm tra, chẩn đoán và mọi chế độ dựng. Báo đủ lý do trước
+  xác nhận, giữ mã trong Chi tiết. Bỏ hai lượt PowerShell kiểm trước nhận diện
+  và cho phép template có Caption Track.
+- **Bất biến.** Giữ giới hạn media In, tốc độ voice từ 1% và fps khi lập kế
+  hoạch DTW. Bộ căn và panel dùng cùng quy tắc chọn nhóm A2. V1 chỉ chấp nhận
+  Time Remapping đọc được và cố định. Ánh xạ marker giữ hành vi cũ. So dữ
+  liệu timeline khi phân tích xong, tiếp tục sau tạm dừng và giữa các đợt
+  dựng. Giữ kiểm liên kết A1, đuôi V1 và ánh xạ chapter trong executor.
+- **Hồi quy.** Bản cũ trả số Caption Track bằng 0 khi thiếu API và vẫn hiện
+  xác nhận với voice vừa cắt đầu vừa thiếu file. Mock mới kiểm từng mã, nhiều
+  lý do, caption có sẵn, Reverse, phạm vi CTA, so quy tắc nhóm với PowerShell,
+  lỗi template đổi giữa lượt và các bất biến của executor.
+- **Soát lại.** Hai clip A2 nối liền có thể lệch nhau do làm tròn tick nên
+  kiểm chồng lấn cho phép nửa frame; chồng một frame vẫn bị chặn. Lượt mở panel
+  và Đọc lại chỉ ghi lý do vào phần tóm tắt, không mở thông báo lỗi; nút Kiểm
+  tra đầu vào và lượt chạy mới hiện thông báo.
+- **Kết quả.** Bộ chuẩn đạt 79 nhóm, parse 140 file PowerShell, bỏ qua sáu
+  nhóm tích hợp Windows. Kiểm cú pháp JavaScript, ES3 và đối chiếu executor
+  với nguồn đều đạt. Mock marker khớp trên 42 fixture với bốn executor.
+  Log ở `_local/issue-109/standard-after-review.log`. Preview trình duyệt thiếu
+  Playwright và lượt dò media cần fixture riêng. Nghiệm thu trên Premiere
+  còn chờ.
+
 ## Issue #107 — Bỏ khóa lượt sau khi Dừng hoặc lỗi
 
 - **Nguyên nhân.** Panel dùng `recoveryContext` để khóa cả hai nút chạy khi

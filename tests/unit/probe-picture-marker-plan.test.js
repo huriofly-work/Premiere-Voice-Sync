@@ -23,9 +23,9 @@ for (const [start, end] of [
     const probeEnd = { "function group(collection": "function available(", "function same(a, b)": "function speedFactor" }[end];
     assert.equal(body(source, start, probeEnd), body(host, start, end), start);
 }
-for (const name of ["speedFactor", "clipMarkerMapping"]) {
+for (const name of ["speedFactor", "clipTimeMapping", "clipMarkerMapping"]) {
     assert.equal(body(source, "function " + name + "(", "\n    }\n"),
-        body(host, "$._PVS._" + name + " = function (", "\n};").replace("$._PVS._speedFactor(item)", "speedFactor(item)"), name);
+        body(host, "$._PVS._" + name + " = function (", "\n};").replace("$._PVS._speedFactor(item)", "speedFactor(item)").replace("$._PVS._clipTimeMapping(item)", "clipTimeMapping(item)"), name);
 }
 assert.equal(body(source, "function markerKind(", "\n    }\n"),
     body(host, "$._PVS._markerKind = function (", "\n};"), "markerKind");

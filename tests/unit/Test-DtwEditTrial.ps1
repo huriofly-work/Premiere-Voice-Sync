@@ -26,10 +26,6 @@ $base=[pscustomobject]@{ok=$true;schemaVersion=8;plannerRevision=18;sequenceId='
 Assert-PvsDtwTrialJob $job $base
 $defaultJob=Clone $job;$defaultJob.workflow='one-click-dtw-direct'
 Assert-PvsDtwTrialJob $defaultJob $base
-$bad=Clone $job;$bad.PSObject.Properties.Remove('editBoundaryTrial')
-Reject {Assert-PvsDtwTrialJob $bad $base} 'TRIAL_EXPLICIT_OPT_IN_REQUIRED'
-$bad=Clone $job;$bad.workflow='one-click-direct'
-Reject {Assert-PvsDtwTrialJob $bad $base} 'TRIAL_EXPLICIT_OPT_IN_REQUIRED'
 $bad=Clone $base;$bad.schemaVersion=0;$bad.ok=$false
 Reject {Assert-PvsDtwTrialJob $job $bad} 'TRIAL_STABLE_PLAN_REQUIRED'
 $bad=Clone $base;$bad.mainVideoClip.nodeId='changed'
@@ -46,17 +42,15 @@ foreach($speed in @(50.0,90.0,100.000005,110.0,150.0)){
 $bad=Clone $base;$bad.voiceClips[0].inPoint=1
 $inputJob=Clone $job;$inputJob.sequence.voices=$bad.voiceClips
 Reject {Assert-PvsDtwTrialJob $inputJob $bad} 'TRIAL_VOICE_MEDIA_IN_NONZERO:chapter-1;inPointSeconds=1;speedPercent=100'
-foreach($speed in @(0.0,-100.0,[double]::NaN,[double]::PositiveInfinity)){
+foreach($speed in @(0.0,0.5,-100.0,[double]::NaN,[double]::PositiveInfinity)){
     $bad=Clone $base;$bad.voiceClips[0].speedPercent=$speed
     $inputJob=Clone $job;$inputJob.sequence.voices=$bad.voiceClips
-    Reject {Assert-PvsDtwTrialInput $inputJob} 'TRIAL_VOICE_METADATA_INVALID:chapter-1'
+    Reject {Assert-PvsDtwTrialInput $inputJob.sequence.frameRate $inputJob.sequence.voices} 'TRIAL_VOICE_METADATA_INVALID:chapter-1'
 }
-$missing=Clone $job;$missing.sequence.voices[0].PSObject.Properties.Remove('inPoint')
-Reject {Assert-PvsDtwTrialInput $missing} 'TRIAL_VOICE_METADATA_REQUIRED:chapter-1'
 $cta=Clone $job;$cta.sequence.voices=@($cta.sequence.voices)+@([pscustomobject]@{start=7;end=9;speedPercent=110;inPoint=1})
-Assert-PvsDtwTrialInput $cta
-$cta | Add-Member algorithm ([pscustomobject]@{voiceGroupGapSeconds=10})
-Reject {Assert-PvsDtwTrialInput $cta} 'TRIAL_VOICE_MEDIA_IN_NONZERO:chapter-2;inPointSeconds=1;speedPercent=110'
+Assert-PvsDtwTrialJob $cta $base
+Reject {Assert-PvsDtwTrialInput 30 $cta.sequence.voices} 'TRIAL_VOICE_MEDIA_IN_NONZERO:chapter-2;inPointSeconds=1;speedPercent=110'
+Reject {Assert-PvsDtwTrialInput 241 $job.sequence.voices} 'TRIAL_FRAME_RATE_INVALID'
 $candidate=Clone $base
 $candidate.segments=@([pscustomobject]@{Kind='retime';Chapter=0;SourceStartFrame=0;SourceEndFrame=60;NewStartFrame=0;NewEndFrame=57;OriginalVoiceStartFrame=0;OriginalVoiceEndFrame=57;LastTargetCue=1},[pscustomobject]@{Kind='retime';Chapter=0;SourceStartFrame=60;SourceEndFrame=120;NewStartFrame=57;NewEndFrame=120;OriginalVoiceStartFrame=57;OriginalVoiceEndFrame=120;LastTargetCue=2})
 $rows=@([pscustomobject]@{Status='candidate';Chapter=0;CutFrame=57;LeftCue=1})
@@ -79,4 +73,4 @@ $html=[IO.File]::ReadAllText("$root\extension\index.html")
 if($html -match 'id="(allowDtwTrial|allowSpeedMerge|runDtwTrial)"'){throw 'DEFAULT_ALGORITHM_EXPOSED_AS_OPTION'}
 & node (Join-Path $PSScriptRoot 'default-edit-ui.test.js')
 if($LASTEXITCODE -ne 0){throw 'DEFAULT_EDIT_UI_FAILED'}
-Write-Host 'DTW_EDIT_GATES_OK:default-and-legacy-protocol;variable-voice-speed;invalid-or-trimmed-input-rejected;CTA-scope;live-template;planner-isolation;cut-identity;conservation'
+Write-Host 'DTW_EDIT_GATES_OK:variable-voice-speed;invalid-or-trimmed-input-rejected;CTA-scope;live-template;planner-isolation;cut-identity;conservation'
