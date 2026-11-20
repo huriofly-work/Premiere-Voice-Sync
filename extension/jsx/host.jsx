@@ -1333,13 +1333,19 @@ $._PVS._planClipMarkers = function (owners, items, issues, kind, workflow, fps, 
                 rank = trackRanks[c];
             }
             for (var a = 0; a < overlaps.length; a++) if (Math.min(overlaps[a].end, right) > Math.max(overlaps[a].start, left)) ambiguous = true;
-            overlaps.push({ start: left, end: right });
+            overlaps.push({ start: left, end: right, piece: pieces[c] });
             if (overlap > largest + 0.000001) { largest = overlap; selected = pieces[c]; }
         }
-        // Ties and simultaneous clips in the selected track remain ambiguous.
-        var equal = 0;
-        for (var o = 0; o < overlaps.length; o++) if (Math.abs(overlaps[o].end - overlaps[o].start - largest) <= 0.000001) equal++;
-        if (ambiguous || equal > 1) { unattached(issue, "Nhiều clip cùng phù hợp."); continue; }
+        if (ambiguous) { unattached(issue, "Nhiều clip cùng phù hợp."); continue; }
+        var equal = 0, earliest = null, midpointPiece = null, midpoint = (issue.start + issue.end) / 2;
+        for (var o = 0; o < overlaps.length; o++) {
+            if (Math.abs(overlaps[o].end - overlaps[o].start - largest) > 0.000001) continue;
+            var candidate = overlaps[o].piece;
+            equal++;
+            if (!earliest || candidate.start < earliest.start) earliest = candidate;
+            if (candidate.start <= midpoint && midpoint < candidate.end) midpointPiece = candidate;
+        }
+        if (equal > 1) selected = midpointPiece || earliest;
         if (!selected) { unattached(issue, "Không có clip trong khoảng cảnh báo."); continue; }
         var owner = selected.owner;
         if (!owner || !owner.Group || !selected.mapping) {
