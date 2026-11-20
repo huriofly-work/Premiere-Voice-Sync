@@ -1,5 +1,13 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #102 — Khôi phục đủ nguồn khi Premiere giới hạn đoạn giảm tốc
+
+- **Nguyên nhân.** Khi QE giảm tốc nest V1/A1, độ dài tối đa bằng số frame từ In nguồn đến cuối media. Premiere đồng thời dịch Out, có ca chỉ còn 274/300 frame nguồn. Với đoạn 337 → 472 frame còn 79 frame nguồn phía sau, executor cũ để hở 56 frame và báo hai clip không hội tụ.
+- **Đo native ngày 20/11/2026.** Hai vòng probe trên Premiere 26.2.2, 30 fps: đoạn trong giới hạn đạt đúng độ dài và đủ nguồn. A chỉ đặt end đạt độ dài nhưng chỉ còn khoảng 287/300 frame nguồn ở lần gọi host sau. B khôi phục Out rồi đặt end giữ đủ 300 frame ngay sau ghi và ở lần đọc sau. C bật ripple vẫn bị giới hạn. Người dùng phát đuôi và thử Rate Stretch cả A/B/C: phát bình thường, mép không nhảy.
+- **Bất biến.** Với mỗi clip V1/A1, lưu số tick nguồn trước khi đổi tốc độ. Chỉ khi độ dài đọc lại ngắn hơn kế hoạch mới ghi Out = In + số tick đích, rồi ghi end = start + số tick đích. Độ dài đọc lại phải đúng frame; sai số của (Out − In) × tốc độ đọc lại so với nguồn ban đầu phải trong dung sai frame. Lỗi ghi hoặc sai số vượt ngưỡng được ghi vào danh sách không hội tụ.
+- **Hồi quy.** Mock executor kiểm khe hở giữa timeline và số frame nguồn trên cả hai track, kể cả đoạn cuối. Với nhánh cũ chỉ ghi end, đoạn cuối còn khoảng 334/337 frame nguồn. Kiểm thứ tự ghi trong host, parser ES3 trên nguồn và probe, giữ lượt lỗi mới nhất theo workflow khi bắt đầu lượt mới và khi dọn dữ liệu cũ.
+- **Kết quả.** Trên V1 và A1, hai ca đều giữ đủ 337 frame nguồn. Ca 472 frame hết khe hở, số clip không hội tụ bằng 0. Khi host bỏ qua lệnh ghi Out, executor báo cả hai clip lỗi dù độ dài đúng. Kiểm probe, ES3, cú pháp panel và đối chiếu executor đều đạt. Bộ chuẩn đạt 80 nhóm, parse 141 tệp PowerShell, bỏ qua sáu nhóm tích hợp Windows. Nghiệm thu toàn bộ lượt Dựng theo voice trên Premiere còn chờ.
+
 ## Issue #111 — Gộp lần đọc đầu vào Tạo phụ đề
 
 - **Dọn đường chạy.** `scanCaptionRange` trả thêm số Caption Track, số bin

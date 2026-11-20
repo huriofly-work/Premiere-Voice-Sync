@@ -7,8 +7,22 @@ function literal(value) {
     return JSON.stringify(value).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
-function scriptFor(args) {
+function loadScript(file, result) {
+    const jsxPath = file.replace(/\\/g, "/");
+    if (!fs.statSync(jsxPath).isFile()) throw Error("Probe JSX is not a file.");
+    return `(function(){try{var file=new File(${literal(jsxPath)});file.encoding="UTF-8";$.evalFile(file);` +
+        `return ${result};}catch(e){var m=(String(e)+" (line "+e.line+")").replace(/[^ -~]/g," ").replace(/["\\\\]/g,"'");` +
+        `return '{"ok":false,"error":"Probe load failed: '+m+'"}';}})()`;
+}
+
+function scriptFor(args, slowcapExpected) {
     const [command, ...rest] = args;
+    if (command === "slowcap-auto") {
+        if (rest.length !== 0) throw Error("Usage: slowcap-auto");
+        return slowcapExpected === undefined ?
+            loadScript(path.join(__dirname, "Probe-SlowedPieceCap.jsx"), "$._PVSSlowedPieceCapProbe.preview()") :
+            `$._PVSSlowedPieceCapProbe.run(${literal(slowcapExpected)})`;
+    }
     if (command === "cost-list" && rest.length === 0) return "$._PVSMarkerWriteCostProbe.list()";
     if (command === "move-list") {
         if (rest.length && (rest.length !== 1 || rest[0] !== "probe-tagged-nest")) throw Error("Usage: move-list [probe-tagged-nest]");
@@ -40,16 +54,13 @@ function scriptFor(args) {
     }
     if (command === "load" && rest.length === 1) {
         if (!path.isAbsolute(rest[0])) throw Error("load requires an absolute JSX path.");
-        const file = rest[0].replace(/\\/g, "/");
-        if (!fs.statSync(file).isFile()) throw Error("Probe JSX is not a file.");
-        return `(function(){try{var file=new File(${literal(file)});file.encoding="UTF-8";$.evalFile(file);` +
-            `return '{"ok":true,"loaded":true}';}catch(e){return '{"ok":false,"error":"Probe load failed"}';}})()`;
+        return loadScript(rest[0], "'{\"ok\":true,\"loaded\":true}'");
     }
     const arities = { list: [0, 1], create: [3, 3], read: [2, 2], remove: [2, 2] };
     const [method, ...raw] = rest;
     if (command !== "call" || !Object.hasOwn(arities, method) ||
         raw.length < arities[method][0] || raw.length > arities[method][1]) {
-        throw Error("Usage: node tools/probes/run-probe.js [port=8099] load <absolute JSX path> | call list [track] | call create <track> <clip> <source-offset> | call read|remove <track> <clip>");
+        throw Error("Usage: node tools/probes/run-probe.js [port=8099] slowcap-auto | load <absolute JSX path> | call list [track] | call create <track> <clip> <source-offset> | call read|remove <track> <clip>");
     }
     const numbers = raw.map((value, i) => {
         if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) throw Error("Arguments must be finite numbers.");
@@ -113,14 +124,42 @@ async function main(args) {
     if (/^\d+$/.test(args[0] || "")) port = Number(args.shift());
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error("Port must be 1..65535.");
     const script = scriptFor(args);
-    const response = await fetch(`http://localhost:${port}/json`, { signal: AbortSignal.timeout(5000) });
+    let response;
+    try {
+        response = await fetch(`http://localhost:${port}/json`, { signal: AbortSignal.timeout(5000) });
+    } catch (error) {
+        throw Error(`Cannot reach the panel debugger on port ${port}. Add the temporary .debug file to the installed panel folder (see tools/probes/README.md), then close and reopen the panel. (${error.message})`);
+    }
     if (!response.ok) throw Error(`Debugger /json returned HTTP ${response.status}.`);
     const pages = await response.json();
     if (!Array.isArray(pages)) throw Error("Debugger /json did not return a page list.");
     const matches = pages.filter(isPanel);
     if (!matches.length) throw Error("No Premiere Voice Sync panel page found. Check .debug, PlayerDebugMode and the open panel.");
     if (matches.length !== 1) throw Error("Multiple Premiere Voice Sync panel pages found; use the port for exactly one panel.");
-    const result = await evaluate(matches[0].webSocketDebuggerUrl, script, args[0] === "cost-run" || args[0] === "cost-cleanup" ? 600000 : 30000);
+    const url = matches[0].webSocketDebuggerUrl;
+    let result = await evaluate(url, script, args[0] === "cost-run" || args[0] === "cost-cleanup" ? 600000 : 30000);
+    if (args[0] === "slowcap-auto" && result?.ok === true) {
+        if (typeof result.expected !== "string" || !result.plannedChange || !result.before?.sequenceName) throw Error("Invalid slowcap preview.");
+        console.error(JSON.stringify({
+            sequence: result.before.sequenceName,
+            plannedChange: result.plannedChange
+        }, null, 2));
+        result = await evaluate(url, scriptFor(args, result.expected));
+        if (result?.ok === true) {
+            try {
+                const later = await evaluate(url, `$._PVSSlowedPieceCapProbe.reread(${literal(result)})`);
+                if (!Array.isArray(later?.variants)) throw Error(later?.error || "Invalid later readback.");
+                result = later;
+            } catch (error) {
+                result.ok = false;
+                result.laterReadError = error.message;
+            }
+            delete result.timelineAfterWrites;
+        }
+        for (const variant of result?.variants || []) {
+            if (variant.summary) console.error(`${variant.id} @ frame ${variant.startFrame} ${JSON.stringify(variant.summary)}`);
+        }
+    }
     console.log(JSON.stringify(result, null, 2));
     if (result?.ok === false) process.exitCode = 1;
 }

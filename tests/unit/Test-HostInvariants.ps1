@@ -13,9 +13,12 @@ function Assert-Contains([string]$Text,[string]$Needle,[string]$Name) {
 }
 
 if ([regex]::Matches($hostSource, '\.setSpeed\(').Count -ne 1) { throw 'HOST_INVARIANT_FAILED:setSpeed-call-count' }
-if ($hostSource -match 'item\.outPoint\s*=') { throw 'HOST_INVARIANT_FAILED:forced-outPoint' }
-if ([regex]::Matches($hostSource, 'item\.end\s*=\s*forcedEnd').Count -ne 1) { throw 'HOST_INVARIANT_FAILED:terminal-end-fallback-count' }
-Assert-Contains $hostSource 'firstError !== 0 && allowTerminalEndFallback' 'terminal-end-fallback-guard'
+$speedBody = [regex]::Match($hostSource, '(?s)function setClipSpeed\(.*?(?=function readSpeedPercent)').Value
+$writes = 'item\.(?:outPoint|end)\s*='
+if ([regex]::Matches($speedBody, $writes).Count -ne 2 -or
+    $speedBody -notmatch '(?s)if \(actualFrames < desiredFrames\) \{[^}]*?item\.outPoint = plannedOut;\s*item\.end = plannedEnd;') {
+    throw 'HOST_INVARIANT_FAILED:short-piece-out-before-end'
+}
 Assert-Contains $hostSource 'savedSourceTicks / (desiredFrames * ticksPerFrame)' 'exact-source-factor'
 if ($hostSource -match 'sourceBoundaryFailureCount|maxSourceOutErrorFrames|originalVideoSourceRanges') { throw 'HOST_INVARIANT_FAILED:invalid-post-retime-source-audit' }
 # Issue #36 replaces midpoint/fraction placement with the native-probed mapping.

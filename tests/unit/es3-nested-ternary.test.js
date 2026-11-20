@@ -47,9 +47,17 @@ const files = [
     "tools/diagnostic-fast-support.jsx",
     ...fs.readdirSync(path.join(root, "tools/probes")).filter(name => name.endsWith(".jsx")).map(name => "tools/probes/" + name)
 ];
+const es3Options = { ecmaVersion: 3, allowReserved: "never" };
+for (const invalid of ["var final;", "function native(){}", "function f(int){}", "item.class", "item.debugger"]) {
+    assert.throws(() => parser.parse(invalid, es3Options));
+}
+parser.parse('/* var final */ item["class"] = "native";', es3Options);
 const offenders = [];
 for (const file of files) {
-    for (const line of nestedWithoutParentheses(fs.readFileSync(path.join(root, file), "utf8"))) offenders.push(file + ":" + line);
+    const source = fs.readFileSync(path.join(root, file), "utf8");
+    try { parser.parse(source, es3Options); }
+    catch (error) { throw Error(file + ": " + error.message); }
+    for (const line of nestedWithoutParentheses(source)) offenders.push(file + ":" + line);
 }
 assert.deepEqual(offenders, [], "Parenthesize nested conditionals in ExtendScript sources");
 

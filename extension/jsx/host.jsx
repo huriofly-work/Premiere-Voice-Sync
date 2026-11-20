@@ -1602,8 +1602,7 @@ $._PVS.executePlan = function (planPath) {
     var cleanupError = "";
     var report = { ok: false };
     var speedNonConvergenceCount = 0;
-    var speedCorrectionCount = 0;
-    var terminalEndFallbackCount = 0;
+    var cappedSpeedCorrectionCount = 0;
     var maxSpeedDurationErrorBeforeCorrectionFrames = 0;
     var maxSpeedDurationErrorAfterCorrectionFrames = 0;
     var speedConvergenceFailures = [];
@@ -1664,7 +1663,7 @@ $._PVS.executePlan = function (planPath) {
         for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
         return true;
     }
-    function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, allowTerminalEndFallback, pieceIndex) {
+    function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, pieceIndex) {
         pendingNativeReview = { start: Number(item.start.seconds), end: Number(item.end.seconds), reason: "đổi speed lỗi (" + label.replace(" segment ", " ") + ") – kiểm tra trước khi thử lại", severity: "error" };
         var destinationSeconds = desiredFrames / fps;
         var durationTimecode = $._PVS._timecodeFromSeconds(destinationSeconds, fps);
@@ -1676,34 +1675,43 @@ $._PVS.executePlan = function (planPath) {
         noteNative("after", "qe-lookup");
         if (!qeItem) throw new Error("Could not map QE item at " + item.start.seconds + ".");
         timelineMutated = true;
-        // One exact rational retime preserves the complete source interval.
-        // Repeated corrections can converge the visible duration by silently
-        // changing outPoint, which trims a few source frames from every cut.
+        // Request the exact factor once, using the pre-retime source span.
         noteNative("before", "set-speed");
         if (!qeItem.setSpeed(appliedFactor, durationTimecode, false, false, false)) throw new Error("setSpeed failed at " + item.start.seconds + ".");
         noteNative("after", "set-speed");
         var actualFrames = Math.round((Number(item.end.ticks) - Number(item.start.ticks)) / ticksPerFrame);
         var firstError = Math.abs(actualFrames - desiredFrames);
         maxSpeedDurationErrorBeforeCorrectionFrames = Math.max(maxSpeedDurationErrorBeforeCorrectionFrames, firstError);
-        // Premiere 26.2.2 keeps the old visible duration for a slowed clip
-        // that touches the nested source tail. The supported TrackItem.end
-        // setter was verified to update both standard and QE edges. Use it
-        // only for this terminal mismatch; never rewrite outPoint.
-        if (firstError !== 0 && allowTerminalEndFallback) {
-            var forcedEnd = new Time();
-            forcedEnd.ticks = String(Math.round(Number(item.start.ticks) + desiredFrames * ticksPerFrame));
+        var sourceSpanErrorFrames = 0;
+        var correctionError = "";
+        // A slowed nest can hit the media-end cap anywhere. Restore the planned
+        // speed-divided Out before setting end. End alone can trim source frames.
+        if (actualFrames < desiredFrames) {
+            var plannedOut = new Time();
+            plannedOut.ticks = String(Math.round(Number(item.inPoint.ticks) + desiredFrames * ticksPerFrame));
+            var plannedEnd = new Time();
+            plannedEnd.ticks = String(Math.round(Number(item.start.ticks) + desiredFrames * ticksPerFrame));
+            cappedSpeedCorrectionCount++;
             try {
-                item.end = forcedEnd;
-            } catch (terminalEndError) {
-                throw new Error("Terminal duration fallback failed for " + label + ": " + terminalEndError.message);
+                item.outPoint = plannedOut;
+                item.end = plannedEnd;
+            } catch (writeError) {
+                correctionError = String(writeError);
             }
             actualFrames = Math.round((Number(item.end.ticks) - Number(item.start.ticks)) / ticksPerFrame);
-            speedCorrectionCount++;
-            terminalEndFallbackCount++;
+            var observedFactor = $._PVS._speedFactor(item);
+            sourceSpanErrorFrames = null;
+            if (observedFactor !== null) {
+                try {
+                    var dividedSpan = Number(item.outPoint.ticks) - Number(item.inPoint.ticks);
+                    var spanError = Math.abs(dividedSpan * observedFactor - savedSourceTicks) / ticksPerFrame;
+                    if (isFinite(spanError)) sourceSpanErrorFrames = spanError;
+                } catch (unreadableSpan) { /* Missing readback cannot verify the correction. */ }
+            }
         }
         var finalError = Math.abs(actualFrames - desiredFrames);
         maxSpeedDurationErrorAfterCorrectionFrames = Math.max(maxSpeedDurationErrorAfterCorrectionFrames, finalError);
-        if (finalError !== 0) {
+        if (finalError !== 0 || correctionError || sourceSpanErrorFrames === null || sourceSpanErrorFrames > validationToleranceFrames) {
             speedNonConvergenceCount++;
             speedConvergenceFailures.push({
                 label: label,
@@ -1711,6 +1719,8 @@ $._PVS.executePlan = function (planPath) {
                 startFrame: Math.round(Number(item.start.ticks) / ticksPerFrame),
                 desiredFrames: desiredFrames,
                 actualFrames: actualFrames,
+                sourceSpanErrorFrames: sourceSpanErrorFrames,
+                correctionError: correctionError,
                 finalSpeedPercent: appliedFactor * 100
             });
         }
@@ -1915,10 +1925,8 @@ $._PVS.executePlan = function (planPath) {
             var fastFactor = Number(fastPlan.AppliedSpeedPercent) / 100;
             if (fastFactor < 1 || Math.abs(fastFactor - 1) < 0.0001) continue;
             var fastFrames = fastPlan.VisualDurationFrames === undefined ? Math.max(1, Math.round((Number(fastPlan.NewEnd) - Number(fastPlan.BorrowSeconds || 0)) * fps) - Math.round(Number(fastPlan.NewStart) * fps)) : Number(fastPlan.VisualDurationFrames);
-            var fastSourceEndFrame = fastPlan.SourceEndFrame === undefined ? Math.round(Number(fastPlan.SourceEnd) * fps) : Number(fastPlan.SourceEndFrame);
-            var fastTouchesSourceTail = fastSourceEndFrame === Math.round(mainEnd * fps);
-            setClipSpeed(videoPieces[fastIndex], qeVideoTrack, fastFactor, fastFrames, fps, ticksPerFrame * 0.6, "V1 segment " + fastIndex, fastTouchesSourceTail, fastIndex);
-            setClipSpeed(audioPieces[fastIndex], qeAudioTrack, fastFactor, fastFrames, fps, ticksPerFrame * 0.6, "A1 segment " + fastIndex, fastTouchesSourceTail, fastIndex);
+            setClipSpeed(videoPieces[fastIndex], qeVideoTrack, fastFactor, fastFrames, fps, ticksPerFrame * 0.6, "V1 segment " + fastIndex, fastIndex);
+            setClipSpeed(audioPieces[fastIndex], qeAudioTrack, fastFactor, fastFrames, fps, ticksPerFrame * 0.6, "A1 segment " + fastIndex, fastIndex);
             speedChangeCount++;
         }
         var moveCount = 0;
@@ -1937,10 +1945,8 @@ $._PVS.executePlan = function (planPath) {
             var slowFactor = Number(slowPlan.AppliedSpeedPercent) / 100;
             if (slowFactor >= 1 || Math.abs(slowFactor - 1) < 0.0001) continue;
             var slowFrames = slowPlan.VisualDurationFrames === undefined ? Math.max(1, Math.round((Number(slowPlan.NewEnd) - Number(slowPlan.BorrowSeconds || 0)) * fps) - Math.round(Number(slowPlan.NewStart) * fps)) : Number(slowPlan.VisualDurationFrames);
-            var slowSourceEndFrame = slowPlan.SourceEndFrame === undefined ? Math.round(Number(slowPlan.SourceEnd) * fps) : Number(slowPlan.SourceEndFrame);
-            var slowTouchesSourceTail = slowSourceEndFrame === Math.round(mainEnd * fps);
-            setClipSpeed(videoPieces[slowIndex], qeVideoTrack, slowFactor, slowFrames, fps, ticksPerFrame * 0.6, "V1 segment " + slowIndex, slowTouchesSourceTail, slowIndex);
-            setClipSpeed(audioPieces[slowIndex], qeAudioTrack, slowFactor, slowFrames, fps, ticksPerFrame * 0.6, "A1 segment " + slowIndex, slowTouchesSourceTail, slowIndex);
+            setClipSpeed(videoPieces[slowIndex], qeVideoTrack, slowFactor, slowFrames, fps, ticksPerFrame * 0.6, "V1 segment " + slowIndex, slowIndex);
+            setClipSpeed(audioPieces[slowIndex], qeAudioTrack, slowFactor, slowFrames, fps, ticksPerFrame * 0.6, "A1 segment " + slowIndex, slowIndex);
             speedChangeCount++;
         }
 
@@ -1957,8 +1963,7 @@ $._PVS.executePlan = function (planPath) {
             if (reconcileVideoMoved || reconcileAudioMoved) coverageReconcileCount++;
         }
 
-        // Never force end/outPoint after setSpeed: doing so creates internally
-        // inconsistent clips that make Premiere's Rate Stretch tool jump.
+        // setClipSpeed restores Out before end on short pieces. Never extend end alone.
         var timelineEndMismatchCount = 0;
         var speedMetadataReadable = true;
         var actualSpeedWarningMarkers = [];
@@ -2279,7 +2284,8 @@ $._PVS.executePlan = function (planPath) {
         }
         for (var reviewSpeed = 0; reviewSpeed < speedConvergenceFailures.length; reviewSpeed++) {
             var speedFailure = speedConvergenceFailures[reviewSpeed], failedSpeedPiece = speedFailure.pieceIndex;
-            nativeMarker(videoIssues, failedSpeedPiece, speedFailure.startFrame, speedFailure.startFrame + speedFailure.desiredFrames, "độ dài sau speed chưa khớp (" + speedFailure.label.replace(" segment ", " ") + ") – kiểm tra", 1);
+            var mismatch = speedFailure.actualFrames === speedFailure.desiredFrames ? "chưa xác minh được phạm vi nguồn sau speed" : "độ dài sau speed chưa khớp";
+            nativeMarker(videoIssues, failedSpeedPiece, speedFailure.startFrame, speedFailure.startFrame + speedFailure.desiredFrames, mismatch + " (" + speedFailure.label.replace(" segment ", " ") + ") – kiểm tra", 1);
         }
         if (finalVideoTailDeltaFrames !== 0 || finalAudioTailDeltaFrames !== 0) {
             var lastVideoPiece = coverageItems[coverageItems.length - 1], tailPieceIndex;
@@ -2333,8 +2339,7 @@ $._PVS.executePlan = function (planPath) {
             speedChangeCount: speedChangeCount,
             timelineEndMismatchCount: timelineEndMismatchCount,
             speedNonConvergenceCount: speedNonConvergenceCount,
-            speedCorrectionCount: speedCorrectionCount,
-            terminalEndFallbackCount: terminalEndFallbackCount,
+            cappedSpeedCorrectionCount: cappedSpeedCorrectionCount,
             maxSpeedDurationErrorBeforeCorrectionFrames: maxSpeedDurationErrorBeforeCorrectionFrames,
             maxSpeedDurationErrorAfterCorrectionFrames: maxSpeedDurationErrorAfterCorrectionFrames,
             speedConvergenceFailures: speedConvergenceFailures,
