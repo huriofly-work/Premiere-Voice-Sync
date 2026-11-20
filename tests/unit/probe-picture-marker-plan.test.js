@@ -18,19 +18,17 @@ function body(code, start, end) {
 }
 for (const [start, end] of [
     ["function inScope(", "function group(collection"],
-    ["function available(", "function same(a, b)"],
-    ["function isOwnedClipMarker(", "function prepareClipMarkerGroup"]
+    ["function available(", "function same(a, b)"]
 ]) {
-    const probeEnd = { "function group(collection": "function available(", "function same(a, b)": "function speedFactor",
-        "function prepareClipMarkerGroup": "function hasName" }[end];
+    const probeEnd = { "function group(collection": "function available(", "function same(a, b)": "function speedFactor" }[end];
     assert.equal(body(source, start, probeEnd), body(host, start, end), start);
 }
 for (const name of ["speedFactor", "clipMarkerMapping"]) {
     assert.equal(body(source, "function " + name + "(", "\n    }\n"),
         body(host, "$._PVS._" + name + " = function (", "\n};").replace("$._PVS._speedFactor(item)", "speedFactor(item)"), name);
 }
-const pictureNames = [...body(host, "Name: mergedVisualGroup ?", ",\n").matchAll(/"([^"]+)"/g)].map(match => match[1]);
-assert.deepEqual(JSON.parse("[" + body(source, "var PICTURE_NAMES = [", "];") + "]"), pictureNames);
+assert.equal(body(source, "function markerKind(", "\n    }\n"),
+    body(host, "$._PVS._markerKind = function (", "\n};"), "markerKind");
 
 const TICKS = 254016000000, OUTER = TICKS / 30, NEST = TICKS / 25;
 const time = (seconds, ticks = Math.round(seconds * TICKS)) => Object.freeze({ seconds, ticks: String(ticks) });
@@ -52,20 +50,20 @@ const frozenCollection = (values, writes) => readOnly({
     getNextMarker: marker => values[values.indexOf(marker) + 1]
 }, writes);
 function fixture(useHost, missingNest = false) {
-    const writes = [], tag = "[PremiereVoiceSync:owned-marker:v1]";
-    const marker = (name, guid, start, end) => readOnly({
-        name, guid, start: time(start), end: time(end), comments: "private fixture\n" + tag,
+    const writes = [], tag = "[PremiereVoiceSync:video]";
+    const marker = (name, guid, start, end, ownerTag=tag) => readOnly({
+        name, guid, start: time(start), end: time(end), comments: "private fixture\n" + ownerTag,
         type: "Comment", getColorByIndex: () => 1
     }, writes);
     const markers = [
-        marker(pictureNames[0], "keep", 2, 2),
-        marker(pictureNames[1], "move", 2 + 0.6 / 30, 2 + 0.6 / 30),
-        marker(pictureNames[2], "end", 2, 2 + 1 / 30),
-        marker(pictureNames[0], "snap", 2 + 0.4 / 30, 2 + 0.4 / 30)
+        marker("VOICE SYNC - Video", "keep", 2, 2),
+        marker("VOICE SYNC - Video", "move", 2 + 0.6 / 30, 2 + 0.6 / 30),
+        marker("VOICE SYNC - Video", "end", 2, 2 + 1 / 30),
+        marker("VOICE SYNC - Video", "snap", 2 + 0.4 / 30, 2 + 0.4 / 30)
     ];
-    const other = marker("VOICE SYNC - Can kiem tra", "private-review", 3, 3);
+    const other = marker("VOICE SYNC - Caption", "private-review", 3, 3, "[PremiereVoiceSync:caption:edit]");
     // Outside every clip range on the track: a leftover candidate.
-    const stray = marker(pictureNames[2], "stray", 10, 10);
+    const stray = marker("VOICE SYNC - Video", "stray", 10, 10);
     const owners = markers.map((m, i) => Object.freeze({
         nodeId: "owner-" + i, isSequence: () => i === 0,
         getMarkers: () => frozenCollection(i === 0 ? [m, other, stray] : [m], writes)

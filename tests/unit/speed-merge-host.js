@@ -18,7 +18,7 @@ function fixture() {
   const visual = Object.assign({}, segments[0], { SourceEndFrame: 140, SourceEnd: 140 / 30, NewEndFrame: 200, NewEnd: 200 / 30,
     SourceDurationFrames: 140, EffectiveSourceDurationFrames: 140, OutputDurationFrames: 200, VisualDurationFrames: 200,
     AppliedSpeedPercent: 70, MemberSegmentIndices: [0, 1] });
-  return { schemaVersion: 8, speedMergeTrial: "adjacent-speed-v2", segments, visualSegments: [visual, Object.assign({}, segments[2], { MemberSegmentIndices: [2] })], frameRate: 30, mainVideoSourceEndFrame: 170, plannedMainVideoEndFrame: 230 };
+  return { schemaVersion: 8, speedMergeTrial: "adjacent-speed-v2", segments, visualSegments: [visual, Object.assign({}, segments[2], { MemberSegmentIndices: [2] })], frameRate: 30, mainVideoSourceEndFrame: 170, plannedMainVideoEndFrame: 230, reviewMarkers: [] };
 }
 let plan = fixture();
 const snapshot = JSON.stringify(plan.segments);
@@ -51,5 +51,5 @@ for (const mutate of [
 assert(source.includes("var sourcePlan = visualPlans[ps];"));
 assert(source.includes("var speechPlan = plan.segments[spi];"));
 assert(source.includes("speechIndexByPlanSegment[String(spi)] = speechPlans.length;"));
-assert(source.includes("Number(sourceSegments[speedPieceIndex]._PlanSegmentIndex) === Number(speedMarkerSpec.SegmentIndex)"));
+assert(source.includes("piece: normalizeIndex"));
 console.log("SPEED_MERGE_HOST_OK:stable-bypass;cross-chapter;voice-separate;marker-index-spaces;reject-before-Premiere-mutation");

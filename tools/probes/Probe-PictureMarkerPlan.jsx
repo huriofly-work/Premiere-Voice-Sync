@@ -1,8 +1,6 @@
 // Developer-only read-only probe. Loading defines functions without native access.
 $._PVSPictureMarkerPlanProbe = (function () {
     var TICKS = 254016000000;
-    var PICTURE_NAMES = ["VOICE SYNC - Gop hinh / Kiem tra toc do", "VOICE SYNC - Da gop hinh", "VOICE SYNC - Kiem tra toc do"];
-    var OTHER_NAMES = ["VOICE SYNC - Kiem tra can voice", "VOICE SYNC - Can kiem tra"];
     function quote(value) {
         return '"' + String(value).replace(/[\x00-\x1f\\"\u2028\u2029]/g, function (c) {
             return "\\u" + ("0000" + c.charCodeAt(0).toString(16)).slice(-4);
@@ -145,18 +143,19 @@ $._PVSPictureMarkerPlanProbe = (function () {
                 timeline: function (m) { return start + m / speed - input; } };
         } catch (ignoreMapping) { return null; }
     }
-    function isOwnedClipMarker(marker) {
-        var name = String(marker.name || ""), comments = String(marker.comments || "");
-        if (name.indexOf("VOICE SYNC -") !== 0) return false;
-        if (comments.indexOf("[PremiereVoiceSync:owned-marker:v1]") >= 0) return true;
-        if (name === "VOICE SYNC - Kiem tra toc do") return /^Sentence cues \d+-\d+: actual speed=[0-9.]+%, warning range=/.test(comments);
-        if (name === "VOICE SYNC - Kiem tra can voice") return /^Sentence cues \d+-\d+ /.test(comments);
-        return false;
+    function markerKind(kind, workflow) {
+        var name = "VOICE SYNC - " + kind;
+        var tag = "[PremiereVoiceSync:" + kind.toLowerCase() + (kind === "Caption" ? ":" + workflow : "") + "]";
+        return { name: name, tag: tag, owns: function (row) {
+            if (row.type !== "Comment" || row.name !== name) return false;
+            var comments = String(row.comments || "");
+            return comments.substring(comments.lastIndexOf("\n") + 1) === tag;
+        } };
     }
-    function hasName(names, name) {
-        for (var i = 0; i < names.length; i++) if (names[i] === name) return true;
-        return false;
-    }
+    var pictureOwner = markerKind("Video").owns;
+    var voiceOwner = markerKind("Voice").owns;
+    var editCaptionOwner = markerKind("Caption", "edit").owns;
+    var captionsCaptionOwner = markerKind("Caption", "captions").owns;
     function sample(time) {
         var value = time && time.seconds !== undefined ? time.seconds : time;
         var ticks = null;
@@ -198,13 +197,15 @@ $._PVSPictureMarkerPlanProbe = (function () {
         while (marker) {
             if (rows.length >= 10000) throw new Error("Marker enumeration limit exceeded.");
             var name = String(marker.name || ""), start = sample(marker.start), end = sample(marker.end);
-            var picture = hasName(PICTURE_NAMES, name), isOther = hasName(OTHER_NAMES, name), color = null;
-            if (isOther) other++;
+            var color = null;
             if (start.seconds === null) throw new Error("Unreadable marker start.");
-            var row = { guid: picture ? String(marker.guid || "") : null, name: name, type: String(marker.type || "Comment"),
+            var row = { guid: null, name: name, type: String(marker.type || "Comment"),
                 comments: String(marker.comments || ""), seconds: start.seconds, order: rows.length,
-                start: start, end: end.seconds, endTime: end, color: color, picture: picture };
-            if (row.type === "Comment" && isOwnedClipMarker(row)) {
+                start: start, end: end.seconds, endTime: end, color: color, picture: false };
+            if (voiceOwner(row) || editCaptionOwner(row) || captionsCaptionOwner(row)) other++;
+            if (pictureOwner(row)) {
+                row.picture = true;
+                row.guid = String(marker.guid || "");
                 try { if (typeof marker.getColorByIndex === "function") color = Number(marker.getColorByIndex()); } catch (ignoreColor) {}
                 if (color !== null && isFinite(color)) row.color = color;
             }
@@ -214,7 +215,7 @@ $._PVSPictureMarkerPlanProbe = (function () {
         return { rows: rows, other: other };
     }
     function groupFor(map, fps, positions) {
-        return { ranges: [{ start: map.source(map.start), end: map.source(map.end) }], owns: isOwnedClipMarker,
+        return { ranges: [{ start: map.source(map.start), end: map.source(map.end) }], owns: pictureOwner,
             tolerance: 0.25 / fps, allowMove: true, positions: positions, reserved: {}, desired: [] };
     }
     function verification(spec, map, fps, tolerance, row) {

@@ -8,21 +8,21 @@ assert(start > 0 && end > start);
 const ui = vm.createContext({ fixedAlgorithm: { confidence: 0.55 } });
 vm.runInContext(main.slice(start, end), ui);
 const build = (report, plan) => JSON.parse(JSON.stringify(ui.buildReviewMarkers(report, plan)));
-// Issue #28: exercise panel-to-host comments, including legacy ownership.
+// Issue #28: exercise panel-to-host comments, with short Caption notes.
 {
   const context = vm.createContext({ $: { _PVS: {} } });
   vm.runInContext(fs.readFileSync(path.join(root, "extension/jsx/host.jsx"), "utf8"), context);
-  const tag = "[PremiereVoiceSync:review-marker:v3:edit]", failures = [];
-  function comments(issues, initial = []) {
-    const values = initial.map(m => markerBounds(m, m.start.seconds, m.end));
+  const tag = "[PremiereVoiceSync:caption:captions]", failures = [];
+  function comments(issues) {
+    const values = [];
     const markers = { getFirstMarker: () => values[0] || null, getNextMarker: m => values[values.indexOf(m) + 1] || null,
       deleteMarker: m => values.splice(values.indexOf(m), 1), createMarker: seconds => {
         const m=markerBounds({ name: "", comments: "",  setColorByIndex(c) { this.color = c; }, getColorByIndex() { return this.color; } }, seconds);
         values.push(m); return m;
       } };
     const clip={start:{seconds:0},end:{seconds:30},inPoint:{seconds:0},outPoint:{seconds:30},getSpeed:()=>1,projectItem:{nodeId:"voice",getMarkers:()=>markers}};
-    const stats = context.$._PVS._applyReviewMarkers({ timebase: 254016000000 / 30, sequenceID:"s" }, issues, [{ start: 0, end: 30 }], "edit",null,[clip]);
-    assert.equal(stats.reviewMarkerFailureCount, 0);
+    const stats = context.$._PVS._applyCaptionMarkers({ timebase: 254016000000 / 30, sequenceID:"s" }, issues, [{ start: 0, end: 30 }], null,[clip]);
+    assert.equal(stats.markerFailureCount, 0);
     assert.equal(values.length, 1);
     return values[0].comments;
   }
@@ -45,12 +45,6 @@ const build = (report, plan) => JSON.parse(JSON.stringify(ui.buildReviewMarkers(
   test("duplicate comments collapse despite different bounds", () => {
     assert.equal(comments([{ start: 1, end: 2, captionIndex: 4, reason: "chữ khác SRT – nghe lại" },
       { start: 1.001, end: 3, captionIndex: 4, reason: "chữ khác SRT – nghe lại" }]), "Cue 4: chữ khác SRT – nghe lại\n" + tag);
-  });
-  test("legacy name and tag remain owned and replaced", () => {
-    const old = { name: "VOICE SYNC - Can kiem tra", comments: "Đoạn phân tích 3: Timing caption ước lượng [1.000 - 2.000s]\n" + tag, start: { seconds: 1 },
-      color: 4, setColorByIndex(c) { this.color = c; }, getColorByIndex() { return this.color; } };
-    assert.equal(comments([{ start: 1, end: 2, captionIndex: 4, reason: "chữ khác SRT – nghe lại" }], [old]), "Cue 4: chữ khác SRT – nghe lại\n" + tag);
-    assert.equal(old.name, "VOICE SYNC - Can kiem tra");
   });
   test("caption-only uses final caption indices", () => {
     assert.equal(comments(build({ reviewCueRanges: [{ Index: 3, Start: 1, End: 2 }],
@@ -190,39 +184,21 @@ assert.equal(build({referenceNumberReviewCues:[{cueIndex:5}],captionTimingEstima
 
 const host = vm.createContext({ $:{_PVS:{}} });
 vm.runInContext(fs.readFileSync(path.join(root,"extension/jsx/host.jsx"),"utf8"),host);
-const apply = host.$._PVS._applyReviewMarkers;
-const tag = w => "[PremiereVoiceSync:review-marker:v1:"+w+"]";
-function fixture(initial=[]) {
-  const values=initial.map(m=>markerBounds(m,m.start.seconds,m.end)); let colorFault=false, positionFault=false, creationFault=false;
-  const markers={getFirstMarker:()=>values[0]||null,getNextMarker:m=>values[values.indexOf(m)+1]||null,
-    deleteMarker:m=>values.splice(values.indexOf(m),1),createMarker(seconds){
-      if(creationFault)throw Error("CREATE_FAILED");
-      const marker=markerBounds({name:"",comments:"",setColorByIndex(c){if(colorFault)throw Error("COLOR_FAILED");this.color=c;},getColorByIndex(){return this.color;}}, seconds+(positionFault?1:0));
-      values.push(marker);return marker;
-    }};
-  return {seq:{timebase:254016000000/30,markers},values,set colorFault(v){colorFault=v;},set positionFault(v){positionFault=v;},set creationFault(v){creationFault=v;}};
-}
-const owned=(seconds,w="captions")=>({name:"VOICE SYNC - Can kiem tra",comments:"old\n"+tag(w),start:{seconds},end:seconds,color:4,getColorByIndex(){return this.color;},setColorByIndex(c){this.color=c;}});
-const manual={name:"VOICE SYNC - Can kiem tra",comments:"my note",start:{seconds:1}}, other=owned(1.5,"edit"), outside=owned(8);
-let f=fixture([manual,other,outside,owned(2)]);
-let stats=apply(f.seq,[{start:1,end:3,reason:"number",cueIndex:2,captionIndex:12,referenceCueIndex:9},{start:1,end:2,reason:"DTW",severity:"error"}], [{start:1,end:4}],"captions");
-assert.equal(stats.unattachedMarkerCount,2);assert.equal(stats.reviewMarkerFailureCount,0);
+const apply = host.$._PVS._applyCaptionMarkers;
+let stats=apply({timebase:254016000000/30},[{start:1,end:2,reason:"number",captionIndex:12},
+  {start:1,end:2,reason:"DTW",severity:"error"}],[{start:0,end:4}],null,[]);
+assert.equal(stats.unattachedMarkerCount,2);
+assert.equal(stats.markerFailureCount,0);
 assert.equal(stats.unattachedMarkers[0].cueLabel,"Cue 12");
-assert.deepEqual(f.values,[manual,other,outside]);
-f=fixture([owned(2)]);stats=apply(f.seq,[{start:9,end:10,reason:"outside"}],[{start:0,end:4}],"captions");assert.equal(stats.reviewMarkerFailureCount,1);assert.equal(f.values.length,1);
-stats=apply({timebase:254016000000/30},[{start:1,end:2,reason:"api"}],[{start:0,end:4}],"edit");assert.equal(stats.unattachedMarkerCount,1);
+assert.equal(stats.unattachedMarkers[0].kind,"VOICE SYNC - Caption");
+stats=apply({timebase:254016000000/30},[{start:9,end:10,reason:"outside"}],[{start:0,end:4}],null,[]);
+assert.equal(stats.markerFailureCount,1);
 assert(main.includes("plan.reviewMarkers = buildReviewMarkers(alignment, plan)"));
 assert(main.includes("result.reviewMarkers = buildReviewMarkers(result, null)"));
 {
   const messages=[],scope={log:m=>messages.push(m),runWarning(){}};
   vm.runInNewContext(main.slice(main.indexOf("  function logReviewMarkers("),main.indexOf("  function logReviewMarkers(")+main.slice(main.indexOf("  function logReviewMarkers(")).indexOf("\n  function ",10)),scope);
-  scope.logReviewMarkers({reviewMarkerCount:3,reviewMarkerClipCount:2,unattachedMarkerCount:1},[],null);
-  assert(messages[0].includes("trên clip: 2"));
+  scope.logReviewMarkers({captionMarkerCount:2,unattachedMarkerCount:1},[],null);
+  assert(messages[0].includes("Caption 2"));
 }
-const preservedManual={name:"My review",comments:"User marker",start:{seconds:3}},preservedOther=owned(4,"captions"),preservedOutside=owned(90,"edit");
-f=fixture(Array.from({length:620},(_,i)=>owned(i/10,"edit")).concat([preservedManual,preservedOther,preservedOutside]));
-stats=apply(f.seq,denseMarkers,[{start:0,end:70}],"edit");
-assert.equal(stats.unattachedMarkerCount,2);assert.equal(stats.reviewMarkerFailureCount,0);
-assert(f.values.includes(preservedManual)&&f.values.includes(preservedOther)&&f.values.includes(preservedOutside),"Replacing dense owned markers preserves manual, other-workflow, and out-of-scope markers.");
-assert.equal(f.values.length,3,"Only unrelated ruler markers survive.");
 console.log("REVIEW_MARKERS_OK:final-timeline-mapping,split-cues,retained-voice-ranges,all-review-types,ownership,scope,rerun,manual-collisions,write-position-color-failures");

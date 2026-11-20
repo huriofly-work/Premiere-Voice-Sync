@@ -48,18 +48,18 @@ Panel tự nhận diện voice, lập kế hoạch câu với điểm cắt DTW 
 
 Panel là nơi xem kết quả và phê duyệt. Toast Windows nhắc khi tác vụ chạy nền hoàn tất hoặc cần xử lý; bấm để quay lại panel. Âm thanh có tùy chọn lưu trong Thiết lập. Xem [phạm vi và nghiệm thu 2.20.71](docs/releases/notes/NOTIFICATIONS_2.20.71.md); nghiệm thu workflow trong Premiere vẫn được ghi riêng.
 
-Marker: đỏ = quá nhanh; cam = quá chậm; vàng = căn voice cần nghe lại; xanh dương = hình đã gộp, speed trong ngưỡng. Nhóm gộp còn vượt dùng đỏ/cam và ghi rõ trong ghi chú. Chỉ dọn marker cũ nhận diện được của tool, không dựa màu để xóa.
+Trong 3.0.0, mở ghi chú theo tên marker. **Video** gắn trên nest V1 để kiểm tra hình, tốc độ và A1 đi cùng hình. **Voice** gắn trên file voice để kiểm tra căn lời và vị trí. **Caption** gắn trên file voice để rà chữ, mốc hiển thị hoặc đoạn cần nghe lại. Tạo phụ đề dùng track đầu tiên có clip trong đoạn cảnh báo.
 
 ## Logic dựng
 
 - Timestamp gốc của SRT tham chiếu xác định vùng hình nguồn.
 - Whisper căn lời Việt với voice để tạo timestamp mới và caption.
 - Caption dài được tách thành các đoạn một dòng, mặc định tối đa 42 ký tự. Thứ tự chọn điểm chia là dấu câu, khoảng nghỉ hơi có xác nhận trên voice, rồi mới đến khoảng trắng. Nếu đoạn cuối chỉ còn vài từ, hai caption cuối được cân lại để tránh một từ đứng riêng. Điểm chuyển được lượng tử hóa theo frame.
-- Nếu Whisper bỏ sót một block cue ngắn, engine nhận diện lại riêng vùng đó giữa các mốc neo tin cậy cùng chapter. Chỉ dùng kết quả có đủ timestamp từng từ và độ khớp cao; không remap các cue đã khớp. Planner có thể nội suy mép cue trong khoảng hợp lệ để dựng, nhưng không dùng nội suy để chia caption thiếu word timestamp; cue nội suy có marker trên A2, và tác vụ dừng trước khi đổi timeline nếu không đủ dữ liệu an toàn.
+- Nếu Whisper bỏ sót một block cue ngắn, engine nhận diện lại riêng vùng đó giữa các mốc neo tin cậy cùng chapter. Chỉ dùng kết quả có đủ timestamp từng từ và độ khớp cao; không remap các cue đã khớp. Planner có thể nội suy mép cue trong khoảng hợp lệ để dựng, nhưng không dùng nội suy để chia caption thiếu word timestamp; cue nội suy có marker Voice trên A2, và tác vụ dừng trước khi đổi timeline nếu không đủ dữ liệu an toàn.
 - Voice chỉ bị cắt tại silence an toàn giữa các câu hoàn chỉnh.
 - Dấu chấm phẩy `;` được xem là dấu kết câu cùng với `.`, `?` và `!`.
 - Khoảng subtitle dưới 1 giây được hấp thụ vào câu liền kề; từ 1 giây trở lên được giữ nguyên như đoạn không lời.
-- Hình nguồn được dùng đầy đủ, trừ vùng SRT đã xác minh không còn trong voice; phần hình giữ lại được retime theo voice. Khoảng 70–130% mặc định dùng để chọn một cặp hình liền kề giúp giảm lệch tốc độ, không giới hạn speed. Mỗi đoạn chỉ gộp một lần, không gộp tiếp. A2/caption không gộp theo hình. Mọi đoạn hình đã gộp có marker; nếu vẫn ngoài ngưỡng thì ghi thêm cảnh báo.
+- Hình nguồn được dùng đầy đủ, trừ vùng SRT đã xác minh không còn trong voice; phần hình giữ lại được retime theo voice. Khoảng 70–130% mặc định dùng để chọn một cặp hình liền kề giúp giảm lệch tốc độ, không giới hạn speed. Mỗi đoạn chỉ gộp một lần, không gộp tiếp. A2/caption không gộp theo hình. Mọi đoạn hình đã gộp có marker Video; nếu vẫn ngoài ngưỡng thì ghi thêm cảnh báo.
 - Executor cắt V1+A1 linked, kiểm tra khe hở hình theo frame và bảo toàn các element ngoài phạm vi.
 
 Kết quả Whisper được cache theo file voice, kích thước, thời điểm sửa và model. Chạy lại cùng voice bỏ qua lượt nhận diện toàn file; nếu cache có vùng bị bỏ sót, engine vẫn nhận diện lại riêng vùng ngắn đó.
@@ -78,7 +78,7 @@ Gói CUDA tải ở lần sử dụng đầu trên mỗi máy có dung lượng 
 
 Hậu kiểm đo khe hở giữa các clip, điểm kết thúc thực tế của V1/A1, duration và liên kết V1–A1 theo frame. Không so sánh `outPoint` trước–sau retime, vì Premiere biểu diễn lại thuộc tính này theo speed và chênh lệch đó không phải bằng chứng xén nguồn.
 
-Marker tốc độ dùng metadata thực tế sau retime, gắn trên nguồn clip V1; marker căn voice gắn trên A2. Vị trí marker được kiểm theo khoảng source của đúng đoạn, không đặt trên toàn timeline. Trước dựng, tool dọn marker của nó trong vùng nguồn xử lý: tên có tiền tố `VOICE SYNC -` và tag `[PremiereVoiceSync:owned-marker:v1]`, hoặc đúng cả tên/mẫu ghi chú của bản cũ. Chỉ tiền tố tên chưa đủ để xóa. Marker thủ công, không chắc nguồn gốc hoặc ngoài vùng được giữ. Tag không phải chữ ký bảo mật; sao chép nguyên ghi chú/tên có thể bị nhận là marker tool. Marker thuộc ProjectItem nên các clip/sequence dùng chung nguồn có thể thấy cùng thay đổi. Bật **Timeline Settings > Show Clip Markers** nếu chưa thấy.
+Marker 2.20.x không được 3.0.0 nhận diện. Xóa thủ công một lần các marker cũ có tên bắt đầu bằng `VOICE SYNC - ` hoặc dùng template sạch. Dựng theo voice và Tạo phụ đề cập nhật hai bộ Caption riêng. Bật **Timeline Settings > Show Clip Markers** để xem marker trên clip.
 
 Phiên bản 2.19.1 ưu tiên đường dẫn voice Unicode đang tồn tại và chỉ sửa mojibake khi đường dẫn sau sửa thực sự tồn tại. Nếu không mở được voice để dò khoảng lặng, chương trình dừng với lỗi rõ ràng thay vì âm thầm gộp toàn bộ video thành một đoạn. Điểm cắt A2 chỉ được tạo khi vùng im kéo dài ít nhất 120 ms, nằm sát ranh giới nhận diện, còn biên an toàn 40 ms ở cả hai phía và chứa một frame Premiere hợp lệ. Ranh giới có độ tin cậy thấp hoặc không đạt đủ điều kiện sẽ được gộp để bảo toàn trọn câu. Nhật ký và hộp hoàn tất hiển thị riêng số câu theo dấu câu và số đoạn voice có điểm cắt an toàn.
 

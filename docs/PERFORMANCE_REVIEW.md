@@ -1,8 +1,8 @@
 # Đánh giá tăng tốc Premiere Voice Sync
 
-## Gắn marker sau hậu kiểm, issue #94 (19/11/2026)
+## Gắn marker sau hậu kiểm, issue #96 (19/11/2026)
 
-Sau khi dựng A2, trace ghi các bước `Tạo caption`, `Hậu kiểm`, chuẩn bị marker, `Gắn marker`, `Dọn thước và gắn marker review` và `Báo cáo`. Mỗi call của vòng `Gắn marker` xử lý một ProjectItem. `detail.markerCommit` ghi loại nguồn, chỉ số owner, số lần tạo, dời, xóa, ghi thuộc tính và thời gian. `detail.reviewCommits` ghi các bộ đếm tương ứng cho nhóm review. Cả hai dùng `phase="post"`.
+Sau khi dựng A2, trace ghi đúng bốn tên bước `Tạo caption`, `Hậu kiểm`, `Gắn marker` và `Báo cáo`. Mỗi call ở Gắn marker xử lý một ProjectItem. `detail.markerCommit` ghi số lần tạo, dời, xóa, ghi thuộc tính và thời gian cho cả ba loại, cùng chỉ số và loại nguồn với `phase="post"`.
 
 Lượt ghi diễn ra sau khi A2 đã được cắt thành nhiều lát. Probe ngày 17/11 đo trung bình một lần tạo marker tăng từ 14,7 lên 45,1 ms giữa lượt có 1 và 101 clip. Chưa đo thời gian toàn lượt của #94 trên Premiere. [Bảng đo từng thao tác](reviews/MARKER_WRITE_COST_PROBE_2026-11-16.md).
 

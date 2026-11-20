@@ -134,8 +134,8 @@
       <details id="editSettings" class="edit-only">
         <summary>Tùy chỉnh theo video</summary>
         <div class="grid-two">
-          <label title="Hình chậm hơn ngưỡng sẽ thử gộp một lần với đoạn liền kề nếu tốt hơn. Nếu vẫn ngoài ngưỡng, gắn marker; không ép tốc độ. Mọi đoạn đã gộp đều có marker riêng.">Ngưỡng chậm<input id="minSpeed" type="number" min="10" max="100" value="70"><small>%</small><span id="minSpeedError" class="hint input-error" role="alert" hidden></span></label>
-          <label title="Hình nhanh hơn ngưỡng sẽ thử gộp một lần với đoạn liền kề nếu tốt hơn. Nếu vẫn ngoài ngưỡng, gắn marker; không ép tốc độ. Mọi đoạn đã gộp đều có marker riêng.">Ngưỡng nhanh<input id="maxSpeed" type="number" min="100" max="400" value="130"><small>%</small><span id="maxSpeedError" class="hint input-error" role="alert" hidden></span></label>
+          <label title="Hình chậm hơn ngưỡng sẽ thử gộp một lần với đoạn liền kề nếu tốt hơn. Nếu vẫn ngoài ngưỡng, gắn marker Video. Mọi đoạn đã gộp có marker Video.">Ngưỡng chậm<input id="minSpeed" type="number" min="10" max="100" value="70"><small>%</small><span id="minSpeedError" class="hint input-error" role="alert" hidden></span></label>
+          <label title="Hình nhanh hơn ngưỡng sẽ thử gộp một lần với đoạn liền kề nếu tốt hơn. Nếu vẫn ngoài ngưỡng, gắn marker Video. Mọi đoạn đã gộp có marker Video.">Ngưỡng nhanh<input id="maxSpeed" type="number" min="100" max="400" value="130"><small>%</small><span id="maxSpeedError" class="hint input-error" role="alert" hidden></span></label>
           <label title="Khoảng trống giữa hai vùng subtitle phải dài ít nhất bao nhiêu để được coi là đoạn không lời cần giữ nguyên.">Khoảng không lời<input id="minDialogueGap" type="number" min="0.2" max="10" step="0.1" value="0.5"><small>s</small><span id="minDialogueGapError" class="hint input-error" role="alert" hidden></span></label>
           <label title="Khoảng cách giữa hai clip A2 lớn hơn mức này sẽ kết thúc nhóm voice chính; các clip sau như CTA được giữ nguyên.">Khoảng tách nhóm voice<input id="voiceGroupGap" type="number" min="0.2" max="20" step="0.1" value="2"><small>s</small><span id="voiceGroupGapError" class="hint input-error" role="alert" hidden></span></label>
           <label class="caption-length-setting" title="Caption dài hơn giới hạn sẽ được tách tại ranh giới từ; timestamp của phần mới bám theo các từ Whisper nhận diện trong voice.">Ký tự tối đa mỗi caption<input id="maxCaptionCharacters" type="number" min="20" max="80" step="1" value="42"><small>ký tự</small><span id="maxCaptionCharactersError" class="hint input-error" role="alert" hidden></span></label>
@@ -220,13 +220,13 @@
     </details>
 
     <details id="editUsageHelp" class="card usage-help edit-only">
-      <summary>Hướng dẫn dựng và màu marker</summary>
+      <summary>Hướng dẫn dựng và các loại marker</summary>
       <ol>
         <li>Lưu project trước khi chạy. Mở template sạch: V1 là nested video chính, A1 là audio của nest đã linked với V1, A2 là các chapter voice tiếng Việt đặt liên tiếp đúng thứ tự.</li>
         <li>Chọn ngôn ngữ voice và SRT đã dùng để tạo voice, hoặc bật nối nhiều SRT. Nội dung SRT phải cùng ngôn ngữ và đúng lời voice; timestamp cần tương ứng với hình nguồn. Không cần xuất XML.</li>
         <li>Có thể mở Tùy chỉnh theo video nếu cần. Không cần bấm chẩn đoán; đầu vào được kiểm lại khi chạy. Cập nhật đầu vào chỉ cần khi vừa đổi timeline/import file.</li>
         <li>Bấm Phân tích và dựng tự động, đọc xác nhận rồi chạy. Không chỉnh timeline hoặc đổi sequence trong lúc tool làm việc.</li>
-        <li>Nghe/xem lại video, voice, caption và marker trước khi lưu. Marker clip: đỏ quá nhanh, cam quá chậm, vàng cần kiểm căn voice, xanh dương hình đã gộp và speed trong ngưỡng. Marker trên thước timeline: vàng cần kiểm tra, đỏ lỗi hậu kiểm; mở ghi chú để xem lý do và khoảng thời gian.</li>
+        <li>Nghe/xem lại video, voice, caption và marker trước khi lưu. Mở ghi chú marker Video để kiểm hình, marker Voice để kiểm căn lời và marker Caption để rà chữ hoặc thời điểm hiển thị.</li>
       </ol>
       <p class="hint">Tool cắt/retime V1 và A1 linked, sắp A2 theo timeline mới và thêm Caption Track. Hình ngoài ngưỡng được gộp một lần với đoạn liền kề; voice/caption không bị gộp theo hình. Chỉ dọn marker nhận diện được là của tool, giữ marker tự đặt. Bật Timeline Settings > Show Clip Markers nếu chưa thấy.</p>
       <p class="hint">Nếu timeline đã thay đổi rồi báo lỗi, Undo; nếu không khôi phục đầy đủ, đóng project không lưu và mở bản đã lưu. Không chạy lại trên timeline đã xử lý. File tạm được dọn sau tác vụ.</p>
@@ -239,7 +239,7 @@
           <li>Chọn ngôn ngữ lời nói. Tool ưu tiên SRT trong Project khi có một file phù hợp rõ ràng; kiểm tra file đúng lời nói. Chọn Tự nhận diện · không dùng SRT nếu muốn nhận diện toàn bộ.</li>
         <li>Chọn phạm vi toàn sequence, thời gian của clip đang chọn hoặc In/Out. Với nguồn clip audio đang chọn, phạm vi lấy theo chính các clip đó. Kiểm tra tóm tắt nguồn và phạm vi trước khi chạy.</li>
         <li>Bấm Tạo phụ đề. Tool kiểm tra lại phạm vi hiện tại và thêm Caption Track mới.</li>
-        <li>Nghe lại, kiểm marker vàng trên thước timeline, sửa những từ nhận diện sai rồi tự lưu project. Ghi chú marker nêu cue, lý do và vùng cần kiểm tra.</li>
+        <li>Nghe lại, kiểm marker Caption trên clip dùng để tạo phụ đề, sửa những từ nhận diện sai rồi tự lưu project. Ghi chú marker nêu cue, lý do và vùng cần kiểm tra.</li>
       </ol>
       <p class="hint">Nhiều nguồn được phối theo thời gian timeline để nhận diện chung. Các vùng rời nhau giữ đúng vị trí; caption cũ được giữ. Tool không tự đổi nguồn đã chỉ định khi nguồn trống.</p>
     </details>

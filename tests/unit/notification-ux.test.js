@@ -22,7 +22,7 @@ for(const [stored,expected] of [[null,true],["true",true],["false",false]])asser
 const soundSettings=fixture();soundSettings.api.setSound(false);assert.equal(soundSettings.storage.get("pvs.notificationSound"),"false");assert.equal(soundSettings.api.sound(),false);
 const routine=fixture();routine.api.begin("edit");
 const fallback=fixture();fallback.api.begin("edit");
-fallback.api.markers({unattachedMarkerCount:1,unattachedMarkers:[{start:1,end:2,kind:"VOICE SYNC - Kiem tra toc do",reason:"Clip source mapping unavailable"}]},[]);
+fallback.api.markers({unattachedMarkerCount:1,unattachedMarkers:[{start:1,end:2,kind:"VOICE SYNC - Video",reason:"Clip source mapping unavailable"}]},[]);
 assert(fallback.controls.log.textContent.includes("Không gắn được marker lên clip"),"#1 fallback count must be logged");
 assert(fallback.controls.log.textContent.includes("Clip source mapping unavailable"),"#1 fallback reason must be logged");
 fallback.api.finish("Edit","Done");
@@ -42,12 +42,12 @@ const review=fixture();review.api.begin("captions");review.api.context().resultH
 const markers=[{start:4,end:5,captionIndex:3,reason:"Chữ tự nhận diện: cần kiểm tra chữ"},
   {start:4,end:5,captionIndex:3,reason:"Cần nghe lại thời gian"},
   {start:4.5,end:6,reason:"Vùng âm thanh chưa xác minh"},{start:9,end:10,captionIndex:8,reason:"Kiểm tra chữ"}];
-review.api.markers({reviewMarkerCount:0,reviewMarkerFailureCount:4},markers);
+review.api.markers({captionMarkerCount:0,markerFailureCount:4},markers);
 review.api.finish("Captions","Technical source cue 102, frame 1234");
 assert.equal(review.api.current().tone,"warn");assert(review.api.current().reviewRequired);
 assert.equal(review.api.current().reviewItems.length,3,"Same final bounds merge reasons, without widening the original marker positions");
 assert(review.controls.workflowNoticeMessage.textContent.includes("2 vùng"),"Overlapping warning ranges are counted once");
-assert(review.controls.workflowNoticeMessage.textContent.includes("chưa có marker"),"Missing markers must be explicit in the main message");
+assert(review.controls.workflowNoticeMessage.textContent.includes("chưa gắn được marker"),"Missing markers must be explicit in the main message");
 assert(review.controls.workflowNoticeReview.textContent.includes("Phụ đề 3 · 00:00:04.000–00:00:05.000"));
 assert(review.controls.workflowNoticeReview.textContent.includes("Cần nghe lại thời gian"));
 assert(review.controls.workflowNoticeActionsNeeded.textContent.includes("Chưa tạo đủ marker"));
@@ -55,7 +55,7 @@ assert(!review.controls.noticeReviewIssues.hidden);assert.equal(review.api.histo
 assert.equal(policy.route({kind:"completed",reviewRequired:true},{background:true,foregroundEnabled:false}).toast,"banner-and-center");
 assert(!Array.from(review.storage.values()).join(" ").includes("Chữ tự nhận diện"),"History cannot persist speech or raw diagnostics");
 
-const blue=fixture();blue.api.begin("edit");blue.api.markers({mergeClipMarkerCount:5,reviewMarkerCount:0},[],{visualSegments:[{NewStart:0,NewEnd:3,SpeedOutsideWarningRange:false}]});blue.api.finish("Edit","Merged visuals");
+const blue=fixture();blue.api.begin("edit");blue.api.markers({mergeClipMarkerCount:5,captionMarkerCount:0},[],{visualSegments:[{NewStart:0,NewEnd:3,SpeedOutsideWarningRange:false}]});blue.api.finish("Edit","Merged visuals");
 assert.equal(blue.api.current().tone,"ok");assert.equal(blue.api.current().reviewItems.length,0,"Informational blue merge markers are not review problems");
 const speed=fixture();speed.api.begin("edit");speed.api.markers({speedWarningSentenceCount:1},[],{visualSegments:[{NewStart:2,NewEnd:4,SpeedOutsideWarningRange:true}]});
 speed.api.warning("Check speed",true,"SPEED");speed.api.finish("Edit","Details");assert.equal(speed.api.current().reviewItems.length,1);
@@ -68,7 +68,7 @@ cueSpeed.api.finish("Edit","Details");
 assert.equal(cueSpeed.api.current().reviewItems.length,2,"Issue #30: v1 outside-range picture segments must appear in the review summary.");
 assert.equal(cueSpeed.api.current().reviewItems[0].start,0);assert.equal(cueSpeed.api.current().reviewItems[0].end,2);
 assert.equal(cueSpeed.api.current().reviewItems[1].start,5);assert.equal(cueSpeed.api.current().reviewItems[1].end,9);
-assert(cueSpeed.controls.workflowNoticeTechnical.textContent.includes("2 đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker đỏ/cam."));
+assert(cueSpeed.controls.workflowNoticeTechnical.textContent.includes("2 đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker Video."));
 assert(!source.includes("giữ trong chẩn đoán. Marker tốc độ dành cho"),"The completion log must no longer promise suppressed v1 markers.");
 
 const failed=fixture();failed.api.begin("captions");failed.api.context().impact="unknown";failed.api.fail(Error("RAW_PRIVATE_PATH C:\\private\\audio.wav"),"Chưa tạo được phụ đề");

@@ -5,8 +5,6 @@ const vm = require("vm");
 const { host, diagnostic, markerReferenceCases, markerReferenceFixture, finishTrial } =
   require("./diagnostic-executor.test");
 
-const ownedTag = "[PremiereVoiceSync:owned-marker:v1]";
-const reviewTag = /\[PremiereVoiceSync:review-marker:(?:v2:([^:\]]+):[^\]]+|v3:([^:\]]+))\]/;
 const fault = "A1_INJECTED_FAULT";
 const stopped = "DIAGNOSTIC_STOPPED_PARTIAL_TIMELINE";
 const profiles = ["direct", "baseline", "fast", "no-delay"];
@@ -34,11 +32,9 @@ function instrument(source, direct) {
   after(/for \((?:var voiceCutIndex = 0)?; voiceCutIndex < voiceCuts.length; voiceCutIndex\+\+\) \{/g,
     'if (voiceClips.length > 1 && voiceCuts[voiceCutIndex] >= Math.round(voiceClips[1].start * fps)) partialProbe.hit("between-chapters");');
   if (direct) {
-    after("for (var markerOwnerIndex = 0; markerOwnerIndex < cleanupOwners.length; markerOwnerIndex++) {",
+    after("for (var markerOwnerIndex = 0; markerOwnerIndex < markerOwners.length; markerOwnerIndex++) {",
       'if (markerOwnerIndex === 2) partialProbe.hit("between-chapter-commits");');
-    before("var plannedClipMarkers = voiceMarkerSpecs(asArray(plan.markers));", 'partialProbe.hit("after-post-check");');
-    before(/try \{\s+var rulerCleanup = cleanLegacyOwnedRulerMarkers\(workingSequence, plannedEndFrame \/ fps, fps\);/g,
-      'partialProbe.hit("after-source-markers");');
+    before("var plannedVoiceMarkers = asArray(plan.markers);", 'partialProbe.hit("after-post-check");');
     before("report = {\n            ok: masterInOutReset", 'partialProbe.hit("after-post-review");');
     before("var maxVideoError = 0;", 'partialProbe.hit("after-caption");');
     before(/\n    \} catch \(e\) \{\n        report = \{ ok: false, executorVersion: 25, timelineMutated/g,
@@ -57,7 +53,7 @@ function fields(marker) {
     end: typeof marker.end === "number" ? marker.end : marker.end.seconds,
     name: marker.name,
     comments: marker.comments,
-    type: marker.type,
+    type: marker.type || "Comment",
     color: marker.getColorByIndex ? marker.getColorByIndex() : marker.colorIndex
   };
 }
@@ -67,19 +63,18 @@ function sortedFields(rows, includeGuid) {
 }
 
 function kind(row) {
-  const comments = row.comments || "";
-  if (comments.includes(ownedTag)) return row.name;
-  const review = comments.match(reviewTag);
-  return review ? "review:" + (review[1] || review[2]) : null;
+  if (row.type !== "Comment") return null;
+  const tag=(row.comments || "").split("\n").at(-1);
+  if (row.name==="VOICE SYNC - Video" && tag==="[PremiereVoiceSync:video]") return "video";
+  if (row.name==="VOICE SYNC - Voice" && tag==="[PremiereVoiceSync:voice]") return "voice";
+  if (row.name==="VOICE SYNC - Caption" && tag==="[PremiereVoiceSync:caption:edit]") return "caption:edit";
+  if (row.name==="VOICE SYNC - Caption" && tag==="[PremiereVoiceSync:caption:captions]") return "caption:captions";
+  return null;
 }
 
 function protectedKind(row) {
-  const group = kind(row);
-  if (group === "review:captions") return "other-workflow";
-  if (group) return null;
-  if (/^Sentence cues \d+-\d+: actual speed=[0-9.]+%, warning range=/.test(row.comments || "") &&
-      row.name === "VOICE SYNC - Kiem tra toc do") return "untagged-legacy";
-  return "manual";
+  const group=kind(row);
+  return group==="caption:captions" ? "other-workflow" : group ? null : "manual";
 }
 
 function addMarker(bank, row) {
@@ -124,14 +119,14 @@ function prepare(make, index, profile, stop, { seed, surplus = false, longRange 
     voiceBanks.forEach((bank, i) => {
       const [start] = initialSpans[i][0];
       addMarker(bank, { guid: labels[i] + "-captions", start: start + 0.01, end: start + 0.02,
-        type: "Comment", name: "VOICE SYNC - Can kiem tra",
-        comments: "Chữ gốc\r\n[PremiereVoiceSync:review-marker:v2:captions:previous]", color: 3 });
+        type: "Comment", name: "VOICE SYNC - Caption",
+        comments: "Chữ gốc\r\n[PremiereVoiceSync:caption:captions]", color: 3 });
     });
     if (surplus) {
       for (const [i, start] of [0.18, 0.32].entries()) {
         addMarker(voiceBanks[0], { guid: "previous-review-" + i, start, end: start + 0.40,
-          type: "Comment", name: "VOICE SYNC - Can kiem tra",
-          comments: "Previous review " + i + "\n[PremiereVoiceSync:review-marker:v2:edit:previous]", color: 4 });
+          type: "Comment", name: "VOICE SYNC - Caption",
+          comments: "Previous review " + i + "\n[PremiereVoiceSync:caption:edit]", color: 4 });
       }
     }
     if (longRange) voiceBanks[0].items.find(m => m.guid === "old").end = initialSpans[0][0][1] - tick;
@@ -221,7 +216,7 @@ function prepare(make, index, profile, stop, { seed, surplus = false, longRange 
     activeGroup = { desired: group.desired, phase: "post" };
     try {
       const result = commit(group, ...args);
-      if (result.count && group.desired.some(spec => spec.name === "VOICE SYNC - Kiem tra can voice")) {
+      if (result.count && group.desired.some(spec => spec.name === "VOICE SYNC - Voice")) {
         probe.voiceCommits++;
       }
       if (!result.failures.length && group.after) {
@@ -257,9 +252,7 @@ function prepare(make, index, profile, stop, { seed, surplus = false, longRange 
   return { f, probe, labels, original, initialSpans, snapshot, bindings, writes, touched, writeTrace, protectedWrites };
 }
 
-const stages = {
-  "after-source-markers": "Gắn marker"
-};
+const markerStage = "Gắn marker";
 const checkpoints = { "after-post-review": "Marker", "after-post-check": "Hậu kiểm", "after-caption": "Caption" };
 
 function run(test, profile, stop) {
@@ -289,9 +282,8 @@ function run(test, profile, stop) {
       if (response.result.ok) assert(JSON.parse(f.api.acceptDiagnosticEdit(token)).ok);
       return { report: response.result };
     }
-    if ((stages[stop] === response.stage && response.nextStage !== response.stage) ||
-        (checkpoints[stop] && checkpoints[stop] === response.checkpoint) ||
-        (stop === "between-chapter-commits" && response.nextStage === stages["after-source-markers"] &&
+    if ((checkpoints[stop] && checkpoints[stop] === response.checkpoint) ||
+        (stop === "between-chapter-commits" && response.nextStage === markerStage &&
           probe.voiceCommits === 1)) return abort();
   }
   assert.fail("Missing terminal host response");
@@ -319,7 +311,7 @@ function positionFailures(test, state, bindings, touchedOnly = true) {
 function isolationFailures(test, state, writes = test.protectedWrites) {
   const failures = [...writes];
   state.forEach((rows, i) => {
-    for (const group of ["manual", "other-workflow", "untagged-legacy"]) {
+    for (const group of ["manual", "other-workflow"]) {
       const select = row => protectedKind(row) === group;
       for (const prior of test.original[i].filter(select)) {
         const actual = rows.find(row => row.guid === prior.guid);
@@ -392,7 +384,7 @@ function repeatedWrites(actual, baseline) {
 
 const stopPoints = [
   "first-razor", "first-speed", "between-chapters",
-  "after-source-markers", "after-post-review", "after-caption", "during-post-check",
+  "after-post-review", "after-caption", "during-post-check",
   "after-post-check", "after-report", "end-write-fault"
 ];
 const classes = ["pre-existing", "final-marker", "transient-surplus", "partial-worse"];
@@ -495,7 +487,7 @@ for (const [index, make] of cases.entries()) {
           else if (!report.ok) assert([fault + ":" + stop, stopped].includes(report.error), "Unexpected interruption: " + report.error);
           if (stop === "between-chapter-commits") {
             assert.equal(test.probe.voiceCommits, 1);
-            assert(!test.snapshot()[1].some(marker => kind(marker) && kind(marker) !== "review:captions"));
+            assert(!test.snapshot()[1].some(marker => kind(marker) && kind(marker) !== "caption:captions"));
           }
         }
         function rerun(seed) {
@@ -544,10 +536,10 @@ for (const [index, make] of cases.entries()) {
           return { class: "pre-existing", excludedFromPositionCheck: true, ...error };
         }));
         if (surplus) {
-          const select = rows => rows[0].filter(marker => kind(marker) === "review:edit");
+          const select = rows => rows[0].filter(marker => kind(marker) === "caption:edit");
           row.review = { owner: test.labels[0], seed: select(test.original), partial: select(state),
             clean: select(expected), reconciled: select(c.reconciled),
-            rerunWrites: c.writes.filter(write => write.kind === "review:edit") };
+            rerunWrites: c.writes.filter(write => write.kind === "caption:edit") };
           assert.deepStrictEqual(row.review.partial, row.review.clean);
           assert.deepStrictEqual(row.review.reconciled, row.review.clean);
         }

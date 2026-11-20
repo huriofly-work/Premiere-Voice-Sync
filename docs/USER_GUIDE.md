@@ -30,7 +30,7 @@ vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POL
 
 **2.20.93:** Dựng theo voice ít "nghỉ" hơn khi chạy trên timeline: mỗi bước chạy hết một lần, marker được ghi trước khi cắt và dời thay vì xóa/tạo lại. Dừng/Tạm dừng có hiệu lực khi bước đang chạy kết thúc. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md).
 
-**Thay đổi #90:** Khi dựng lỗi hoặc bấm **Dừng tác vụ**, timeline và marker nguồn được giữ đến bước đã thực hiện. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả. Đưa sequence về trạng thái template trước khi chạy lại sau khi dừng giữa chừng hoặc gặp lỗi.
+**Thay đổi #90:** Khi dựng lỗi hoặc bấm **Dừng tác vụ**, timeline được giữ đến bước đã thực hiện. Marker chỉ được gắn ở bước cuối (Gắn marker), nên dừng hoặc lỗi trước bước đó thì marker trên file voice và nest vẫn là của lần chạy trước. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả. Đưa sequence về trạng thái template trước khi chạy lại sau khi dừng giữa chừng hoặc gặp lỗi.
 
 **2.20.92:** Dựng theo voice không còn dừng ở bước lập kế hoạch với lỗi `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED` (gặp ở project có vùng sửa tay); log hiệu năng ghi thêm chi tiết bước dựng timeline. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md).
 
@@ -159,38 +159,32 @@ Planner tính điểm cắt từ mốc âm học mới; điểm cắt có thể 
 
 Kế hoạch dựng hình theo cue SRT giữ các ranh giới cue và không gộp hình. Với kế hoạch cũ có gộp hình, tốc độ chung tính bằng tổng frame nguồn / tổng frame đầu ra, thử hàng xóm trước và sau rồi chọn một đoạn liền kề giúp tốc độ gần dải ngưỡng hơn. Mỗi cặp gộp một lần rồi khóa, không gộp tiếp hoặc bị nhóm khác hấp thụ. Hòa thì ưu tiên hàng xóm ngắn hơn, rồi bên trước. Đây là lựa chọn cục bộ, không bảo đảm tối ưu toàn cục. Cho phép qua chapter khi source, timeline và voice liền nhau chính xác theo frame; không vượt gap/đoạn không lời hay phạm vi video chính.
 
-Chỉ V1 và audio gốc A1 dùng tốc độ chung; A2 giữ các clip/speed/điểm cắt an toàn trước gộp. Caption không gộp theo hình. Mọi đoạn hình đã gộp có marker trên V1, kể cả speed đã vào ngưỡng; nếu vẫn ngoài ngưỡng, marker ghi thêm cảnh báo. Các đoạn không gộp nhưng vượt ngưỡng vẫn có marker cảnh báo, kể cả kế hoạch theo cue SRT có speed thực đúng kế hoạch. Marker tốc độ nằm trên nguồn ProjectItem của hình V1. Nếu không gắn được, xem vị trí và lý do trong nhật ký. Không ép speed vào ngưỡng hoặc thêm khoảng nghỉ.
+Chỉ V1 và audio gốc A1 dùng tốc độ chung; A2 giữ các clip/speed/điểm cắt an toàn trước gộp. Caption không gộp theo hình. Mọi đoạn hình đã gộp có marker Video trên nest V1, kể cả speed đã vào ngưỡng; nếu vẫn ngoài ngưỡng, marker ghi thêm cảnh báo. Các đoạn không gộp nhưng vượt ngưỡng vẫn có marker cảnh báo, kể cả kế hoạch theo cue SRT có speed thực đúng kế hoạch. Marker tốc độ nằm trên nguồn ProjectItem của hình V1. Nếu không gắn được, xem vị trí và lý do trong nhật ký. Không ép speed vào ngưỡng hoặc thêm khoảng nghỉ.
 
-Màu marker giúp phân biệt: **đỏ** = speed quá nhanh; **cam** = speed quá chậm; **vàng** = căn voice cần nghe lại; **xanh dương** = hình đã gộp và speed trong ngưỡng (thông tin, không phải lỗi). Nếu nhóm gộp còn vượt ngưỡng, dùng đỏ/cam và ghi chú vẫn nêu việc gộp. Tool kiểm lại màu khi API cho phép; lỗi đặt màu được báo riêng, không coi timeline dựng đúng là lỗi chỉ vì màu. Tên và ghi chú luôn là cách phân biệt bổ sung.
+Tên marker cho biết cần kiểm tra hình, voice hay caption. Màu thể hiện mức cảnh báo hoặc thông tin. Tool kiểm lại màu khi API cho phép; lỗi đặt màu được báo riêng, không coi timeline dựng đúng là lỗi chỉ vì màu. Tên và ghi chú luôn là cách phân biệt bổ sung.
 
 Ghi chú tốc độ ngắn, dùng số caption cuối đang thấy: `Cue 12–13: tốc độ hình 145% (ngưỡng 70–130%) – kiểm tra`. Không có caption phủ đoạn hình thì bỏ nhãn Cue. Với kế hoạch theo cue SRT, speed native không đọc được hoặc lệch kế hoạch vẫn có marker ngay cả trong ngưỡng; marker trong ngưỡng giữ màu xanh dương và nêu lỗi đọc/sai speed, ví dụ `Cue 12: speed thực 120% ≠ kế hoạch 118% – kiểm tra`. Dòng dấu sở hữu ở cuối ghi chú được giữ.
 
 ### Nhận diện và dọn marker của tool
 
-Marker cần kiểm tra có tên `VOICE SYNC - Can kiem tra`, nằm trên clip voice A2 của Auto edit, hoặc clip/track voice đã chọn làm nguồn Tạo phụ đề. Khi chọn nhiều track hoặc dùng bản mix, Tạo phụ đề xét các track đã dùng để xuất audio theo thứ tự A1, A2, … và lấy track đầu tiên có clip đang bật giao với vùng cảnh báo. Vì vậy marker có thể nằm trên clip nhạc A1 dù A2 có lời. Marker đi theo voice khi kéo/trim clip. Tool chọn clip có phần giao dài nhất với vùng cảnh báo rồi chặn cả hai mép trong clip đó, kể cả caption được nới sớm tối đa 5 frame; không phủ qua khoảng trống. Nếu các clip đang xét trên track đó vẫn hòa hoặc chồng nhau, xem cảnh báo trong nhật ký. Mỗi dòng ghi `Cue N: vấn đề – việc cần làm`; số Cue là số caption cuối trong Premiere, có thể là một khoảng. Không có caption tại vùng đó thì ghi thẳng vấn đề, viết hoa đầu câu. Ghi chú không lặp khoảng giây hay số khối phân tích.
+Trong 3.0.0, mở ghi chú theo tên marker:
 
-Marker nguồn cũng hiện trong các sequence khác dùng cùng file voice và vùng nguồn đó. Khi không gắn được lên voice (khoảng trống, reverse/time remap/nest, không đọc được speed hoặc API ghi/kiểm chứng lỗi), nhật ký ghi một dòng cảnh báo với khoảng thời gian, số cue nếu có, loại marker và lý do. Thông báo cuối cho biết có bao nhiêu cảnh báo chưa gắn được. Mọi marker của tool đều là điểm (In = Out) ở frame giữa đoạn cảnh báo. Trên clip, tool lấy giữa phần giao với clip. Nếu frame giữa đã có marker thủ công, tool tìm frame trống gần nhất trong đoạn, ưu tiên phía sau khi cách đều.
+| Tên | Nơi gắn | Việc cần kiểm tra |
+| --- | --- | --- |
+| `VOICE SYNC - Video` | Nest của V1 | Tốc độ, đoạn đã gộp và các cảnh báo hậu kiểm về hình hoặc A1 đi cùng hình. |
+| `VOICE SYNC - Voice` | File voice | Căn lời và vị trí của đoạn voice sau khi dựng. |
+| `VOICE SYNC - Caption` | File voice | Chữ khác SRT, mốc thời gian ước lượng hoặc đoạn cần nghe lại. Trong Tạo phụ đề, marker nằm trên clip ở track được dùng đầu tiên có clip giao với đoạn cảnh báo. |
 
-**V1 nest: Native Premiere pending.** Probe #34 chỉ chứng minh trên WAV ở speed 110%, chưa chứng minh marker V1 hiện trên nest. Khi mapping hoặc ghi/đọc lại thất bại, nhật ký hiển thị cảnh báo tốc độ V1 hoặc căn voice A2. Chạy lại dọn marker cũ có tag của tool trên thước trong vùng dựng. Không suy ra khả năng hiển thị native từ mock đọc lại thành công.
+Marker 2.20.x không được 3.0.0 nhận diện. Xóa thủ công một lần các marker cũ có tên bắt đầu bằng `VOICE SYNC - ` hoặc dùng template sạch. Giữ lại marker do bạn tự đặt.
 
-- `Cue 4: chữ khác SRT, timing ước lượng – nghe lại`
-- `Cue 20–24: timing ước lượng – kiểm mép`
-- `Cue 9: chữ máy nghe (ngoài SRT) – kiểm tra`
-- `Hở hình 3 frame – kiểm tra`
+Marker là một điểm trên frame giữa phần cảnh báo nằm trong clip. Các cảnh báo cùng loại chồng hoặc chạm nhau trên một lát clip được gộp. Khi Voice và Caption trùng điểm, Voice giữ chỗ trước và Caption tìm frame trống gần nhất trong đoạn của nó. Marker có thể hiện ở nhiều sequence dùng chung ProjectItem. Bật **Timeline Settings > Show Clip Markers** nếu chưa thấy.
 
-Trên cùng lát clip, các cảnh báo SRT có khoảng cue chồng lên nhau hoặc chạm mép trên lưới frame dùng một marker ở giữa đoạn gộp. Nếu cách nhau dù chỉ một frame trống, hoặc thuộc hai lát cắt của cùng nguồn, mỗi đoạn có marker riêng. Marker giữ các lý do, bỏ dòng trùng, gộp ghi chú cùng Cue khi còn ngắn và dùng màu nghiêm trọng nhất.
+Ghi chú ngắn theo cue, ví dụ `Cue 4: chữ khác SRT, timing ước lượng – nghe lại`. Chạy lại giữ marker đã đúng và cập nhật bộ marker của chức năng đang chạy. Dựng theo voice và Tạo phụ đề quản lý hai bộ Caption riêng.
 
-Auto edit đặt marker căn voice ở giữa lát A2 trước. Nếu điểm giữa đoạn cue trùng với marker căn voice, marker SRT dịch tới frame trống gần nhất trong chính đoạn cue. Marker tốc độ/gộp hình vẫn ở giữa lát V1. Dòng dấu sở hữu ở cuối ghi chú giúp tool nhận diện marker. “Timing chưa xác minh” yêu cầu kiểm mép hiển thị; “chữ khác SRT” yêu cầu đối chiếu voice.
+Nếu không gắn được marker, **Chi tiết** ghi loại, vị trí, cue nếu có và lý do. Lỗi đặt màu được báo riêng. Khi gắn marker gặp lỗi ghi, công cụ thử phục hồi dữ liệu marker của ProjectItem đang xử lý. Khi Dừng, các ProjectItem đã xử lý giữ kết quả đã ghi.
 
-Auto edit và Tạo phụ đề quản lý riêng các marker review này bằng tên và tag v2 gồm workflow/sequence ID. Trên mỗi nguồn voice đang dùng, chạy lại sẽ thay bộ marker review của cùng chức năng, kể cả marker từ sequence khác hoặc ở vị trí nguồn đã ngoài clip. Nếu lượt mới không có cảnh báo, bộ cũ của chức năng đó được dọn. Marker của chức năng kia vẫn được giữ. Trên thước, marker v2 chỉ được dọn trong vùng xử lý của đúng workflow và sequence. Marker review v1 chỉ từng có trên sequence và chỉ dọn trong vùng đang làm; không nhận v1 review trên ProjectItem. Dọn marker tốc độ/căn voice trên nguồn dùng cùng mapping với lúc đặt; không đoán speed 100% khi mapping không đọc được, nên giữ marker cũ ở vùng chưa ánh xạ được. Giữ marker người dùng và chức năng khác. Caption đã tạo thành công vẫn được giữ khi một cảnh báo thiếu clip hoặc hết frame trống. Lỗi riêng màu vẫn giữ vị trí/ghi chú và được báo riêng.
+**V1 nest: Native Premiere pending.** Các kiểm thử hiện tại xác nhận vị trí trên mock.
 
-Tool đọc marker tốc độ/căn voice cũ trước khi cắt/retime và giữ chúng trong lúc dựng. Sau khi xác định vị trí cuối, tool đối chiếu theo từng nguồn V1/A1/A2: giữ marker còn đúng, cập nhật hoặc tạo marker cần thiết, kiểm tra rồi mới dọn marker thừa. Khi dọn marker của phiên bản cũ trên thước, tool đọc và kiểm chứng bộ marker trước khi xóa trong phạm vi đã nêu. Không dọn marker toàn timeline hoặc CTA ngoài nhóm.
-
-Nếu cập nhật marker bị lỗi, tool thử phục hồi dữ liệu marker của riêng nhóm đó và báo rõ nếu chưa phục hồi đầy đủ. Đây không phải khôi phục timeline; cần kiểm tra kết quả trước khi chạy lại. Tạm dừng/hủy chỉ thực hiện ngoài bước cập nhật một nhóm nguồn: nhóm đã hoàn tất được giữ, nhóm chưa cập nhật còn marker cũ. Nếu sửa marker nguồn trong lúc tạm dừng, tool phát hiện khác biệt trước khi ghi nhóm đó. Không tự Undo hoặc lưu project.
-
-Marker tốc độ/căn voice trên nguồn có tiền tố tên `VOICE SYNC -` và dấu `[PremiereVoiceSync:owned-marker:v1]` trong ghi chú; bản dự phòng của phiên bản cũ trên thước dùng tag riêng chứa ID sequence. Marker nguồn cũ chưa có dấu này chỉ được nhận khi cả tên và mẫu ghi chú trùng mẫu cảnh báo tốc độ/căn voice của tool. Chỉ có tiền tố tên chưa đủ để xóa; marker thủ công hoặc không đủ dấu hiệu được giữ. Đây là dấu nhận dạng, không phải chữ ký bảo mật: nếu sao chép nguyên tên/ghi chú của tool vào marker thủ công thì không thể phân biệt tuyệt đối.
-
-Premiere lưu clip marker trên ProjectItem nguồn, không phải bản sao riêng của mỗi TrackItem. Nếu cùng nguồn và cùng vùng source xuất hiện ở sequence khác, dọn/tạo marker có thể hiện ở các bản dùng chung đó. Không thay nội dung, vị trí hay speed của các clip ngoài phạm vi.
 
 ### Chuẩn bị đầu vào
 
@@ -225,7 +219,7 @@ Các element khác trong template không cần xóa. Nếu hình sau dựng dài
 | Khoảng tách nhóm voice | 2 giây | Khoảng cách giữa clip A2 lớn hơn ngưỡng kết thúc nhóm voice chính; nhóm sau như CTA được giữ riêng. |
 | Ký tự tối đa mỗi caption | 42 | Chia caption theo dấu câu, nghỉ hơi và ranh giới từ/cụm từ. Có thể giảm nếu font lớn. Không phải phép đo độ rộng chữ trên màn hình. |
 
-Ví dụ: speed cần 145% trong khi ngưỡng là 130% thì kế hoạch theo cue SRT giữ 145% và đặt marker đỏ. Kế hoạch cũ thử một cặp hình liền kề giúp cải thiện tốc độ; nếu không có cặp tốt hơn hoặc speed sau gộp vẫn ngoài ngưỡng, giữ tốc độ cần thiết và đặt marker, không ép xuống 130%. Nút **Khôi phục mặc định** chỉ đặt lại các tùy chỉnh, không khôi phục timeline.
+Ví dụ: speed cần 145% trong khi ngưỡng là 130% thì kế hoạch theo cue SRT giữ 145% và gắn marker Video. Kế hoạch cũ thử một cặp hình liền kề giúp cải thiện tốc độ; nếu không có cặp tốt hơn hoặc speed sau gộp vẫn ngoài ngưỡng, giữ tốc độ cần thiết và gắn marker Video, không ép xuống 130%. Nút **Khôi phục mặc định** chỉ đặt lại các tùy chỉnh, không khôi phục timeline.
 
 Từ 2.20.80, workflow log lưu các thông số thực sự có trong kế hoạch: ngưỡng không lời, hai ngưỡng tốc độ, khoảng tách nhóm voice và giới hạn ký tự caption. Vì vậy vẫn kiểm tra được thiết lập sau khi job tạm đã dọn. Khoảng không lời chưa tách có marker theo vị trí hình sau dựng, khác với marker cần rà chữ/timing của caption.
 

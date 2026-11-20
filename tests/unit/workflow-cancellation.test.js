@@ -7,7 +7,7 @@ function fixture(options={}){
   const calls=[],files={},controls={captionVoiceTrack:{value:"1"},subtitleMaxCharacters:{value:"42"},captionLanguage:{value:"vi"}};
   let api, advances=0, engineCallback=null, resumeCallback=null;
   const sequence={name:"fixture",sequenceId:"seq",voices:[{start:0,end:4,speedPercent:100,inPoint:0}]};
-  const plan={ok:true,schemaVersion:8,sequenceId:"seq",summary:{punctuationSentenceCount:2,captionCueCount:2},speedMergeTrial:"adjacent-speed-v2",visualSegments:[]};
+  const plan={ok:true,schemaVersion:8,sequenceId:"seq",summary:{punctuationSentenceCount:2,captionCueCount:2},speedMergeTrial:"adjacent-speed-v2",visualSegments:[],reviewMarkers:[]};
   function stopAt(key){if(options.onPoint)options.onPoint(key,api);if(options.stopAt===key){api.stop();api.stop();assert(api.busy(),"Stop cannot unlock an outstanding call");assert(controls.stopWorkflow.disabled);assert(controls.stopWorkflow.textContent.includes("Đang yêu cầu"));}}
   const fakeFs={existsSync:p=>p.endsWith(".srt"),mkdirSync(){},writeFileSync(p,text){files[p]=text;calls.push(["write",p]);},appendFileSync(){},readFileSync(p){
     if(files[p])return files[p];if(p.endsWith("host.jsx"))return "host";
@@ -49,8 +49,7 @@ function fixture(options={}){
     else if(expression.includes("beginCaptionAudioExport")){stopAt("export-begin");result={ok:true,done:false,nextCall:0,rangeCount:2};}
     else if(expression.includes("advanceCaptionAudioExport")){advances++;stopAt("export-advance-"+advances);result={ok:true,done:advances===2,nextCall:advances,restored:advances===2};}
     else if(expression.includes("abortCaptionAudioExport"))result=options.restoreError?{ok:false,done:true,restored:false,exportFailurePhase:"restore",error:"RESTORE_FAILED"}:{ok:false,done:true,restored:true};
-    else if(expression.includes("applyCaptionOnly")){stopAt("caption-import");result={ok:true,captionCreated:true,captionCueCount:2,rulerCleanupPending:true};}
-    else if(expression.includes("finishCaptionMarkerCleanup"))result={ok:true};
+    else if(expression.includes("applyCaptionOnly")){stopAt("caption-import");result={ok:true,captionCreated:true,captionCueCount:2};}
     else throw Error("UNEXPECTED_HOST:"+expression);
     if(expression.includes("workflowPauseState")&&options.holdResumeRead&&api.context().resuming)resumeCallback=()=>callback(JSON.stringify(result));
     else Promise.resolve().then(()=>callback(JSON.stringify(result)));
@@ -79,9 +78,9 @@ async function settle(f,running){
 }
 const editRegressions = {
   async "postcheck-error-first"() {
-    const f=fixture({editResult:{ok:false,executorVersion:25,timelineMutated:true,error:"Original host error",settings:{validationToleranceFrames:1},clipMarkerFailureCount:1,clipMarkerFailures:["Marker write failed"]}});
+    const f=fixture({editResult:{ok:false,executorVersion:25,timelineMutated:true,error:"Original host error",settings:{validationToleranceFrames:1},markerFailureCount:1,markerFailures:["Marker write failed"]}});
     await settle(f,f.api.edit());
-    assert.match(f.controls.workflowNoticeTechnical.textContent,/^Original host error; .*1 lỗi cập nhật marker clip: Marker write failed/);
+    assert.match(f.controls.workflowNoticeTechnical.textContent,/^Original host error; .*1 lỗi gắn marker Video, Voice hoặc Caption: Marker write failed/);
     assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline được giữ đến bước đã thực hiện..*trước bước Gắn marker/);
   },
   async "closing-error-secondary"() {
@@ -128,7 +127,6 @@ if(require.main===module)(async()=>{
       const hosts=f.calls.filter(c=>c[0]==="host").map(c=>c[1]);
       if(["edit-begin","edit-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortDiagnosticEdit")).length,1);
       if(["export-begin","export-yield","export-advance-1"].includes(stopAt))assert.equal(hosts.filter(c=>c.includes("abortCaptionAudioExport")).length,1);
-      if(stopAt==="caption-import")assert(!hosts.some(c=>c.includes("finishCaptionMarkerCleanup")),"Stop keeps legacy ruler markers");
       if(stopAt.startsWith("export"))assert(!f.calls.some(c=>c[0]==="engine"));
       assert(!hosts.some(c=>/\.save\(|\.undo\(/i.test(c)));
     }

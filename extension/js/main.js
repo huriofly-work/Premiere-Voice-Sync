@@ -246,7 +246,12 @@
     runContext.reviewItems.push({ key: key, start: Number(start), end: Number(end), captionIndex: captionIndex || null, reasons: [reason] });
   }
   function logReviewMarkers(result, markers, plan) {
-    log("Marker cần kiểm tra trên clip: " + Number(result.reviewMarkerClipCount || 0) + ".", "muted");
+    var counts = ["Video", "Voice", "Caption"].filter(function (kind) {
+      return result[kind.toLowerCase() + "MarkerCount"] !== undefined;
+    }).map(function (kind) {
+      return kind + " " + Number(result[kind.toLowerCase() + "MarkerCount"]);
+    });
+    if (counts.length) log("Marker · " + counts.join(" · ") + ".", "muted");
     (result.unattachedMarkers || []).forEach(function (marker) {
       var label = marker.cueLabel ? marker.cueLabel + " · " : "";
       log("Không gắn được marker lên clip · " + label + marker.kind + " [" + Number(marker.start).toFixed(3) + "–" + Number(marker.end).toFixed(3) + " s] · " + (marker.warning || "") + " · " + marker.reason, "warn");
@@ -256,10 +261,10 @@
     if (plan) (plan.pictureCueRevision === "srt-cue-picture-v1" ? (plan.pictureSegments || []) : (plan.visualSegments || plan.segments || [])).forEach(function (segment) {
       if (segment.SpeedOutsideWarningRange) reviewPosition(segment.NewStart, segment.NewEnd, "Tốc độ hình ngoài ngưỡng đã chọn");
     });
-    if (Number(result.speedWarningSentenceCount || 0)) runWarning(result.speedWarningSentenceCount + " đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker đỏ/cam.", true);
-    if (Number(result.reviewMarkerFailureCount || 0)) runWarning("Chưa tạo đủ marker; xem các vị trí trong Chi tiết.", true, "MARKER_MISSING");
-    if (Number(result.reviewMarkerColorFailureCount || 0) || Number(result.clipMarkerColorFailureCount || 0)) runWarning("Một số marker chưa đúng màu; phân biệt bằng tên và ghi chú.", true, "MARKER_COLOR");
-    if (Number(result.reviewMarkerCount || 0) || (markers || []).length) runWarning("Có vị trí cần nghe hoặc xem lại.", true, "POSITIONS");
+    if (Number(result.speedWarningSentenceCount || 0)) runWarning(result.speedWarningSentenceCount + " đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker Video.", true);
+    if (Number(result.markerFailureCount || 0)) runWarning("Chưa tạo đủ marker; xem các vị trí trong Chi tiết.", true, "MARKER_MISSING");
+    if (Number(result.markerColorFailureCount || 0)) runWarning("Một số marker chưa đúng màu; phân biệt bằng tên và ghi chú.", true, "MARKER_COLOR");
+    if (Number(result.captionMarkerCount || 0) || (markers || []).length) runWarning("Có vị trí cần nghe hoặc xem lại.", true, "POSITIONS");
   }
 
   function byId(id) { return document.getElementById(id); }
@@ -738,7 +743,7 @@
     var summary = warn ? (positions.length ? "Có " + regionCount + " vùng cần xem hoặc nghe lại; mở danh sách bên dưới trước khi lưu project." : "Kết quả cần được kiểm tra trước khi lưu project; mở Chi tiết để xem lý do.") : "Xem và nghe lại trước khi lưu project.";
     if (warn && runContext.issues.some(function (issue) { return issue.code === "REFERENCE_NOT_RETAINED"; })) summary = "Không giữ được chữ từ SRT; toàn bộ phụ đề dùng chữ tự nhận diện. Kiểm tra chữ trước khi lưu project.";
     if (warn && runContext.issues.some(function (issue) { return issue.code === "RECOVERY_STORAGE"; })) summary = "Không lưu được trạng thái phục hồi của lần chạy. Kiểm tra timeline trước khi đóng hoặc mở lại panel.";
-    if (warn && runContext.issues.some(function (issue) { return issue.code === "MARKER_MISSING"; })) summary = summary.replace(/\.$/, "") + "; một số vị trí chưa có marker trên timeline.";
+    if (warn && runContext.issues.some(function (issue) { return issue.code === "MARKER_MISSING"; })) summary = summary.replace(/\.$/, "") + "; một số cảnh báo chưa gắn được marker.";
     if (warn) runContext.issues.forEach(function (issue) {
       if (issue.code === "MARKER_UNATTACHED") summary += " " + issue.message;
     });
@@ -1071,7 +1076,7 @@
             acousticBoundaryCount: safeCount(result.captionTimingAcousticBoundaryCount) || 0
           };
           var counts = {};
-          ["captionCueCount", "voiceCueCount", "pictureCueCount", "addedCutCount", "reviewMarkerCount", "recognitionSuppressedRangeCount"].forEach(function (key) { var value = safeCount(result[key]); if (value !== null) counts[key] = value; });
+          ["captionCueCount", "voiceCueCount", "pictureCueCount", "addedCutCount", "captionMarkerCount", "recognitionSuppressedRangeCount"].forEach(function (key) { var value = safeCount(result[key]); if (value !== null) counts[key] = value; });
           if (Object.keys(counts).length) event.counts = counts;
           if (typeof result.minNoDialogueGapSeconds === "number" && result.settings) {
             var settings = { minNoDialogueGapSeconds: result.minNoDialogueGapSeconds, speedWarningMinPercent: result.speedWarningMinPercent, speedWarningMaxPercent: result.speedWarningMaxPercent,
@@ -1178,8 +1183,7 @@
     }
     if (internalCoverageGap > Number((result.settings && result.settings.maxCoverageGapFrames) || 0)) reasons.push("khe hở hình bên trong lớn nhất " + internalCoverageGap + " frame");
     if (Number(result.linkMismatchCount || 0) > 0) reasons.push(result.linkMismatchCount + " cặp V1–A1 mất liên kết");
-    if (Number(result.clipMarkerFailureCount || 0) > 0) reasons.push(result.clipMarkerFailureCount + " lỗi cập nhật marker clip: " + (result.clipMarkerFailures || []).join("; "));
-    if (Number(result.reviewMarkerFailureCount || 0) > 0) reasons.push(result.reviewMarkerFailureCount + " lỗi hậu kiểm marker: " + (result.reviewMarkerFailures || []).join("; "));
+    if (Number(result.markerFailureCount || 0) > 0) reasons.push(result.markerFailureCount + " lỗi gắn marker Video, Voice hoặc Caption: " + (result.markerFailures || []).join("; "));
     if (result.masterInOutReset === false) reasons.push("không xóa được In/Out của master nest");
     if (result.captionCreated === false) reasons.push("không tạo được caption track, nên không gắn marker caption" + (result.captionError ? " (" + result.captionError + ")" : ""));
     if (result.captionTemporaryBinRemoved === false || Number(result.captionProjectItemCountAfter || 0) !== Number(result.captionProjectItemCountBefore || 0)) reasons.push("file caption tạm vẫn còn trong Project");
@@ -1210,7 +1214,7 @@
     var hostPath = path.join(extensionRoot(), "jsx", "host.jsx");
     var inputPath = path.join(extensionRoot(), "js", "caption-input.js");
     var bootstrap = '(function(){try{' +
-      'function ready(){return $._PVS&&$._PVS.captionInputRevision===1&&$._PVS.captionInput&&$._PVS.captionInput.revision===1&&typeof $._PVS.captionInput.resolve==="function"&&typeof $._PVS.captionInput.sameKey==="function"&&typeof $._PVS.scanSequence==="function"&&typeof $._PVS.scanCaptionRange==="function"&&typeof $._PVS.beginSrtScan==="function"&&typeof $._PVS.beginCaptionAudioExport==="function"&&typeof $._PVS.workflowPauseState==="function"&&typeof $._PVS.finishCaptionMarkerCleanup==="function";}' +
+      'function ready(){return $._PVS&&$._PVS.captionInputRevision===1&&$._PVS.captionInput&&$._PVS.captionInput.revision===1&&typeof $._PVS.captionInput.resolve==="function"&&typeof $._PVS.captionInput.sameKey==="function"&&typeof $._PVS.scanSequence==="function"&&typeof $._PVS.scanCaptionRange==="function"&&typeof $._PVS.beginSrtScan==="function"&&typeof $._PVS.beginCaptionAudioExport==="function"&&typeof $._PVS.workflowPauseState==="function"&&typeof $._PVS.applyCaptionOnly==="function"&&typeof $._PVS._applyCaptionMarkers==="function";}' +
       'if($._PVS&&$._PVS.bootstrapRevision===3&&ready())return "PVS_HOST_READY";' +
       // Read explicitly: BOM-less source otherwise follows Windows ANSI in
       // ExtendScript. Evaluate in this call and publish dependencies on $._PVS.
@@ -1720,6 +1724,7 @@
         }
         record({ type: "response", call: nextCall, wallMilliseconds: Date.now() - requestedAt, ok: response.ok, done: response.done, stage: response.stage || nextStage, hostMilliseconds: response.milliseconds, checkpoint: response.checkpoint || "" });
         if (response.done) {
+          if (nextStage === "Báo cáo") log("Dựng · Báo cáo.", "muted");
           record({ type: "finish", ok: !!(response.result && response.result.ok), timings: response.timings || [] });
           if (!response.result) throw new Error("Chẩn đoán không trả về hậu kiểm.");
           if (response.result.ok) {
@@ -1893,8 +1898,8 @@
       if ((alignment.numericCaptionRefinedCues || []).length) log("Đã căn riêng caption quanh số: cue " + alignment.numericCaptionRefinedCues.join(", ") + ".", "muted");
       if ((alignment.numericCaptionReviewCues || []).length) log("Tinh chỉnh số giữ mốc đã căn tại cue " + alignment.numericCaptionReviewCues.join(", ") + ".", "muted");
       logCaptionTiming(alignment);
-      if ((alignment.autoEditManualReviewBlocks || []).length) log("Có " + alignment.autoEditManualReviewBlocks.length + " vùng cần sửa tay: giữ toàn bộ hình/voice thành khối, caption chưa chắc có marker để rà lại. Các vùng đã xác minh tiếp tục dựng.", "warn");
-      if ((alignment.autoEditReferenceRecoveredCueIndices || []).length) log("Đã phục hồi chữ SRT bằng lớp đối chiếu dùng chung: cue " + alignment.autoEditReferenceRecoveredCueIndices.join(", ") + ". Giữ nhóm voice quanh câu cần rà; xem marker trên caption.", "warn");
+      if ((alignment.autoEditManualReviewBlocks || []).length) log("Có " + alignment.autoEditManualReviewBlocks.length + " vùng cần sửa tay: giữ toàn bộ hình/voice thành khối, xem marker Caption để rà lại. Các vùng đã xác minh tiếp tục dựng.", "warn");
+      if ((alignment.autoEditReferenceRecoveredCueIndices || []).length) log("Đã phục hồi chữ SRT bằng lớp đối chiếu dùng chung: cue " + alignment.autoEditReferenceRecoveredCueIndices.join(", ") + ". Giữ nhóm voice quanh câu cần rà; xem marker Caption.", "warn");
       log("Căn voice: " + ((Date.now() - phase) / 1000).toFixed(1) + " giây.", "ok");
 
       status("2/3 · Đang lập kế hoạch theo câu...", "muted");
@@ -1911,7 +1916,7 @@
       log("Caption: " + plan.summary.captionCueCount + " đoạn, tối đa " + settings.maxCaptionCharacters + " ký tự/đoạn; " + Number(plan.summary.voiceAlignedCaptionBoundaryCount || 0) + " ranh giới bám word timestamp.", "ok");
       if (plan.captionMappingReviewCues && plan.captionMappingReviewCues.length) log("Mốc caption mới xung đột với caption bên cạnh; giữ cách căn dự phòng và cần nghe lại cue SRT: " + plan.captionMappingReviewCues.join(", ") + ".", "warn");
       if (Number(plan.summary.recoveredUnalignedCueCount || 0) > 0) {
-        log("Đã nội suy an toàn " + plan.summary.recoveredUnalignedCueCount + " cue thiếu timestamp; clip voice A2 sẽ có marker để kiểm tra.", "muted");
+        log("Đã nội suy an toàn " + plan.summary.recoveredUnalignedCueCount + " cue thiếu timestamp; xem marker Voice trên A2 để kiểm tra.", "muted");
       }
       if (Number(plan.summary.unsafeBoundaryMergeCount || 0) > 0) {
         log("Đã gộp " + plan.summary.unsafeBoundaryMergeCount + " ranh giới câu không có khoảng lặng đủ an toàn; không cắt vào lời nói.", "muted");
@@ -1979,21 +1984,19 @@
       metrics.end(result);
       if (Number(result.tailShiftFrames || 0) > 0) log("Đã dời " + Number(result.tailShiftItemCount || 0) + " element cuối timeline thêm " + Number(result.tailShiftFrames) + " frame để theo đuôi video mới.", "ok");
       if (result.speedMetadataReadable) log("Tốc độ Premiere thực tế: " + Number(result.minimumObservedSpeedPercent).toFixed(3) + "–" + Number(result.maximumObservedSpeedPercent).toFixed(3) + "%; sai số metadata lớn nhất " + Number(result.maxSpeedMetadataErrorPercent || 0).toFixed(3) + "%.", "ok");
-      else log("Premiere không cung cấp API đọc lại speed cho ít nhất một clip; marker cảnh báo vẫn dùng speed đã tính chính xác theo frame.", "muted");
+      else log("Premiere không cung cấp speed đọc lại cho ít nhất một clip. Xem marker Video và danh sách cảnh báo chưa gắn được trong Chi tiết.", "muted");
       log("Caption Track đã được tạo; không giữ file sentence-plan.vi.srt trong Project.", "ok");
-      log("Marker: đã xóa " + Number(result.clearedClipMarkerCount || 0) + " marker cũ của tool; đánh dấu " + Number(result.mergeClipMarkerCount || 0) + " đoạn hình đã gộp. Giữ marker người dùng.", "ok");
-      if (Number(result.clipMarkerColorFailureCount || 0) > 0) log("Premiere chưa đặt đúng màu cho " + Number(result.clipMarkerColorFailureCount) + " marker. Vị trí/ghi chú vẫn được kiểm tra; xem tên và ghi chú để phân biệt.", "warn");
       log("Dựng timeline: " + ((Date.now() - phase) / 1000).toFixed(1) + " giây.", "ok");
       var successMessage = "Hoàn tất trong " + ((Date.now() - started) / 1000).toFixed(1) + " giây · " + (plan.pictureCueSummary ? plan.pictureCueSummary.sourceCueCount : plan.summary.punctuationSentenceCount) + " cue nguồn · " + Number(result.pictureCueCount || result.voiceCueCount) + " đoạn hình · " + result.voiceCueCount + " đoạn voice · " + result.captionCueCount + " caption · khe hở hình 0 frame. Project chưa được lưu.";
       if (result.unattachedMarkerCount) successMessage += " Có " + result.unattachedMarkerCount + " cảnh báo chưa gắn được marker lên clip.";
       var manualSummary = manualReviewSummary(plan);
       if (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) successMessage += " Còn " + manualSummary.timingBlocks + " vùng timing ước lượng; " + manualSummary.pendingReferenceCues + " câu SRT chưa khớp đầy đủ. Các phần có bằng chứng âm thanh đã được căn tự động.";
       if (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) runWarning("Còn " + manualSummary.timingBlocks + " vùng timing ước lượng; " + manualSummary.pendingReferenceCues + " câu SRT chưa khớp đầy đủ. Xem các đoạn được đánh dấu.", true);
-      if ((plan.sourceGapReviewRanges || []).length) successMessage += " Có " + plan.sourceGapReviewRanges.length + " khoảng không lời chưa tách vì thiếu điểm cắt voice an toàn; xem marker để rà tay.";
+      if ((plan.sourceGapReviewRanges || []).length) successMessage += " Có " + plan.sourceGapReviewRanges.length + " khoảng không lời chưa tách vì thiếu điểm cắt voice an toàn; xem marker Caption để rà tay.";
       if ((result.omittedReferenceCueIndices || []).length) successMessage += " Đã bỏ hình/A1 ứng với " + result.omittedReferenceCueIndices.length + " cue không còn trong voice (" + (Number(result.omittedSourceFrameCount) / plan.frameRate).toFixed(2) + " giây hình nguồn).";
       if (speedMergeRequested && plan.speedMergeSummary && !plan.pictureCueRevision) successMessage += " Hình sau cân bằng: " + plan.speedMergeSummary.visualGroupsAfter + " đoạn; A2 giữ " + result.voiceCueCount + " đoạn voice.";
-      if (enhanced) successMessage += " Đã dùng quy trình DTW/gộp hình/dựng không delay; " + Number(result.mergeClipMarkerCount || 0) + " đoạn hình gộp có marker. Hãy kiểm kết quả trước khi lưu.";
-      if (Number(result.clipMarkerColorFailureCount || 0) > 0) successMessage += " Có " + Number(result.clipMarkerColorFailureCount) + " marker chưa đặt đúng màu; xem Hỗ trợ và nhật ký.";
+      if (enhanced) successMessage += " Đã dùng quy trình DTW/gộp hình/dựng không delay; " + Number(result.mergeClipMarkerCount || 0) + " đoạn hình gộp có marker Video. Hãy kiểm kết quả trước khi lưu.";
+      if (Number(result.markerColorFailureCount || 0) > 0) successMessage += " Có " + Number(result.markerColorFailureCount) + " marker chưa đặt đúng màu; xem Hỗ trợ và nhật ký.";
       if (performanceTrial) successMessage = "CHẨN ĐOÁN · " + successMessage + " Hậu kiểm timeline không xác nhận hết lag; hãy kiểm Preview/Play và khả năng lưu.";
       runContext.resultHeadline = (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) ? "Đã dựng — còn một số đoạn cần rà." : "Đã dựng xong.";
       completedMessage = successMessage;
@@ -2321,9 +2324,9 @@
       if ((result.referenceNumberReviewCues || []).length) log("Giữ chữ SRT tại " + result.referenceNumberReviewCues.length + " câu đã nhận ra có phần số khác cách ghi của nhận diện.", "muted");
       if (referenceScope.length) log("Phạm vi SRT: " + referenceScope.map(function (item) { return "vùng " + (Number(item.sourceIndex) + 1) + " dùng cue " + item.firstCue + "–" + item.lastCue; }).join("; ") + " / " + result.referenceCueCount + " cue. " + result.referenceOutsideCueCount + " cue nằm ngoài audio được chọn.", "muted");
       var referenceSupplements = result.referenceSupplementRanges || [];
-      if (referenceSupplements.length) log("Đã thêm chữ tự nhận diện tại " + referenceSupplements.length + " vùng audio chưa khớp SRT: " + referenceSupplements.map(function (item) { return Number(item.start).toFixed(2) + "–" + Number(item.end).toFixed(2) + "s"; }).join("; ") + ". Xem số Cue trong marker để kiểm tra chữ.", "warn");
+      if (referenceSupplements.length) log("Đã thêm chữ tự nhận diện tại " + referenceSupplements.length + " vùng audio chưa khớp SRT: " + referenceSupplements.map(function (item) { return Number(item.start).toFixed(2) + "–" + Number(item.end).toFixed(2) + "s"; }).join("; ") + ". Xem số Cue trong marker Caption để kiểm tra chữ.", "warn");
       if ((result.referenceContextCoveredRanges || []).length) log("Đã loại " + result.referenceContextCoveredRanges.length + " vùng nhận diện trùng với đuôi/đầu câu SRT liền kề.", "muted");
-      if ((result.referenceSupplementEmptyRanges || []).length) log("Có " + result.referenceSupplementEmptyRanges.length + " vùng chưa xác minh được lời bổ sung và còn khoảng chưa được caption bao phủ; cần nghe lại tại các marker.", "warn");
+      if ((result.referenceSupplementEmptyRanges || []).length) log("Có " + result.referenceSupplementEmptyRanges.length + " vùng chưa xác minh được lời bổ sung và còn khoảng chưa được caption bao phủ; cần nghe lại tại các marker Caption.", "warn");
       var referenceReviews = (result.referenceReviewCues || []).filter(function (cue) { return String(cue.reason).indexOf("Giữ chữ SRT khớp phần lớn") !== 0; });
       if ((result.referenceInformationCues || []).length) log("Giữ chữ SRT tại " + result.referenceInformationCues.length + " cue chỉ khác cách viết cấp độ; không coi khác biệt định dạng này là lỗi nội dung.", "muted");
       if ((result.referenceQuietRanges || []).length) log("Bỏ qua nhận diện bổ sung ở " + result.referenceQuietRanges.length + " khoảng nghỉ ngắn đã đo; thông tin đối chiếu được lưu trong nhật ký.", "muted");
@@ -2342,18 +2345,13 @@
       var captionExecutorPath = writeHostInput(result, "captions", outputFolder);
       await waitForWorkflowPause();
       runContext.impact = "unknown";
-      var applied = await evalHost("$._PVS.applyCaptionOnly(" + jsxString(captionExecutorPath) + ",true)");
+      var applied = await evalHost("$._PVS.applyCaptionOnly(" + jsxString(captionExecutorPath) + ")");
       captionCreated = !!applied.captionCreated;
       // Even a failed import can have changed the Project bin; do not assume untouched.
       runContext.impact = applied.ok ? "changed" : "unknown";
       logReviewMarkers(applied, result.reviewMarkers);
       if (!applied.ok) throw new Error(applied.error);
       throwIfStopRequested();
-      if (applied.rulerCleanupPending) {
-        runStage("cleanup");
-        var rulerCleanup = await evalHost("$._PVS.finishCaptionMarkerCleanup(" + jsxString(captionExecutorPath) + ")");
-        if (!rulerCleanup.ok) throw new Error(rulerCleanup.error);
-      }
       metrics.end(applied);
       var message = "Đã tạo " + applied.captionCueCount + " caption trong " + ((Date.now() - started) / 1000).toFixed(1) + " giây. Video/audio được giữ nguyên. Hãy nghe lại để kiểm tra từ nhận diện; project chưa được lưu.";
       if (result.usedReferenceSrt && Number(result.referenceSelectedCueCount) === 0) message += " Không giữ được câu nào từ SRT đã chọn; toàn bộ caption dùng chữ tự nhận diện.";
