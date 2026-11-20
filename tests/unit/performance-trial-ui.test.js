@@ -8,8 +8,9 @@ const stageTimings=[
 async function scenario(options={}){
   const calls=[],rows=[],warnings=[],controls={workflowNotice:{hidden:true}},base="stable-source\r\n",hash=crypto.createHash("sha256").update(base.replace(/\r\n/g,"\n")).digest("hex");
   let request=0;
+  const storage=new Map();
   const fakeFs={readFileSync(){return base;},mkdirSync(){},writeFileSync(p,text,opt){if(options.logCreateError)throw Error("DISK_FULL");assert.strictEqual(opt.flag,"wx");rows.push(JSON.parse(text));},appendFileSync(p,text){if(options.logWriteError)throw Error("DISK_FULL");rows.push(JSON.parse(text));}};
-  const context={require:n=>({fs:fakeFs,path,child_process:{},crypto}[n]),window:{PvsSecurity:{assertNoLinks(){}},setTimeout(cb,delay){calls.push(["yield",delay]);setTimeout(cb,0);}},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){}},localStorage:{getItem(){return null;}},process:{env:{}},console,fixture:{calls}};
+  const context={require:n=>({fs:fakeFs,path,child_process:{},crypto}[n]),window:{PvsSecurity:{assertNoLinks(){}},setTimeout(cb,delay){calls.push(["yield",delay]);setTimeout(cb,0);}},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},process:{env:{}},console,fixture:{calls}};
   const inject=`
     applicationDataRoot=function(){return "C:\\\\local";}; extensionRoot=function(){return "C:\\\\panel";};
     ensureHostLoaded=async function(){};status=function(){};log=function(message,level){if(level==="warn")fixture.warnings.push(message);};
@@ -20,9 +21,13 @@ async function scenario(options={}){
   context.window.__adobe_cep__={evalScript(expression,callback){
     calls.push(["host",expression]);
     if(expression.includes("diagnosticInfo")){callback(JSON.stringify({ok:true,revision:"staged-edit-v3",baseHash:options.badHash?"wrong":hash}));return;}
-    if(expression.includes("beginDiagnosticEdit")){callback(JSON.stringify(options.active?{ok:false,error:"DIAGNOSTIC_SESSION_ACTIVE"}:{ok:true,nextCall:0,nextStage:"Hình"}));return;}
+    if(expression.includes("beginDiagnosticEdit")){
+      const token=JSON.parse(storage.get("pvs.recovery.v1")).editSession;
+      assert(expression.includes(JSON.stringify(token)),"Remember the token before the bridge can lose the begin response");
+      callback(options.lostBegin?"EvalScript error.":JSON.stringify(options.active?{ok:false,error:"DIAGNOSTIC_SESSION_ACTIVE"}:{ok:true,nextCall:0,nextStage:"Hình"}));return;
+    }
     if(expression.includes("acceptDiagnosticEdit")){callback(JSON.stringify({ok:true}));return;}
-    if(expression.includes("abortDiagnosticEdit")){callback(JSON.stringify({ok:false,done:true,timings:[]}));return;}
+    if(expression.includes("abortDiagnosticEdit")){callback(JSON.stringify({ok:false,done:true,result:{timelineMutated:false},timings:[]}));return;}
     if(expression.includes("advanceDiagnosticEdit")){
       if(options.evalError){callback("EvalScript error.");return;}
       callback(JSON.stringify(request++===0?{ok:true,done:false,nextCall:1,nextStage:"Voice",stage:"Hình",stageIndex:1,stageCount:2,milliseconds:4,checkpoint:options.pause?"Hình":""}:{ok:true,done:true,result:{ok:true,private:"SECRET_MEDIA_NAME_AND_PATH"},timings:stageTimings}));return;
@@ -42,6 +47,7 @@ async function scenario(options={}){
   assert(!JSON.stringify(rows).includes("SECRET_MEDIA_NAME_AND_PATH"));assert(!JSON.stringify(rows).includes("voice.mp3"));assert(!JSON.stringify(rows).includes("C:\\\\secret"));
   assert(!calls.some(c=>c[0]==="host"&&c[1].includes("executePlan(")));
   if(!options.badHash)assert.strictEqual(controls.workflowNotice.hidden,true);
+  assert(!storage.has("pvs.recovery.v1"),"A confirmed close or explicit rejection clears the finished token");
   return {calls,rows,result,error,warnings};
 }
 (async()=>{
@@ -57,6 +63,7 @@ async function scenario(options={}){
   r=await scenario({pause:true,stop:true});assert(r.error.includes("Timeline mới dựng một phần"));assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1);assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")).length,1);
   r=await scenario({evalError:true});assert(r.error);assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1);assert.strictEqual(r.calls.filter(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")).length,1);
   r=await scenario({active:true});assert(r.error.includes("ACTIVE"));assert(!r.calls.some(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")));
+  r=await scenario({lostBegin:true});assert(r.error);assert.equal(r.calls.filter(c=>c[0]==="host"&&c[1].includes("abortDiagnosticEdit")).length,1);
   r=await scenario({badHash:true});assert(r.error.includes("không khớp"));assert.strictEqual(r.rows.length,0);assert.strictEqual(r.calls.filter(c=>c[0]==="host").length,1);
   for(const fault of ["logCreateError","logWriteError"]){
     r=await scenario({[fault]:true,noDelay:true,fast:true});assert(r.result&&r.result.ok,"Optional trace failure must not abort editing: "+r.error);

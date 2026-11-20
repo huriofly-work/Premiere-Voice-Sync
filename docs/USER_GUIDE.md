@@ -106,9 +106,9 @@ Panel có hai chức năng. Chọn chức năng ở hai nút trên cùng.
 
 Tiến trình, kết quả và lỗi thay nhau trong cùng vùng dưới nút chạy. Quyết định cần phê duyệt hiện tại đây: dựng trực tiếp timeline, xóa cache hoặc kiểm tra thủ công sau sự cố. Trước khi dựng, chọn **Bắt đầu dựng** hoặc **Hủy**; chương trình chưa nhận diện/dựng trước khi bạn đồng ý. Tạo phụ đề bình thường không có xác nhận bổ sung.
 
-Khi đang xem kết quả trong panel, chương trình không nhắc ra ngoài. Nếu đang dùng ứng dụng khác, hoàn tất/lỗi/cần quyết định/dừng xong được nhắc một lần qua Windows khi bật **Nhắc khi hoàn tất hoặc cần tôi xử lý**. Bấm thông báo để mở đúng kết quả; không tự phê duyệt hoặc chạy lại. Đọc kết quả sẽ dọn toast, không đóng kết quả hay gỡ khóa phục hồi. Không có cửa sổ xem riêng hoặc tự đưa Premiere lên trước. Windows vẫn quyết định hiển thị theo quyền thông báo/Không làm phiền; có thể dùng **Hỗ trợ và nhật ký → Thử thông báo Windows** để kiểm độc lập.
+Khi đang xem kết quả trong panel, chương trình không nhắc ra ngoài. Nếu đang dùng ứng dụng khác, hoàn tất/lỗi/cần quyết định/dừng xong được nhắc một lần qua Windows khi bật **Nhắc khi hoàn tất hoặc cần tôi xử lý**. Bấm thông báo để mở đúng kết quả; không tự phê duyệt hoặc chạy lại. Đọc kết quả sẽ dọn toast và giữ kết quả trong panel. Không có cửa sổ xem riêng hoặc tự đưa Premiere lên trước. Windows vẫn quyết định hiển thị theo quyền thông báo/Không làm phiền; có thể dùng **Hỗ trợ và nhật ký → Thử thông báo Windows** để kiểm độc lập.
 
-Nếu có vấn đề chất lượng, bấm **Xem vị trí cần kiểm tra** để xem phụ đề/timecode và lý do. Số liệu thuật toán và lỗi gốc nằm trong **Chi tiết → Thông tin kỹ thuật**. Đóng lỗi không tự gỡ khóa chạy lại sau sự cố. Không cần đóng kết quả mới dọn file tạm; project không tự lưu.
+Nếu có vấn đề chất lượng, bấm **Xem vị trí cần kiểm tra** để xem phụ đề/timecode và lý do. Số liệu thuật toán và lỗi gốc nằm trong **Chi tiết → Thông tin kỹ thuật**. Nút **Kiểm tra đầu vào** đọc nguồn và phạm vi của chế độ đang chọn. Khi tác vụ cũ kết thúc, có thể bắt đầu lượt mới ngay cả khi thông báo lỗi còn mở. Không cần đóng kết quả mới dọn file tạm; project không tự lưu.
 
 Trong panel chỉ hiển thị hướng dẫn sử dụng từng chức năng: **Dựng theo voice** có mục **Hướng dẫn dựng và màu marker**, **Tạo phụ đề** có mục **Hướng dẫn tạo phụ đề**. Hướng dẫn cài đặt, xử lý lỗi và gỡ cài đặt nằm trong tài liệu này, được kèm bộ cài dưới tên `HUONG_DAN_SU_DUNG.md`.
 
@@ -135,7 +135,7 @@ Trong chế độ **Track do tôi chọn**, gợi ý ban đầu ưu tiên A2 có
 
 Nguồn track/clip chỉ định được mở tiếng tạm khi xuất, track khác được mute; clip đã disabled vẫn giữ disabled. Clip mode còn tạm disable clip không chọn trên cùng track. Tool lưu nhật ký trước khi thay đổi và khôi phục mute/enable/In/Out khi xong, lỗi hoặc hủy. Nếu không đọc/ghi/xác minh được cô lập thì dừng trước nhận diện/import. Nhiều nguồn được phối theo thời gian để nhận diện chung, chưa tách người nói hoặc tạo caption riêng cho từng track. Nhạc trộn sẵn trong nguồn vẫn còn. Cần nghiệm thu clip enable, nested, routing/effect/solo và nghe audio xuất trong Premiere thật; snapshot chưa bao phủ mọi tham số mixer/effect, không sửa timeline/effect trong lúc chạy.
 
-Vùng không có clip audio enabled từ nguồn đã chọn được bỏ qua và báo trong tóm tắt; nếu tất cả vùng rỗng thì không chạy. Sau khi chốt job, đổi selection không thay nguồn/phạm vi job. Job còn nhật ký khôi phục được giữ lại, không bị tự dọn; sau lỗi/reload dùng **Đã kiểm tra/khôi phục — Xác minh đầu vào** để kiểm trạng thái. Nhật ký khác project/sequence hoặc cấu trúc timeline bị thay đổi không được tự áp dụng. Công cụ không tự Undo hoặc Save.
+Vùng không có clip audio enabled từ nguồn đã chọn được bỏ qua và báo trong tóm tắt; nếu tất cả vùng rỗng thì không chạy. Sau khi chốt job, đổi selection không thay nguồn/phạm vi job. Tool tự thử khôi phục mute, enable và In/Out sau khi dừng hoặc lỗi, khi mở panel và trước mỗi lượt Auto edit hoặc Tạo phụ đề. Premiere kiểm tra project, sequence và cấu trúc timeline trước khi áp dụng nhật ký trên đĩa. Nếu chưa khôi phục được, panel báo cảnh báo và giữ nguyên job để thử lại. Công cụ không tự Undo hoặc Save.
 
 Video/audio không bị cắt, dịch chuyển hay đổi tốc độ. Caption cũ được giữ lại; chạy lại sẽ tạo thêm một track. File SRT và audio tạm được dọn sau tác vụ, không giữ SRT tạm trong Project. Project không tự lưu. Không sửa timeline trong lúc đang nhận diện; panel kiểm tra lại sequence trước khi thêm caption.
 
@@ -209,7 +209,7 @@ Các element khác trong template không cần xóa. Nếu hình sau dựng dài
 6. Bấm **Phân tích và dựng tự động**, đọc xác nhận rồi chạy. Không sửa timeline hoặc đổi sequence trong lúc chạy.
 7. Chờ kết quả dưới nút chạy. Tool căn voice, dựng theo câu hoàn chỉnh, tạo Caption Track và hậu kiểm. File SRT caption tạm không được giữ trong Project.
 8. Phát lại để kiểm tra hình, điểm cắt voice, caption và clip marker theo bảng màu ở trên. Bật **Timeline Settings > Show Clip Markers** nếu không thấy marker. Marker tốc độ/gộp nằm trên đoạn V1 liên quan, không phải marker toàn timeline.
-9. Chỉ lưu project khi đã duyệt. Nếu tác vụ báo timeline đã thay đổi rồi lỗi, Undo; nếu Undo không khôi phục đầy đủ, đóng project không lưu rồi mở bản đã lưu. Không chạy dựng lại trên timeline đã xử lý; trở về template sạch trước khi thử lại.
+9. Chỉ lưu project khi đã duyệt. Sau khi dừng hoặc gặp lỗi, timeline giữ các bước đã thực hiện. Nếu dừng trước bước **Gắn marker**, marker trên file voice và nest vẫn là của lượt trước. Để thử lại trên cùng timeline, có thể Undo hoặc mở lại bản đã lưu. Có thể chuyển sang sequence template khác và bắt đầu lượt mới.
 
 ### Ý nghĩa thông số
 

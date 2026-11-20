@@ -267,7 +267,8 @@
 
   function byId(id) { return document.getElementById(id); }
   var noticeHistory = [], noticeQueue = [], currentNotice = null, noticeSerial = 0;
-  var runContext = null, recoveryContext = null, hostPending = 0, enginePending = 0;
+  var runContext = null, pendingEditSession = null, pendingRunRecovery = null, hostPending = 0, enginePending = 0;
+  var editSessionStorageKey = "pvs.recovery.v1";
   var externalPreference = localStorage.getItem("pvs.externalNotifications") !== "false";
   var soundPreference = localStorage.getItem("pvs.notificationSound") !== "false";
   var nativeBridge = null;
@@ -578,7 +579,7 @@
     if(currentNotice&&!state.noticeChoice){currentNotice=null;byId("workflowNotice").hidden=true;syncTaskPresentation();}
     runContext = { id: String(Date.now()) + "-" + (++noticeSerial), workflow: workflow, stage: "preflight", impact: "unchanged", warnings: [], issues: [], reviewItems: [], reviewRequired: false, lastProgress: Date.now(), fatal: false };
     runContext.startedAt = Date.now();
-    noticeQueue = []; updateStopControl(); saveRecoveryJournal(); return runContext;
+    noticeQueue = []; updateStopControl(); return runContext;
   }
   function updateStopControl() {
     var button = byId("stopWorkflow"), hint = byId("stopWorkflowHint");
@@ -639,7 +640,7 @@
       catch (resumeError) { if (!resumeError.pvsCancelled) owner.impact = "unknown"; throw resumeError; }
       if (after !== before) {
         owner.impact = "unknown";
-        throw new Error("WORKFLOW_CHANGED_WHILE_PAUSED: Project, sequence hoặc trạng thái timeline đã thay đổi khi tạm dừng. Đã chặn tiếp tục; hãy kiểm tra/khôi phục trước khi chạy lại.");
+        throw new Error("WORKFLOW_CHANGED_WHILE_PAUSED: Project, sequence hoặc trạng thái timeline đã thay đổi khi tạm dừng. Đã chặn tiếp tục tác vụ này.");
       }
       throwIfStopRequested();
       status("Đang tiếp tục · " + stageLabels[owner.stage] + ".", "muted");
@@ -673,9 +674,9 @@
   }
   function reportRunCancelled() {
     var context = runContext;
-    if (context.impact === "changed" || context.impact === "unknown") recoveryContext = context;
-    var message = context.impact === "unchanged" ? "Đã dừng theo yêu cầu. Timeline chưa bị thay đổi bởi tác vụ này." : "Các thay đổi đã thực hiện chưa được hoàn tác. Kiểm tra hoặc khôi phục timeline trước khi chạy lại.";
-    if (context.workflow === "edit" && context.impact !== "unchanged") message = "Timeline được giữ đến bước đã thực hiện. Marker chỉ được gắn ở bước cuối, nên nếu dừng trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
+    var message = context.impact === "unchanged" ? "Đã dừng theo yêu cầu. Timeline chưa bị thay đổi bởi tác vụ này." : "Timeline được giữ đến bước đã thực hiện.";
+    if (context.workflow === "edit" && context.impact !== "unchanged") message += " Nếu dừng trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước.";
+    if (context.workflow === "captions") message += captionAudioNotice(context);
     status(message, "warn");
     showWorkflowNotice("Đã dừng tác vụ", message, "warn", { kind: "cancelled", code: "WORKFLOW_CANCELLED", impact: context.impact, stage: context.cancelStage || context.stage, details: context.warnings.join("\n") });
   }
@@ -716,7 +717,6 @@
   function reportRunFailure(error, title, fatal) {
     var context = runContext || { impact: "none", stage: "unknown" };
     fatal = !!fatal || !!context.fatal;
-    if (context.impact === "changed" || context.impact === "unknown") recoveryContext = context;
     var raw = String(error && error.message || error || "Không xác định được nguyên nhân.");
     var scope = /\bSUBTITLE_REFERENCE_SCOPE_(AMBIGUOUS|MISMATCH|NO_SPEECH|PARTIAL_CUE|ORDER|MEMORY_LIMIT|SIZE)\b/.exec(raw);
     var message;
@@ -745,9 +745,11 @@
     }
     if (/WORKFLOW_CHANGED_WHILE_PAUSED/.test(raw)) message = "Project, sequence hoặc trạng thái timeline đã thay đổi khi tạm dừng. Tool đã chặn tiếp tục để tránh dựng sai.";
     if (/WORKFLOW_PAUSE_STATE_UNAVAILABLE/.test(raw)) message = "Không xác minh được trạng thái để tạm dừng/tiếp tục an toàn. Tác vụ đã dừng; xem chi tiết để kiểm tra.";
-    if (context.impact === "changed") message = "Tác vụ dừng khi timeline hoặc Project đã thay đổi. Kiểm tra hoặc khôi phục bản đã lưu trước khi chạy lại.";
-    if (context.impact === "unknown") message = "Chưa xác minh được kết quả của thao tác vừa chạy. Kiểm tra timeline, phụ đề và trạng thái audio trước khi chạy lại.";
-    if (context.workflow === "edit" && (context.impact === "changed" || context.impact === "unknown")) message = "Tác vụ dừng do lỗi. Timeline được giữ đến bước đã thực hiện. Nếu lỗi xảy ra trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước. Hãy đưa timeline về trạng thái template trước khi chạy lại.";
+    if (context.impact === "changed" || context.impact === "unknown") {
+      if (context.workflow === "edit") message = "Tác vụ dừng do lỗi. Timeline được giữ đến bước đã thực hiện. Nếu lỗi xảy ra trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước.";
+      else message += " Timeline được giữ đến bước đã thực hiện.";
+    }
+    if (context.workflow === "captions") message += captionAudioNotice(context);
     var fieldId = null;
     if (!fatal && context.impact === "unchanged" && context.stage === "preflight") fieldId = error && error.pvsInputField || (/SRT/i.test(raw) ? context.workflow === "captions" ? "captionSrtCandidates" : "srtCandidates" : null);
     log(raw, "error");
@@ -764,7 +766,6 @@
     positions.forEach(function (position) { if (position.start >= coveredEnd) regionCount++; coveredEnd = Math.max(coveredEnd, position.end); });
     var summary = warn ? (positions.length ? "Có " + regionCount + " vùng cần xem hoặc nghe lại; mở danh sách bên dưới trước khi lưu project." : "Kết quả cần được kiểm tra trước khi lưu project; mở Chi tiết để xem lý do.") : "Xem và nghe lại trước khi lưu project.";
     if (warn && runContext.issues.some(function (issue) { return issue.code === "REFERENCE_NOT_RETAINED"; })) summary = "Không giữ được chữ từ SRT; toàn bộ phụ đề dùng chữ tự nhận diện. Kiểm tra chữ trước khi lưu project.";
-    if (warn && runContext.issues.some(function (issue) { return issue.code === "RECOVERY_STORAGE"; })) summary = "Không lưu được trạng thái phục hồi của lần chạy. Kiểm tra timeline trước khi đóng hoặc mở lại panel.";
     if (warn && runContext.issues.some(function (issue) { return issue.code === "MARKER_MISSING"; })) summary = summary.replace(/\.$/, "") + "; một số cảnh báo chưa gắn được marker.";
     if (warn) runContext.issues.forEach(function (issue) {
       if (issue.code === "MARKER_UNATTACHED") summary += " " + issue.message;
@@ -786,68 +787,26 @@
     if (!result.ok || (result.count !== null && (!Number.isInteger(result.count) || result.count < 0)) || !Number.isInteger(result.bins) || result.bins < 0 || !Number.isFinite(result.inPoint) || !Number.isFinite(result.outPoint)) throw new Error("Không đọc được trạng thái caption/In/Out để xác minh trước thao tác. Tool chưa thực hiện bước tiếp theo." + (result.error ? " Chi tiết: " + result.error : ""));
     return JSON.stringify({ count: result.count, bins: result.bins, inPoint: result.inPoint, outPoint: result.outPoint });
   }
-  function saveRecoveryJournal() {
-    try {
-      var context = recoveryContext || runContext;
-      if (context) localStorage.setItem("pvs.recovery.v1", JSON.stringify({ workflow: context.workflow, at: Date.now(), audioRecoveryPath: context.audioRecoveryPath || null, editSession: context.editSession || null }));
-      else if (localStorage.removeItem) localStorage.removeItem("pvs.recovery.v1");
-      return true;
-    } catch (ignoreRecoveryStorage) {
-      runWarning("Không lưu được trạng thái kiểm tra sau lỗi; hãy kiểm tra timeline trước khi mở lại panel.", true, "RECOVERY_STORAGE");
-      return false;
-    }
-  }
-  async function checkIncidentInputs() {
+  async function checkInputs() {
     if (state.workflowBusy || hostPending || enginePending) return;
-    var recovery = recoveryContext;
-    var manualCaptionReview = recovery && recovery.workflow === "captions" && recovery.captionCount && JSON.parse(recovery.captionCount).count === null;
-    if (recovery && (recovery.restored || manualCaptionReview)) {
-      var recoveryMessage = recovery.restored ? "Lần chạy trước chưa được xác nhận an toàn." : "Chương trình không tự xác minh được phụ đề sau lỗi.";
-      var approved = await confirmWorkflowNotice("Đã kiểm tra hoặc khôi phục timeline?", recoveryMessage + " Chỉ tiếp tục sau khi thao tác cũ kết thúc và bạn đã kiểm tra timeline, phụ đề cùng trạng thái audio.", "Đã kiểm tra — Xác minh", "Để sau");
-      if (!approved) return;
-    }
     setWorkflowBusy(true);
     try {
-      if (recovery) {
-        if (recovery.workflow === "edit") {
-          if (recovery.editSession) {
-            await closeDiagnosticEdit(recovery.editSession);
-            recovery.editSession = null; saveRecoveryJournal();
-          }
-          var sequence = await scanSequence();
-          if (!recovery.restored && JSON.stringify(sequence) !== recovery.baseline) throw new Error("Template chưa trở lại trạng thái trước lần dựng lỗi. Hãy Undo hoặc mở lại template đã lưu và kiểm tra lại.");
-        } else {
-          if (recovery.audioRecoveryPath) {
-            var recoveryRoot = path.join(applicationDataRoot(), "Jobs");
-            if (!isInside(recovery.audioRecoveryPath, recoveryRoot) || !/\.audio-recovery\.json$/.test(recovery.audioRecoveryPath)) throw new Error("Đường dẫn khôi phục audio không thuộc thư mục Jobs.");
-            security.assertNoLinks(fs, path, recovery.audioRecoveryPath, true);
-          }
-          var pendingExport = await evalHost("$._PVS.restorePendingCaptionAudioExport(" + jsxString(recovery.audioRecoveryPath || "") + ")");
-          if (!pendingExport.ok && !pendingExport.restored) throw new Error(pendingExport.error || "Chưa khôi phục được phiên xuất audio trước.");
-          var range = await scanCaptionRange();
-          if (!recovery.restored && (range.sequenceId !== recovery.sequenceId || range.snapshot !== recovery.baseline || await captionTrackCount(range.sequenceId) !== recovery.captionCount)) throw new Error("Caption, timeline, In/Out hoặc bin tạm chưa trở lại trạng thái trước lỗi. Hãy kiểm tra/khôi phục rồi xác minh lại.");
-        }
-        recoveryContext = null; saveRecoveryJournal();
-        if (recovery.audioRecoveryPath) {
-          cleanupStaleJobs();
-          if (recoveryContext) throw new Error("Còn nhật ký khôi phục audio khác. Hãy kiểm tra lần lượt trước khi chạy tác vụ mới.");
-        }
-      } else {
-        if (state.mode === "captions") await scanCaptionRange(); else await scanSequence();
-      }
+      if (state.mode === "captions") {
+        var range = await scanCaptionRange();
+        if (!range.plan) throw state.captionPlanError || new Error("Chưa chọn được nguồn audio và phạm vi.");
+      } else await scanSequence();
       closeWorkflowNotice(); status("Đầu vào sẵn sàng.", "ok");
     } catch (error) {
       log(String(error.message || error), "error");
-      showWorkflowNotice("Chưa thể chạy tiếp", recovery ? "Trạng thái timeline chưa được xác minh an toàn. Kiểm tra hoặc khôi phục rồi xác minh lại." : "Kiểm tra nguồn và phạm vi đang chọn; mở Chi tiết nếu cần.", "error", { code: "RECOVERY_REQUIRED", impact: recovery ? "unknown" : "unchanged", details: String(error.message || error) });
+      showWorkflowNotice("Đầu vào chưa sẵn sàng", "Kiểm tra nguồn và phạm vi đang chọn; mở Chi tiết nếu cần.", "error", { code: "INPUT_CHECK_FAILED", impact: "unchanged", details: String(error.message || error) });
     } finally { setWorkflowBusy(false); }
   }
   function reportUnexpectedError(error) {
     try {
-      if (runContext) { runContext.fatal = true; if (runContext.impact !== "unchanged") recoveryContext = runContext; }
+      if (runContext) runContext.fatal = true;
       wakePausedWorkflow();
       if (state.noticeChoice) chooseWorkflowNotice(false);
       reportRunFailure(error || new Error("Giao diện gặp lỗi chưa xác định."), "Chương trình gặp lỗi", true);
-      saveRecoveryJournal();
       if (!state.workflowBusy) setWorkflowBusy(false);
     } catch (ignoreReportingFailure) { /* Never recursively throw from a global error handler. */ }
   }
@@ -872,7 +831,6 @@
   function updateIncidentActions() {
     var disabled = state.workflowBusy || hostPending > 0 || enginePending > 0;
     byId("noticeCheckInputs").disabled = disabled;
-    byId("checkRecovery").disabled = disabled;
   }
   function extensionRoot() {
     var pathname = decodeURIComponent(window.location.pathname || "");
@@ -970,16 +928,105 @@
     var cutoff = Date.now() - (24 * 60 * 60 * 1000);
     var removed = 0;
     jobs.forEach(function (item) {
-      if (fs.existsSync(item.audioRecoveryPath)) {
-        if (!recoveryContext) { recoveryContext = { workflow: "captions", restored: true, impact: "unknown", audioRecoveryPath: item.audioRecoveryPath }; saveRecoveryJournal(); }
-        return;
-      }
+      if (fs.existsSync(item.audioRecoveryPath)) return;
       if (isActiveJob(item.folder) || newest[item.workflow] === item || item.stat.mtime.getTime() >= cutoff) return;
       removeTreeSafe(item.folder, jobsRoot);
       removed++;
     });
     if (fs.existsSync(jobsRoot) && fs.readdirSync(jobsRoot).length === 0) fs.rmdirSync(jobsRoot);
     return removed;
+  }
+  function cleanupAfterRecovery() {
+    try {
+      var removed = cleanupStaleJobs();
+      if (removed) log("Đã dọn " + removed + " job tạm còn sót từ lần chạy cũ.", "ok");
+    } catch (error) {
+      log("Không dọn được job tạm cũ: " + error.message, "warn");
+      localFeedback("supportFeedback", "Có file tạm chưa dọn được; xem nhật ký khi cần giải phóng dung lượng.");
+    }
+  }
+  function captionAudioNotice(context) {
+    if (context.captionAudioRestored === true) return " Mute, enable và In/Out đã được tự động khôi phục.";
+    if (context.captionAudioRestored === false) return " Chưa khôi phục được mute, enable hoặc In/Out. Nếu còn nhật ký audio, tool sẽ tự thử lại.";
+    return "";
+  }
+  async function restoreCaptionAudioJournal(journalPath, jobsRoot) {
+    if (!isInside(journalPath, jobsRoot) || path.basename(journalPath) !== "job.json.audio-recovery.json") throw new Error("Đường dẫn khôi phục audio không hợp lệ trong thư mục Jobs.");
+    security.assertNoLinks(fs, path, journalPath, true);
+    var script = "$._PVS.restorePendingCaptionAudioExport(" + jsxString(journalPath) + ")";
+    var response = await evalHost(script);
+    // The first call may have retired a live export session for another job.
+    // Once it is closed, the same request uses the selected on-disk journal.
+    if (response.done && fs.existsSync(journalPath)) {
+      security.assertNoLinks(fs, path, journalPath, true);
+      response = await evalHost(script);
+    }
+    if (!response.restored || fs.existsSync(journalPath)) throw new Error(response.error || "Premiere chưa xác minh khôi phục audio và xóa nhật ký.");
+    log("Đã tự động khôi phục mute, enable và In/Out: " + journalPath, "ok");
+  }
+  async function recoverFailedCaptionExport(context, outputFolder, jobsRoot) {
+    if (!outputFolder) return;
+    var journalPath = path.join(outputFolder, "job.json.audio-recovery.json");
+    if (!fs.existsSync(journalPath)) return;
+    try {
+      await restoreCaptionAudioJournal(journalPath, jobsRoot);
+      context.captionAudioRestored = true;
+      if (context.stage === "export") context.impact = "unchanged";
+      cleanupAfterRecovery();
+    } catch (error) {
+      context.captionAudioRestored = false;
+      log("Chưa khôi phục được audio (" + journalPath + "): " + error.message, "warn");
+    }
+  }
+  function storeEditSession(token) {
+    // Persist the token so a reloaded panel can close a host session left open.
+    if (token) localStorage.setItem(editSessionStorageKey, JSON.stringify({ workflow: "edit", editSession: token }));
+    else if (localStorage.removeItem) localStorage.removeItem(editSessionStorageKey);
+    pendingEditSession = token;
+  }
+  async function recoverPendingRuns(startup) {
+    if (pendingRunRecovery) return pendingRunRecovery;
+    var operation = (async function () {
+      var warnings = [], hasPendingAudio = false;
+      function warn(message, error) {
+        var detail = message + ": " + String(error.message || error);
+        warnings.push(detail);
+        log(detail, "warn");
+      }
+      try {
+        if (startup) {
+          var stored = JSON.parse(localStorage.getItem(editSessionStorageKey) || "null");
+          var token = stored && stored.workflow === "edit" && typeof stored.editSession === "string" && stored.editSession;
+          if (token) pendingEditSession = token;
+          else if (stored) storeEditSession(null);
+        }
+        if (pendingEditSession) {
+          await closeDiagnosticEdit(pendingEditSession);
+          storeEditSession(null);
+        }
+      } catch (error) { warn("Chưa đóng được phiên dựng cũ", error); }
+      try {
+        var jobsRoot = path.join(applicationDataRoot(), "Jobs");
+        // Later exports may have captured settings left by earlier failures.
+        // Restore newer jobs first so the oldest matching snapshot is applied last.
+        var jobs = listJobFolders(jobsRoot).sort(function (a, b) {
+          return b.stat.mtime.getTime() - a.stat.mtime.getTime() || b.folder.localeCompare(a.folder);
+        });
+        for (var i = 0; i < jobs.length; i++) {
+          var journalPath = jobs[i].audioRecoveryPath;
+          if (!fs.existsSync(journalPath)) continue;
+          hasPendingAudio = true;
+          try {
+            await restoreCaptionAudioJournal(journalPath, jobsRoot);
+          } catch (error) { warn("Chưa khôi phục được audio (" + journalPath + ")", error); }
+        }
+      } catch (error) { warn("Không đọc được thư mục nhật ký khôi phục audio", error); }
+      if (startup || hasPendingAudio) cleanupAfterRecovery();
+      if (warnings.length) showWorkflowNotice("Cảnh báo từ lần chạy trước", "Có phiên dựng chưa đóng hoặc trạng thái audio chưa được khôi phục. Tool sẽ thử lại ở lần chạy sau.", "warn", { code: "PENDING_RUN_RECOVERY", details: warnings.join("\n") });
+    })();
+    pendingRunRecovery = operation;
+    try { await operation; }
+    finally { pendingRunRecovery = null; }
   }
   function log(message, level) {
     var el = byId("log");
@@ -1174,11 +1221,9 @@
     var retryButton = byId("retryBackend");
     if (retryButton) retryButton.disabled = state.workflowBusy || state.backendChecking;
     byId("allowGpuDownload").disabled = state.workflowBusy || state.backendChecking;
-    ["runSync", "runCaptions"].forEach(function (id) { byId(id).disabled = state.workflowBusy || !!recoveryContext; });
     updateIncidentActions();
     byId("noticePickSrt").disabled = state.workflowBusy;
     byId("noticeExportLog").disabled = state.workflowBusy;
-    byId("recoveryNotice").hidden = !recoveryContext;
     if (!busy) byId("runHealth").textContent = "";
     if (!busy && currentNotice && currentNotice.surface === "field") focusValidationField();
     updateStopControl();
@@ -1687,7 +1732,10 @@
     if (!info.ok || info.revision !== "staged-edit-v3" || info.baseHash !== baseHash) throw new Error("Bộ dựng chia đợt không khớp executor gốc. Timeline chưa được chỉnh.");
     var profile = noDelay ? "no-delay" : fastProfile ? "fast" : "baseline";
     var yieldMilliseconds = noDelay ? 0 : fastProfile ? 20 : 150;
-    var token = String(Date.now()) + "_" + crypto.randomBytes(12).toString("hex");
+    // Keep the previous token if a failed bridge call left its session status
+    // unknown. The host still refuses begin while a session is active.
+    var previousToken = pendingEditSession;
+    var token = previousToken || String(Date.now()) + "_" + crypto.randomBytes(12).toString("hex");
     var tracePath = "", traceDisabled = false;
     function disableTrace() {
       if (!traceDisabled) log("Không ghi được nhật ký timeline. Tác vụ vẫn tiếp tục; các kiểm tra timeline không bị bỏ qua.", "warn");
@@ -1703,7 +1751,7 @@
       if (metrics) metrics.linkTimeline(path.basename(tracePath));
       log("Nhật ký hiệu năng chỉ lưu tên bước/thời gian, không có lời nói hay đường dẫn media: " + tracePath, "muted");
     } catch (ignoreTraceCreate) { disableTrace(); }
-    var began = false, finished = false, executionError = null;
+    var beginRequested = false, finished = false, executionError = null;
     function record(value) {
       if (traceDisabled) return;
       try {
@@ -1712,13 +1760,15 @@
       } catch (ignoreTraceWrite) { disableTrace(); }
     }
     try {
+      try { storeEditSession(token); }
+      catch (error) { throw new Error("Chưa lưu được mã phiên dựng để đóng phiên sau gián đoạn. " + error.message); }
       if (runContext) runContext.impact = "unknown";
+      beginRequested = true;
       var begun = await evalHost("$._PVS.beginDiagnosticEdit(" + jsxString(planPath) + "," + jsxString(token) + "," + jsxString(profile) + ",true)");
-      if (!begun.ok) throw new Error(begun.error || "Không khởi tạo được phiên chẩn đoán.");
-      began = true;
-      if (runContext) {
-        runContext.editSession = token;
-        if (!saveRecoveryJournal()) throw new Error("Chưa lưu được nhật ký kiểm tra timeline sau gián đoạn.");
+      if (!begun.ok) {
+        beginRequested = false;
+        finished = !previousToken;
+        throw new Error(begun.error || "Không khởi tạo được phiên chẩn đoán.");
       }
       var nextCall = begun.nextCall;
       var nextStage = begun.nextStage;
@@ -1765,7 +1815,7 @@
           throwIfStopRequested();
           record({ type: "user-observation", checkpoint: response.checkpoint, previewHealthy: healthy });
           if (!healthy) {
-            throw new Error("Đã dừng tại bước " + response.checkpoint + " do Preview/Play bị đơ. Timeline mới dựng một phần; không lưu kết quả này. Hãy Undo hoặc mở lại bản đã lưu.");
+            throw new Error("Đã dừng tại bước " + response.checkpoint + " do Preview/Play bị đơ. Timeline mới dựng một phần; không lưu kết quả này.");
           }
         }
       }
@@ -1775,7 +1825,7 @@
     } finally {
       if (state.performanceChoice) closeWorkflowNotice();
       state.performanceChoice = null;
-      if (began && !finished) {
+      if (beginRequested && !finished) {
         try {
           var abortResult = await closeDiagnosticEdit(token);
           if (runContext && abortResult.result && typeof abortResult.result.timelineMutated === "boolean") runContext.impact = abortResult.result.timelineMutated ? "changed" : "unchanged";
@@ -1783,25 +1833,25 @@
           finished = true;
         } catch (abortError) {
           if (runContext) runContext.impact = "unknown";
+          log("Chưa đóng được phiên dựng: " + abortError.message, "warn");
           if (executionError) throw new Error((executionError.message || String(executionError)) + "; " + (abortError.message || String(abortError)));
           throw abortError;
         }
       }
-      if (finished && runContext) {
-        runContext.editSession = null;
-        saveRecoveryJournal();
+      if (finished) {
+        try { storeEditSession(null); }
+        catch (error) { log("Chưa xóa được mã phiên dựng đã đóng: " + error.message, "warn"); }
       }
     }
   }
   async function runSyncWorkflow(options) {
-    if (state.workflowBusy || recoveryContext) return;
+    if (state.workflowBusy) return;
     options = options || {};
     var enhanced = !options.diagnostic;
     var performanceTrial = !!options.diagnostic;
     var fastPerformance = enhanced || options.fast === true;
     var speedMergeRequested = enhanced;
     var pauseAtStages = performanceTrial && !fastPerformance && !!byId("pausePerformanceTrial").checked;
-    var directStarted = false;
     var started = Date.now();
     var jobsRoot = "";
     var outputFolder = "";
@@ -1809,11 +1859,11 @@
     try {
       setWorkflowBusy(true);
       beginRun("edit");
+      await recoverPendingRuns(false);
       if (state.backendPromise) await state.backendPromise;
       throwIfStopRequested();
       var sequence = await scanSequence();
       throwIfStopRequested();
-      runContext.baseline = JSON.stringify(sequence);
       await waitForWorkflowPause();
       var settings = readSettings();
       var language = readVoiceLanguage();
@@ -1989,12 +2039,10 @@
         if (JSON.stringify(diagnosticSequence) !== JSON.stringify(sequence)) throw new Error("Template đã thay đổi trong lúc phân tích. Timeline chưa được tool chỉnh; hãy dùng template sạch.");
       }
       metrics.end();
-      directStarted = true;
       phase = Date.now();
       metrics.begin("timeline");
       var result = await executeStagedPlan(executorPath, pauseAtStages, fastPerformance, enhanced ? "auto-edit-dtw-merge" : "diagnostic-baseline", metrics, enhanced);
       if (typeof result.timelineMutated === "boolean") runContext.impact = result.timelineMutated ? "changed" : "unchanged";
-      if (result && result.timelineMutated === false) directStarted = false;
       fs.writeFileSync(path.join(outputFolder, "direct-apply-report.json"), JSON.stringify(result, null, 2), "utf8");
       logReviewMarkers(result, plan.reviewMarkers, plan);
       if (!result.ok || Number(result.executorVersion) !== 25) throw new Error(postcheckError(result));
@@ -2021,7 +2069,7 @@
     } catch (error) {
       if (error.pvsCancelled) outcome = "cancelled";
       if (metrics) metrics.end(null, outcome);
-      var failureMessage = error.message + (directStarted ? " Hãy Undo hoặc đóng project không lưu." : "");
+      var failureMessage = error.message;
       if (enhanced && error.message.indexOf("TRIAL_VOICE_MEDIA_IN_NONZERO") >= 0) failureMessage = "DTW chưa hỗ trợ voice đã trim phần đầu media. Hãy dùng template có đầu voice nguyên vẹn; speed voice vẫn được giữ. Timeline chưa được tool chỉnh.\n\n" + failureMessage;
       if (!error.pvsCancelled) reportRunFailure(inputError(failureMessage, error.pvsInputField), "Dựng theo voice — Không hoàn tất");
     } finally {
@@ -2043,7 +2091,6 @@
       if (outcome === "cancelled") reportRunCancelled();
       if (completedMessage) finishRunNotice("Dựng theo voice", completedMessage);
       runContext = null;
-      saveRecoveryJournal();
       setWorkflowBusy(false);
     }
   }
@@ -2219,6 +2266,7 @@
     try {
       result = await hostCall("prepare", "$._PVS.beginCaptionAudioExport(" + jsxString(jobPath) + "," + jsxString(preset) + "," + jsxString(token) + ")");
       active = !result.done;
+      if (runContext && typeof result.restored === "boolean" && (result.exportFailurePhase !== "preflight" || !result.restored)) runContext.captionAudioRestored = result.restored;
       if (result.restored && runContext) runContext.impact = "unchanged";
       if (result.ok) throwIfStopRequested();
       if (result.ok) {
@@ -2233,6 +2281,7 @@
           throwIfStopRequested();
           result = await hostCall("render", "$._PVS.advanceCaptionAudioExport(" + jsxString(token) + "," + call + ")", call);
           active = !result.done;
+          if (runContext && typeof result.restored === "boolean") runContext.captionAudioRestored = result.restored;
           if (result.restored && runContext) runContext.impact = "unchanged";
           if (result.ok) throwIfStopRequested();
           if (!result.ok || result.done) break;
@@ -2246,33 +2295,39 @@
         try {
           var aborted = await hostCall("abort", "$._PVS.abortCaptionAudioExport(" + jsxString(token) + ")");
           if (aborted.restored === false || (!aborted.ok && aborted.exportFailurePhase === "restore")) throw new Error(aborted.error);
-          if (aborted.restored && runContext) runContext.impact = "unchanged";
-        } catch (restoreError) { failure = new Error((failure ? failure.message : result && result.error || "Xuất WAV không hoàn tất.") + "\nKhông xác minh được khôi phục: " + restoreError.message); }
+          if (aborted.restored && runContext) {
+            runContext.captionAudioRestored = true;
+            runContext.impact = "unchanged";
+          }
+        } catch (restoreError) {
+          if (runContext) runContext.captionAudioRestored = false;
+          failure = new Error((failure ? failure.message : result && result.error || "Xuất WAV không hoàn tất.") + "\nKhông xác minh được khôi phục: " + restoreError.message);
+        }
       }
     }
     if (failure) throw failure;
     return result;
   }
   async function runCaptions() {
-    if (state.workflowBusy || recoveryContext) return;
+    if (state.workflowBusy) return;
     var jobsRoot = "", outputFolder = "", captionCreated = false;
     var started = Date.now();
     var metrics = null, outcome = "failed", completedMessage = "";
     try {
       setWorkflowBusy(true);
       beginRun("captions");
+      await recoverPendingRuns(false);
+      throwIfStopRequested();
       var displayedInputKey = state.captionPlan && state.captionPlan.key;
       var range = await scanCaptionRange();
       throwIfStopRequested();
       var inputPlan = range.plan;
       if (!inputPlan) throw state.captionPlanError || inputError("Hãy cập nhật nguồn audio và phạm vi trước khi chạy.", "captionSourceMode");
       if (inputPlan.key !== displayedInputKey) throw inputError("Nguồn hoặc phạm vi đã thay đổi. Tóm tắt đã được cập nhật; hãy kiểm tra rồi bấm Tạo phụ đề lại.", "captionSourceMode");
-      runContext.baseline = range.snapshot;
-      runContext.sequenceId = range.sequenceId;
       runContext.captionCount = await captionTrackCount(range.sequenceId);
       throwIfStopRequested();
       await waitForWorkflowPause();
-      if (JSON.parse(runContext.captionCount).count === null) log("Premiere không cung cấp số Caption Track qua CEP. Tool vẫn kiểm tra video/audio, In/Out và bin tạm; nếu lỗi sau thao tác, cần kiểm tra caption thủ công trước khi chạy lại.", "muted");
+      if (JSON.parse(runContext.captionCount).count === null) log("Premiere không cung cấp số Caption Track qua CEP. Tool vẫn kiểm tra video/audio, In/Out và bin tạm; nếu lỗi sau bước thêm phụ đề, hãy kiểm tra Caption Track trên timeline.", "muted");
       var captionSettings = readCaptionSettings();
       var maxCharacters = captionSettings.maxCaptionCharacters;
       var language = captionSettings.language;
@@ -2296,8 +2351,6 @@
       var captionReferencePath = joinedReference ? srtJoin.write(joinedReference, outputFolder) : state.captionSrt;
       if (joinedReference) log("Đã nối " + joinedReference.files.length + " SRT thành " + joinedReference.cueCount + " cue theo thứ tự đã chọn.", "ok");
       fs.writeFileSync(jobPath, JSON.stringify({ schemaVersion: 1, workflow: "caption-only", projectId: range.projectId, sequenceId: range.sequenceId, snapshot: range.snapshot, audioInput: inputPlan.input, audioInputKey: inputPlan.key, frameRate: range.frameRate, language: language, maxCaptionCharacters: maxCharacters, targetSrtPath: captionReferencePath, sources: sources, outputFolder: outputFolder }, null, 2), "utf8");
-      runContext.audioRecoveryPath = jobPath + ".audio-recovery.json";
-      saveRecoveryJournal();
       metrics.end();
       status("1/3 · Premiere đang xuất WAV của vùng timeline. Giao diện Premiere sẽ bận trong bước này; có thể hủy trong bảng Encoding.", "muted");
       runStage("export");
@@ -2308,6 +2361,7 @@
         metrics.end(exported, "failed");
         throw new Error(exported.error + "\nBước xuất WAV: " + (exported.exportFailurePhase || "unknown") + ". Chưa chạy nhận diện hoặc thêm caption." + (exported.exportFailurePhase === "native-export" ? " Nếu Encoding kẹt 0%, hãy thử xuất WAV thủ công của cùng vùng để đối chiếu." : ""));
       }
+      runContext.captionAudioRestored = true;
       runContext.impact = "unchanged";
       throwIfStopRequested();
       log("Đã xuất audio đúng nguồn/phạm vi đã chốt; mute, enable và In/Out đã được khôi phục.", "ok");
@@ -2387,6 +2441,7 @@
     } catch (error) {
       if (error.pvsCancelled) outcome = "cancelled";
       if (metrics) metrics.end(null, outcome);
+      await recoverFailedCaptionExport(runContext, outputFolder, jobsRoot);
       var failure = error.message + (captionCreated ? " Caption Track có thể đã được thêm; hãy kiểm tra trước khi chạy lại." : "");
       if (!error.pvsCancelled) reportRunFailure(inputError(failure, error.pvsInputField), "Tạo phụ đề — Không hoàn tất");
     } finally {
@@ -2396,11 +2451,6 @@
         if (metrics) metrics.begin("cleanup");
         try {
           retainLastRun(outputFolder, jobsRoot, "captions", outcome);
-          // Keep the earlier hint on a failed run: the timeline export state
-          // still needs checking while the audio recovery journal exists.
-          if (runContext && runContext.audioRecoveryPath && fs.existsSync(runContext.audioRecoveryPath)) {
-            appendCleanupNotice(new Error("Giữ lại nhật ký khôi phục audio và thư mục job để kiểm tra trạng thái timeline."));
-          }
           if (metrics) metrics.end();
         } catch (cleanupError) {
           if (metrics) metrics.end(null, "failed");
@@ -2413,7 +2463,6 @@
       if (outcome === "cancelled") reportRunCancelled();
       if (completedMessage) finishRunNotice("Tạo phụ đề", completedMessage);
       runContext = null;
-      saveRecoveryJournal();
       setWorkflowBusy(false);
     }
   }
@@ -2456,15 +2505,8 @@
       localFeedback("supportFeedback", "Chưa xuất được log; kiểm tra thư mục lưu và xem nhật ký.", true);
     }
   }
-  function loadRecoveryJournal() {
-    try {
-      var recovery = JSON.parse(localStorage.getItem("pvs.recovery.v1") || "null");
-      if (recovery && /^(edit|captions)$/.test(recovery.workflow)) recoveryContext = { workflow: recovery.workflow, restored: true, impact: "unknown", audioRecoveryPath: recovery.audioRecoveryPath || null, editSession: recovery.editSession || null };
-    } catch (ignoreRecoveryJournal) {}
-  }
   function wire() {
     loadNoticeHistory();
-    loadRecoveryJournal();
     byId("externalNotifications").checked = externalPreference;
     byId("notificationSound").checked=soundPreference;
     byId("notificationSound").disabled=!externalPreference;
@@ -2474,10 +2516,9 @@
     Object.keys(inputFeedback).forEach(function (id) {
       byId(id).addEventListener("input", function () { if (inlineValidation && inlineValidation.fieldId === id) closeWorkflowNotice(); });
     });
-    byId("noticeCheckInputs").addEventListener("click", checkIncidentInputs);
+    byId("noticeCheckInputs").addEventListener("click", checkInputs);
     byId("stopWorkflow").addEventListener("click", requestWorkflowStop);
     byId("pauseWorkflow").addEventListener("click", requestWorkflowPause);
-    byId("checkRecovery").addEventListener("click", checkIncidentInputs);
     byId("noticePickSrt").addEventListener("click", function () { if (!state.workflowBusy) { closeWorkflowNotice(); pickTargetSrt(); } });
     byId("noticeViewLog").addEventListener("click", function () {
       closeWorkflowNotice(); byId("supportTools").open = true;
@@ -2510,13 +2551,6 @@
     });
     byId("clearWhisperCache").addEventListener("click", clearWhisperCache);
     byId("exportSafeLog").addEventListener("click", exportSafeLog);
-    try {
-      var staleJobs = cleanupStaleJobs();
-      if (staleJobs) log("Đã dọn " + staleJobs + " job tạm còn sót từ lần chạy cũ.", "ok");
-    } catch (cleanupError) {
-      log("Không dọn được job tạm cũ: " + cleanupError.message, "warn");
-      localFeedback("supportFeedback", "Có file tạm chưa dọn được; xem nhật ký khi cần giải phóng dung lượng.");
-    }
     applySettings(loadSettings());
     if (srtJoin) srtJoin.wire();
     var storedVoiceLanguage = localStorage.getItem("pvs.voiceLanguage");
@@ -2559,7 +2593,7 @@
     byId("runSync").addEventListener("click", runSync);
     state.backendPromise = detectBackend();
     setWorkflowBusy(false);
-    refreshProjectInputs(true);
+    recoverPendingRuns(true).then(function () { return refreshProjectInputs(true); });
   }
   document.addEventListener("DOMContentLoaded", wire);
 }());

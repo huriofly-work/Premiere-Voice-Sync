@@ -74,7 +74,9 @@ assert(!source.includes("giữ trong chẩn đoán. Marker tốc độ dành cho
 const failed=fixture();failed.api.begin("captions");failed.api.context().impact="unknown";failed.api.fail(Error("RAW_PRIVATE_PATH C:\\private\\audio.wav"),"Chưa tạo được phụ đề");
 assert.equal(failed.controls.workflowNotice.attrs.role,"alert");assert.equal(failed.controls.workflowNotice.attrs["aria-modal"],"false");
 assert(!failed.controls.workflowNoticeMessage.textContent.includes("RAW_PRIVATE_PATH"));assert(!failed.controls.status.textContent.includes("RAW_PRIVATE_PATH"));
-failed.api.close();failed.api.end();assert(failed.controls.runCaptions.disabled);assert(!failed.controls.recoveryNotice.hidden,"Closing an error does not approve a retry");
+assert.equal(failed.api.current().choice,false);
+failed.api.end();assert(!failed.controls.runSync.disabled&&!failed.controls.runCaptions.disabled,"A visible error must allow later runs");
+failed.api.close();assert(!failed.controls.runCaptions.disabled);
 
 for (const [code, expected] of Object.entries({
   AMBIGUOUS: "Lời nhận diện không khớp file SRT",
@@ -99,4 +101,4 @@ console.log("SUBTITLE_SCOPE_NOTIFICATION_OK:all seven codes; raw details preserv
 
 const input=fixture();input.api.begin("edit");input.api.fail(Error("SRT_INVALID C:\\private\\file.srt"),"Invalid input");
 assert(input.controls.workflowNotice.hidden);assert.equal(input.api.history().length,0);assert(!input.controls.srtHint.textContent.includes("SRT_INVALID"));
-console.log("NOTIFICATION_UX_OK:quiet-recovery;no-routine-history;explicit-focus-migration;foreground-success-local;background-success-notified;deduplicated-final-ranges;marker-failure-fallback;blue-markers-informational;raw-errors-hidden;recovery-lock-preserved");
+console.log("NOTIFICATION_UX_OK:quiet-recovery;no-routine-history;explicit-focus-migration;foreground-success-local;background-success-notified;deduplicated-final-ranges;marker-failure-fallback;blue-markers-informational;raw-errors-hidden;non-blocking-errors");
