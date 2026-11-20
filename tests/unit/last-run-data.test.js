@@ -31,8 +31,8 @@ function fixture(options = {}) {
     readCaptionSettings = function () { return { maxCaptionCharacters: 42, language: "vi" }; };
     readSequenceScan= async function () { return fixture.sequence; };
     state.captionPlan = { key: "fixture", input: {}, ranges: [{ start: 0, end: 10 }] };
-    scanCaptionRange = async function () { return { projectId: "project", sequenceId: "seq", snapshot: "base", frameRate: 30, plan: state.captionPlan }; };
-    captionTrackCount = async function () { return JSON.stringify({ count: 0 }); };
+    var captionState = { ok: true, count: 0, bins: 0, inPoint: 0, outPoint: 10 };
+    scanCaptionRange = async function () { return { projectId: "project", sequenceId: "seq", snapshot: "base", frameRate: 30, plan: state.captionPlan, captionState: captionState }; };
     findWavePreset = function () { return "fixture.epr"; };
     createWorkflowMetrics = function () { return { begin: function () {}, end: function () {}, finish: function () {}, reviewPlan: function () {} }; };
     log = function (message, level) { fixture.logs.push({ message: message, level: level }); };
@@ -40,6 +40,7 @@ function fixture(options = {}) {
     exportCaptionAudio = async function () { return { ok: true, restored: true }; };
     evalHost = async function (expression) {
       if (expression.includes("restorePendingCaptionAudioExport")) return { ok: false, restored: false, error: "RESTORE_FAILED" };
+      if (expression.includes("scanCaptionRange")) return captionState;
       return { ok: true, captionCreated: true, captionCueCount: 1 };
     };
     executeStagedPlan = async function () { return { ok: true, executorVersion: 25 }; };

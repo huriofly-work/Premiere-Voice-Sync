@@ -23,14 +23,26 @@ function fixture(options={}){
   const inject=`
     applicationDataRoot=function(){return "C:\\\\local";};extensionRoot=function(){return "C:\\\\panel";};
     state.captionPlan={key:"fixture",input:{sourceMode:"tracks",scopeMode:"whole",trackIndices:[1]},ranges:[{start:0,end:10}]};
-    scanCaptionRange=async function(){if(fixture.options.rangeFailure)throw Error("RANGE_FAILED");if(fixture.options.planChanged)state.captionPlan.key="changed";if(fixture.options.sourceEmpty){state.captionPlan=null;state.captionPlanError=inputError("Nguồn audio trống.","captionVoiceTrack");}return {projectId:"project",sequenceId:"seq",snapshot:"snapshot",frameRate:30,plan:state.captionPlan,applicationFolder:"C:\\\\Premiere"};};
+    renderCaptionVoiceTracks=function(range){if(!range)return;if(fixture.options.planChanged)state.captionPlan.key="changed";if(fixture.options.sourceEmpty){state.captionPlan=null;state.captionPlanError=inputError("Nguồn audio trống.","captionVoiceTrack");}};
     findWavePreset=function(){return "preset.epr";};inspectSrt=function(){fixture.calls.push("reference");return {cueCount:2};};
     readSequenceScan=async function(){if(fixture.options.diagnosticFailure)throw Error("SEQUENCE_FAILED");return fixture.sequence;};
     diagnosticStatus=function(){};readSettings=function(){return settingDefaults;};
     createWorkflowMetrics=function(workflow){fixture.calls.push(["metrics-start",workflow]);return {begin:s=>fixture.calls.push(["metrics-begin",s]),end:(r,o)=>fixture.calls.push(["metrics-end",o||"success"]),reviewPlan:r=>fixture.calls.push(["review-plan",r.reviewMarkers.length]),finish:o=>fixture.calls.push(["metrics-finish",o])};};
-    runPowerShell=async function(){fixture.calls.push("engine");if(fixture.options.engineFailure)throw Error("ENGINE_FAILED");};
-    evalHost=async function(expression){fixture.calls.push(expression);if(expression.includes("s.captionTracks"))return {ok:true,count:fixture.options.noCaptionApi?null:0,bins:0,inPoint:0,outPoint:10};if(expression.includes("beginCaptionAudioExport"))return {ok:true,done:false,nextCall:0,rangeCount:1};if(expression.includes("advanceCaptionAudioExport"))return fixture.options.exportFailure?{ok:false,done:true,restored:true,error:"Error: -1",exportFailurePhase:"native-export"}:{ok:true,done:true,restored:true};return {ok:!fixture.options.applyFailure,error:"APPLY_FAILED",captionCreated:true,captionCueCount:2};};
-    removeTreeSafe=function(target,root){if(fixture.options.cleanupFailure)throw Error("CLEANUP_FAILED");fixture.calls.push("cleanup");fixture.calls.push(["remove",target,root]);};retainLastRun=removeTreeSafe;status=log=logCaptionTiming=renderBackend=function(){};
+    var captionState={ok:true,count:fixture.options.noCaptionApi?null:0,bins:0,inPoint:0,outPoint:10};
+    runPowerShell=async function(){fixture.calls.push("engine");if(fixture.options.engineFailure)throw Error("ENGINE_FAILED");captionState=Object.assign({},captionState,fixture.options.changedCaptionState);};
+    evalHost=async function(expression){
+      fixture.calls.push(expression);
+      if(expression==="$._PVS.scanCaptionRange()") {
+        if(fixture.options.rangeFailure)return {ok:false,error:"RANGE_FAILED"};
+        return {ok:true,projectId:"project",sequenceId:"seq",snapshot:"snapshot",frameRate:30,captionState:captionState,applicationFolder:"C:\\\\Premiere"};
+      }
+      if(expression==='$._PVS.scanCaptionRange("seq")')return captionState;
+      if(expression.includes("beginCaptionAudioExport"))return {ok:true,done:false,nextCall:0,rangeCount:1};
+      if(expression.includes("advanceCaptionAudioExport"))return fixture.options.exportFailure?{ok:false,done:true,restored:true,error:"Error: -1",exportFailurePhase:"native-export"}:{ok:true,done:true,restored:true};
+      return {ok:!fixture.options.applyFailure,error:"APPLY_FAILED",captionCreated:true,captionCueCount:2};
+    };
+    removeTreeSafe=function(target,root){if(fixture.options.cleanupFailure)throw Error("CLEANUP_FAILED");fixture.calls.push("cleanup");fixture.calls.push(["remove",target,root]);};retainLastRun=removeTreeSafe;status=logCaptionTiming=renderBackend=function(){};
+    log=function(message){fixture.calls.push(["log",message]);};
     if(fixture.options.reference)state.captionSrt="reference.srt";
     if(fixture.options.diagnostic)state.targetSrt="reference.srt";
     if(fixture.options.wire){cleanupStaleJobs=function(){return 0;};detectBackend=async function(){return {};};detectSrt=async function(){};}
@@ -100,6 +112,7 @@ function fixture(options={}){
     if(!options.rangeFailure)assert(s.calls.includes("cleanup"),"DOM notice must not delay finally cleanup.");
     if(options.exportFailure){assert(!s.calls.includes("engine"));assert(!s.calls.some(x=>typeof x==="string"&&x.includes("applyCaptionOnly")));assert(s.controls.workflowNoticeTechnical.textContent.includes("native-export"));assert(s.calls.includes("cleanup"));}
     if(options.reference)assert(s.calls.includes("reference"));
+    if(options.noCaptionApi)assert(s.calls.some(x=>Array.isArray(x)&&x[0]==="log"&&x[1].includes("hãy kiểm tra Caption Track trên timeline")));
     if(options.numberDifference){assert(s.calls.some(x=>Array.isArray(x)&&x[0]==="review-plan"&&x[1]===0));assert(!s.controls.workflowNoticeMessage.textContent.includes("cue SRT cần nghe lại"));const saved=JSON.parse(s.calls.find(x=>Array.isArray(x)&&x[0]==="write"&&x[1].endsWith("caption-result.json"))[2]);assert.equal(saved.referenceNumberReviewCues.length,1,"Keep number diagnostics in the saved report.");}
     if(options.supplement){assert(s.controls.workflowNoticeTechnical.textContent.includes("bổ sung 2 vùng"));assert(s.controls.workflowNoticeTechnical.textContent.includes("lời nói ngoài SRT"));assert(!s.controls.workflowNoticeMessage.textContent.includes("Đã bỏ qua"));}
     if(options.emptySupplement)assert(s.controls.workflowNoticeTechnical.textContent.includes("không nhận diện được lời nói"));
@@ -110,6 +123,16 @@ function fixture(options={}){
       if(!failed)assert.deepStrictEqual(s.calls.filter(x=>Array.isArray(x)&&x[0]==="metrics-begin").map(x=>x[1]),["preflight","audio-export","caption-alignment","caption-import","cleanup"]);
       const job=JSON.parse(s.calls.find(x=>Array.isArray(x)&&x[0]==="write")[2]);assert.deepStrictEqual(job.audioInput.trackIndices,[1],"job must carry selected track set to host");assert.strictEqual(job.audioInputKey,"fixture");
     }
+  }
+  const readCount=fixture();await readCount.api.captions();
+  const exportStart=readCount.calls.findIndex(x=>typeof x==="string"&&x.includes("beginCaptionAudioExport"));
+  assert(exportStart>=0);
+  assert.deepStrictEqual(readCount.calls.slice(0,exportStart).filter(x=>typeof x==="string"&&x.includes("$._PVS")),["$._PVS.scanCaptionRange()"]);
+  for(const changedCaptionState of [{count:1},{bins:1},{inPoint:1},{outPoint:11}]){
+    const s=fixture({changedCaptionState});await s.api.captions();
+    assert(s.calls.indexOf('$._PVS.scanCaptionRange("seq")')>s.calls.indexOf("engine"));
+    assert(!s.calls.some(x=>typeof x==="string"&&x.includes("applyCaptionOnly")));
+    assert(s.controls.workflowNoticeTechnical.textContent.includes("Caption hoặc In/Out đã thay đổi trong lúc nhận diện."));
   }
   const preservedCaption=fixture({preserveTimeline:true});await preservedCaption.api.captions();
   assert(!preservedCaption.calls.some(x=>typeof x==="string"&&x.includes("applyCaptionOnly")),"No usable recognition must not import a fake or empty caption track.");

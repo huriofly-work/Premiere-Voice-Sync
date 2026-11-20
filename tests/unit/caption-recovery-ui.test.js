@@ -10,6 +10,7 @@ vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded
   applicationDataRoot=()=>fixture.root;removeTreeSafe=p=>{if(fs.existsSync(path.join(p,"job.json.audio-recovery.json")))throw Error("DELETED_PENDING_JOURNAL");fixture.removed.push(p);fixture.entries.delete(p);};status=()=>{};log=(message,tone)=>fixture.logs.push([message,tone]);
   confirmWorkflowNotice=async()=>{throw Error("UNEXPECTED_RECOVERY_CONFIRMATION");};
   evalHost=async expression=>{
+    if(!expression.startsWith("$._PVS.restorePendingCaptionAudioExport("))throw Error("UNEXPECTED_RECOVERY_HOST_CALL");
     const start=expression.indexOf("(")+1,p=JSON.parse(expression.slice(start,-1));
     fixture.calls.push(p);
     if(fixture.entries.delete(fixture.liveJournal))return {ok:false,done:true,restored:true};

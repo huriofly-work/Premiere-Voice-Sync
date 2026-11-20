@@ -21,6 +21,18 @@ function fixture(options={}){
   function run(){let r=call("beginCaptionAudioExport","job.json","wave.epr","token");while(r.ok&&!r.done)r=call("advanceCaptionAudioExport","token",r.nextCall);return r;}
   return {api,model,seq,project,files,writes,renders,read,job,run,call,select:clips=>selection=clips,clips:{a,b,other,off,c},fault:fn=>fail=fn};
 }
+{
+  const f=fixture();f.job({sourceMode:"tracks"});
+  const snapshot=f.api._captionOnlySnapshot,baselineReads=[];
+  f.api._captionOnlySnapshot=function(seq,structural){
+    if(!structural&&!f.writes.length)baselineReads.push(seq);
+    return snapshot(seq,structural);
+  };
+  const r=f.call("beginCaptionAudioExport","job.json","wave.epr","token");
+  assert(r.ok,r.error);
+  assert.equal(baselineReads.length,1,"Build the full pre-mute snapshot once");
+  assert(f.call("abortCaptionAudioExport","token").restored);
+}
 for(const mode of ["mix","tracks","clips"]){
   const f=fixture();f.select([f.clips.b]);const before=f.read().snapshot;
   const config=mode==="tracks"?{sourceMode:mode,trackIndices:[1,2],topology:f.model.topology(f.read())}:{sourceMode:mode};

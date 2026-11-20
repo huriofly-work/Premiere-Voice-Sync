@@ -457,12 +457,45 @@ $._PVS.workflowPauseState = function () {
     } catch (error) { return $._PVS._result({ ok: false, error: String(error) }); }
 };
 
-$._PVS.scanCaptionRange = function () {
+$._PVS._captionRangeState = function (project, seq, rawIn, rawOut) {
     try {
-        var seq = app.project && app.project.activeSequence;
+        var bins = 0, children = project.rootItem.children;
+        for (var i = 0; i < children.numItems; i++) if (String(children[i].name).indexOf("PVS_TEMP_SUBTITLE_") === 0) bins++;
+        // Some Premiere builds do not expose captionTracks through CEP.
+        var captions = seq.captionTracks;
+        var count = captions === undefined || captions === null ? null : captions.numTracks;
+        if (captions !== undefined && captions !== null && (typeof count !== "number" || !isFinite(count) || count < 0 || Math.floor(count) !== count)) throw new Error("Invalid caption track count");
+        if (rawIn === null || rawIn === undefined || String(rawIn).replace(/\s/g, "") === "" || rawOut === null || rawOut === undefined || String(rawOut).replace(/\s/g, "") === "") throw new Error("Missing sequence In/Out");
+        return { ok: true, count: count, bins: bins, inPoint: Number(rawIn), outPoint: Number(rawOut) };
+    } catch (e) { return { ok: false, error: String(e) }; }
+};
+
+$._PVS._captionFrameRate = function (timebase, errorMessage) {
+    var fps = 254016000000 / timebase;
+    if (!isFinite(fps) || fps <= 0) throw new Error(errorMessage);
+    return fps;
+};
+
+$._PVS.scanCaptionRange = function (expectedSequenceId) {
+    // Import only needs a fresh caption guard, independent of source selection.
+    var stateOnly = expectedSequenceId !== undefined;
+    try {
+        var project = app.project, seq = project && project.activeSequence;
+        if (stateOnly) {
+            if (!seq || String(seq.sequenceID) !== expectedSequenceId) return $._PVS._result({ ok: false, error: "Active sequence changed" });
+            return $._PVS._result($._PVS._captionRangeState(project, seq, seq.getInPoint(), seq.getOutPoint()));
+        }
         if (!seq) throw new Error("Hãy mở sequence cần tạo subtitle.");
-        var fps = 254016000000 / Number(seq.timebase);
-        if (!isFinite(fps) || fps <= 0 || fps > 240) throw new Error("Không đọc được frame rate của sequence.");
+        var fps = $._PVS._captionFrameRate(Number(seq.timebase), "Không đọc được frame rate của sequence.");
+        return $._PVS._scanCaptionRange(project, seq, fps);
+    } catch (e) {
+        return stateOnly ? $._PVS._result({ ok: false, error: String(e) }) : $._PVS._error(e);
+    }
+};
+
+$._PVS._scanCaptionRange = function (project, seq, fps, snapshot) {
+    try {
+        if (fps > 240) throw new Error("Không đọc được frame rate của sequence.");
         var selections = seq.getSelection();
         var ranges = [];
         var selectedNames = [], selectedAudioNodes = {};
@@ -523,7 +556,12 @@ $._PVS.scanCaptionRange = function () {
         }
         var rawIn = seq.getInPoint(), rawOut = seq.getOutPoint(), inStart = Number(rawIn), inEnd = Number(rawOut);
         var validInOut = rawIn !== null && rawIn !== undefined && rawOut !== null && rawOut !== undefined && String(rawIn).replace(/\s/g, "") !== "" && String(rawOut).replace(/\s/g, "") !== "" && isFinite(inStart) && isFinite(inEnd) && inStart >= 0 && inEnd > inStart;
-        return $._PVS._result({ ok: true, inputVersion: 1, projectId: String(app.project.documentID || app.project.path || ""), sequenceId: String(seq.sequenceID), name: seq.name, frameRate: fps, ranges: merged, useSelection: useSelection, selectedNames: selectedNames, audioTracks: audioTracks, sequenceEnd: sequenceEnd, selectionRanges: selectionRanges, selectedAudio: selectedAudio, inOut: { start: inStart, end: inEnd, valid: validInOut }, applicationFolder: Folder.startup.fsName, snapshot: $._PVS._captionOnlySnapshot(seq) });
+        var range = { ok: true, inputVersion: 1, projectId: String(project.documentID || project.path || ""), sequenceId: String(seq.sequenceID), name: seq.name, frameRate: fps, ranges: merged, useSelection: useSelection, selectedNames: selectedNames, audioTracks: audioTracks, sequenceEnd: sequenceEnd, selectionRanges: selectionRanges, selectedAudio: selectedAudio, inOut: { start: inStart, end: inEnd, valid: validInOut }, applicationFolder: Folder.startup.fsName, snapshot: snapshot };
+        if (snapshot === undefined) {
+            range.snapshot = $._PVS._captionOnlySnapshot(seq);
+            range.captionState = $._PVS._captionRangeState(project, seq, rawIn, rawOut);
+        }
+        return $._PVS._result(range);
     } catch (e) { return $._PVS._error(e); }
 };
 
@@ -593,42 +631,31 @@ $._PVS.beginCaptionAudioExport = function (jobPath, presetPath, token) {
         if ($._PVS._captionAudioExport) throw new Error("Một phiên xuất audio đang mở. Hãy hoàn tất/kiểm tra phiên trước.");
         if (typeof token !== "string" || !token.length) throw new Error("Thiếu mã phiên xuất audio.");
         var job = $._PVS._readJsonFile(jobPath);
-        var seq = app.project && app.project.activeSequence;
-        if (!seq || String(seq.sequenceID) !== String(job.sequenceId) || $._PVS._captionOnlySnapshot(seq) !== job.snapshot) throw new Error("Sequence đã thay đổi. Hãy đọc lại phạm vi subtitle.");
-        if (job.workflow !== "caption-only" || !job.sources || !job.sources.length) throw new Error("Dữ liệu tạo subtitle không hợp lệ.");
+        var project = app.project, seq = project && project.activeSequence;
+        if (!seq || String(seq.sequenceID) !== String(job.sequenceId)) throw new Error("Sequence đã thay đổi. Hãy đọc lại phạm vi subtitle.");
+        var snapshot = $._PVS._captionOnlySnapshot(seq);
+        if (snapshot !== job.snapshot) throw new Error("Sequence đã thay đổi. Hãy đọc lại phạm vi subtitle.");
+        if (job.workflow !== "caption-only" || !job.audioInput || !job.sources || !job.sources.length) throw new Error("Dữ liệu tạo subtitle không hợp lệ.");
         for (var ri = 0; ri < job.sources.length; ri++) {
             var range = job.sources[ri];
             if (typeof range.start !== "number" || typeof range.end !== "number" || !isFinite(range.start) || !isFinite(range.end) || range.start < 0 || range.end <= range.start) throw new Error("Phạm vi subtitle không hợp lệ.");
         }
-        var frameSeconds = Number(seq.timebase) / 254016000000;
-        if (!isFinite(frameSeconds) || frameSeconds <= 0) throw new Error("Không đọc được timebase của sequence.");
+        var timebase = Number(seq.timebase);
+        var fps = $._PVS._captionFrameRate(timebase, "Không đọc được timebase của sequence.");
         if (!(new File(presetPath)).exists) throw new Error("Không tìm thấy preset xuất WAV của Premiere.");
-        var voiceIndex = job.voiceTrackIndex, voiceIndices = [], inputPlan = null, clipStates = [], journalPath = null;
-        if (job.audioInput) {
-            if (!$._PVS.captionInput || $._PVS.captionInput.revision !== 1 || typeof $._PVS.captionInput.resolve !== "function" || typeof $._PVS.captionInput.sameKey !== "function") throw new Error("Chưa nạp bộ lập kế hoạch nguồn audio.");
-            var scan = JSON.parse($._PVS.scanCaptionRange());
-            if (!scan.ok || scan.projectId !== job.projectId) throw new Error("Project đã thay đổi. Hãy cập nhật đầu vào.");
-            // Selection is frozen in the job. A later UI selection cannot change its source.
-            if (job.audioInput.sourceMode === "clips") scan.selectedAudio = job.audioInput.selectedAudio;
-            if (job.audioInput.scopeMode === "selection") scan.selectionRanges = job.audioInput.scopeRanges;
-            inputPlan = $._PVS.captionInput.resolve(scan, job.audioInput);
-            if (!$._PVS.captionInput.sameKey(inputPlan.key, job.audioInputKey, scan.frameRate)) throw new Error("Nguồn hoặc phạm vi audio đã thay đổi. Hãy cập nhật đầu vào.");
-            if (!$._PVS.captionInput.sameRanges(job.sources, inputPlan.ranges, scan.frameRate)) throw new Error("Phạm vi xuất khác kế hoạch nguồn audio.");
-            voiceIndices = inputPlan.trackIndices;
-            voiceIndex = voiceIndices.length === 1 ? voiceIndices[0] : null;
-        } else {
-            if (typeof voiceIndex !== "number" || !isFinite(voiceIndex) || Math.floor(voiceIndex) !== voiceIndex || voiceIndex < 0 || voiceIndex >= seq.audioTracks.numTracks) throw new Error("Hãy chọn track voice cần nhận diện và cập nhật lại đầu vào.");
-            voiceIndices = [voiceIndex];
-        }
+        if (!$._PVS.captionInput || $._PVS.captionInput.revision !== 1 || typeof $._PVS.captionInput.resolve !== "function" || typeof $._PVS.captionInput.sameKey !== "function") throw new Error("Chưa nạp bộ lập kế hoạch nguồn audio.");
+        // Keep the resolver's numeric inputs on the same JSON boundary as CEP.
+        var scan = JSON.parse($._PVS._scanCaptionRange(project, seq, fps, snapshot));
+        if (!scan.ok || scan.projectId !== job.projectId) throw new Error("Project đã thay đổi. Hãy cập nhật đầu vào.");
+        // Selection is frozen in the job. A later UI selection cannot change its source.
+        if (job.audioInput.sourceMode === "clips") scan.selectedAudio = job.audioInput.selectedAudio;
+        if (job.audioInput.scopeMode === "selection") scan.selectionRanges = job.audioInput.scopeRanges;
+        var inputPlan = $._PVS.captionInput.resolve(scan, job.audioInput);
+        if (!$._PVS.captionInput.sameKey(inputPlan.key, job.audioInputKey, scan.frameRate)) throw new Error("Nguồn hoặc phạm vi audio đã thay đổi. Hãy cập nhật đầu vào.");
+        if (!$._PVS.captionInput.sameRanges(job.sources, inputPlan.ranges, scan.frameRate)) throw new Error("Phạm vi xuất khác kế hoạch nguồn audio.");
+        var voiceIndices = inputPlan.trackIndices, voiceIndex = voiceIndices.length === 1 ? voiceIndices[0] : null;
+        var frameSeconds = timebase / 254016000000, clipStates = [];
         function chosenTrack(index) { for (var i = 0; i < voiceIndices.length; i++) if (voiceIndices[i] === index) return true; return false; }
-        var hasVoice = false;
-        var voiceClips = seq.audioTracks[voiceIndices[0]].clips;
-        for (var vi = 0; vi < voiceClips.numItems; vi++) {
-            for (var si = 0; si < job.sources.length; si++) {
-                if (Number(voiceClips[vi].start.seconds) < Number(job.sources[si].end) && Number(voiceClips[vi].end.seconds) > Number(job.sources[si].start)) hasVoice = true;
-            }
-        }
-        if (!inputPlan && !hasVoice) throw new Error("Track A" + (voiceIndex + 1) + " không có clip audio trong phạm vi subtitle. Hãy chọn đúng track voice.");
         function readMute(track) {
             var value = track.isMuted();
             if (value !== true && value !== false && value !== 0 && value !== 1) throw new Error("Trạng thái mute không hợp lệ.");
@@ -641,7 +668,7 @@ $._PVS.beginCaptionAudioExport = function (jobPath, presetPath, token) {
             if (!track || typeof track.isMuted !== "function" || typeof track.setMute !== "function") throw new Error("Không điều khiển được mute của track A" + (ti + 1) + ". Chưa xuất audio.");
             muteStates.push({ track: track, muted: readMute(track), changed: false });
         }
-        if (inputPlan && inputPlan.input.sourceMode === "clips") {
+        if (inputPlan.input.sourceMode === "clips") {
             for (ti = 0; ti < seq.audioTracks.numTracks; ti++) if (chosenTrack(ti)) {
                 var trackClips = seq.audioTracks[ti].clips;
                 for (var tci = 0; tci < trackClips.numItems; tci++) {
@@ -657,7 +684,7 @@ $._PVS.beginCaptionAudioExport = function (jobPath, presetPath, token) {
         function verifyIsolation() {
             if (!app.project.activeSequence || String(app.project.activeSequence.sequenceID) !== String(seq.sequenceID) || seq.audioTracks.numTracks !== muteStates.length) throw new Error("Sequence đã thay đổi trong lúc xuất audio.");
             for (var mi = 0; mi < muteStates.length; mi++) {
-                var targetMute = inputPlan && inputPlan.input.sourceMode === "mix" ? muteStates[mi].muted : !chosenTrack(mi);
+                var targetMute = inputPlan.input.sourceMode === "mix" ? muteStates[mi].muted : !chosenTrack(mi);
                 if (readMute(muteStates[mi].track) !== targetMute) throw new Error("Không xác minh được tập track audio đã chọn. Chưa xác minh audio xuất.");
             }
             for (var csi = 0; csi < clipStates.length; csi++) if (clipStates[csi].clip.disabled !== clipStates[csi].target) throw new Error("Không cô lập được đúng các clip audio đã chọn. Chưa xác minh audio xuất.");
@@ -665,13 +692,11 @@ $._PVS.beginCaptionAudioExport = function (jobPath, presetPath, token) {
         var oldIn = seq.getInPoint();
         var oldOut = seq.getOutPoint();
         if (oldIn === null || oldIn === undefined || oldOut === null || oldOut === undefined || String(oldIn).replace(/\s/g, "") === "" || String(oldOut).replace(/\s/g, "") === "" || !isFinite(Number(oldIn)) || !isFinite(Number(oldOut))) throw new Error("Không lưu được In/Out ban đầu. Chưa thay đổi audio.");
-        if (inputPlan) {
-            journalPath = jobPath + ".audio-recovery.json";
-            var record = { revision: 1, projectId: scan.projectId, sequenceId: String(seq.sequenceID), structure: $._PVS._captionOnlySnapshot(seq, true), snapshot: job.snapshot, inPoint: Number(oldIn), outPoint: Number(oldOut), tracks: [], clips: [] };
-            for (ti = 0; ti < muteStates.length; ti++) record.tracks.push(muteStates[ti].muted);
-            for (var cs = 0; cs < clipStates.length; cs++) if (clipStates[cs].target !== clipStates[cs].disabled) record.clips.push({ trackIndex: clipStates[cs].trackIndex, nodeId: String(clipStates[cs].clip.nodeId), disabled: clipStates[cs].disabled });
-            $._PVS._writeCaptionAudioJournal(journalPath, record);
-        }
+        var journalPath = jobPath + ".audio-recovery.json";
+        var record = { revision: 1, projectId: scan.projectId, sequenceId: String(seq.sequenceID), structure: $._PVS._captionOnlySnapshot(seq, true), snapshot: job.snapshot, inPoint: Number(oldIn), outPoint: Number(oldOut), tracks: [], clips: [] };
+        for (ti = 0; ti < muteStates.length; ti++) record.tracks.push(muteStates[ti].muted);
+        for (var cs = 0; cs < clipStates.length; cs++) if (clipStates[cs].target !== clipStates[cs].disabled) record.clips.push({ trackIndex: clipStates[cs].trackIndex, nodeId: String(clipStates[cs].clip.nodeId), disabled: clipStates[cs].disabled });
+        $._PVS._writeCaptionAudioJournal(journalPath, record);
         var index = 0, nextCall = 0, expectedSnapshot = null;
         var documentId = String(app.project.documentID || "");
         function checkRange() {
@@ -770,7 +795,7 @@ $._PVS.beginCaptionAudioExport = function (jobPath, presetPath, token) {
         $._PVS._captionAudioExport = session;
         exportPhase = "isolation";
         for (ti = 0; ti < muteStates.length; ti++) {
-            var targetMute = inputPlan && inputPlan.input.sourceMode === "mix" ? muteStates[ti].muted : !chosenTrack(ti);
+            var targetMute = inputPlan.input.sourceMode === "mix" ? muteStates[ti].muted : !chosenTrack(ti);
             if (readMute(muteStates[ti].track) !== targetMute) {
                 muteStates[ti].changed = true;
                 muteStates[ti].track.setMute(targetMute ? 1 : 0);

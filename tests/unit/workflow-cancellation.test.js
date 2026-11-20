@@ -39,7 +39,7 @@ function fixture(options={}){
   context.window.__adobe_cep__={evalScript(expression,callback){
     calls.push(["host",expression]);let result;
     if(expression.includes("workflowPauseState"))result=options.pauseReadFailure?{ok:false,error:"PAUSE_READ_FAILED"}:{ok:true,state:JSON.stringify([options.snapshotVersion||0])};
-    else if(expression.includes("s.captionTracks"))result={ok:true,count:0,bins:0,inPoint:0,outPoint:10};
+    else if(expression.includes("scanCaptionRange"))result={ok:true,count:0,bins:0,inPoint:0,outPoint:10};
     else if(expression.includes("diagnosticInfo"))result={ok:true,revision:"staged-edit-v3",baseHash:sourceHash};
     else if(expression.includes("beginDiagnosticEdit")){advances=0;stopAt("edit-begin");result={ok:true,nextCall:0,nextStage:"video"};}
     else if(expression.includes("advanceDiagnosticEdit")){
@@ -83,7 +83,7 @@ function fixture(options={}){
     applicationDataRoot=()=>"C:\\\\fixture";extensionRoot=()=>"C:\\\\panel";ensureHostLoaded=async()=>{};
     readSequenceScan=async()=>{fixture.calls.push(["scan-edit",fixture.sequence.sequenceId]);fixture.stopAt("scan");return fixture.sequence;};
     state.captionPlan={key:"fixture",input:{sourceMode:"tracks",scopeMode:"whole",trackIndices:[1]},ranges:[{start:0,end:4},{start:5,end:9}]};
-    scanCaptionRange=async()=>{fixture.calls.push(["scan-captions",fixture.sequence.sequenceId]);fixture.stopAt("scan");return {projectId:"project",sequenceId:fixture.sequence.sequenceId,snapshot:"base",frameRate:30,plan:state.captionPlan};};
+    scanCaptionRange=async()=>{fixture.calls.push(["scan-captions",fixture.sequence.sequenceId]);fixture.stopAt("scan");return {projectId:"project",sequenceId:fixture.sequence.sequenceId,snapshot:"base",frameRate:30,plan:state.captionPlan,captionState:{ok:true,count:0,bins:0,inPoint:0,outPoint:10}};};
     readSettings=()=>settingDefaults;findWavePreset=()=>"preset.epr";
     createWorkflowMetrics=()=>({begin:s=>fixture.calls.push(["stage",s]),end:(r,o)=>fixture.calls.push(["stage-end",o]),finish:o=>fixture.calls.push(["finish",o]),linkTimeline(){},reviewPlan:r=>fixture.calls.push(["review-plan",r.reviewMarkers.length])});
     removeTreeSafe=()=>{if(hostPending||enginePending)throw Error("CLEANUP_WHILE_PENDING");fixture.calls.push(["cleanup"]);};

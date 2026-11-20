@@ -1,5 +1,23 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #111 — Gộp lần đọc đầu vào Tạo phụ đề
+
+- **Dọn đường chạy.** `scanCaptionRange` trả thêm số Caption Track, số bin
+  `PVS_TEMP_SUBTITLE_*` và In/Out trong cùng lần đọc. Bỏ lượt gọi riêng
+  `captionTrackCount`. Khi chuẩn bị xuất WAV, dùng lại snapshot và frame rate
+  trong lần quét trước khi mute. Bỏ nhánh chỉ nhận `voiceTrackIndex` vì panel
+  luôn ghi `audioInput`.
+- **Bất biến.** Giữ đối chiếu với đầu vào đã hiển thị, `sameKey`/`sameRanges`
+  trước khi mute, các kiểm tra từng vùng xuất, lần đọc mới trước khi thêm
+  caption và nhật ký khôi phục #107. Thiếu API Caption Track vẫn trả `null`
+  và nhắc kiểm tra thủ công. Nhật ký chỉ xóa sau khi xác minh khôi phục.
+- **Hồi quy.** Bản cũ trượt hai ca đếm số lần đọc host trước xuất và đếm
+  snapshot gốc trước mute. Các ca đó cùng kiểm tra từ chối khi Caption Track,
+  bin tạm hoặc In/Out đổi trong lúc nhận diện, xuất WAV và khôi phục đều đạt
+  trong mock. Kiểm cú pháp và đối chiếu executor đạt. Bộ chuẩn đạt 79 nhóm,
+  parse 140 tệp PowerShell, bỏ qua sáu nhóm tích hợp Windows. Log ở
+  `_local/issue-111/standard-suite-final.log`. Nghiệm thu trên Premiere còn chờ.
+
 ## Issue #109 — Một bộ kiểm tra template cho Dựng theo voice
 
 - **Nguyên nhân.** Host, panel và bước kiểm trước nhận diện dùng các điều kiện
