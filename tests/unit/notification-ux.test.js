@@ -76,6 +76,27 @@ assert.equal(failed.controls.workflowNotice.attrs.role,"alert");assert.equal(fai
 assert(!failed.controls.workflowNoticeMessage.textContent.includes("RAW_PRIVATE_PATH"));assert(!failed.controls.status.textContent.includes("RAW_PRIVATE_PATH"));
 failed.api.close();failed.api.end();assert(failed.controls.runCaptions.disabled);assert(!failed.controls.recoveryNotice.hidden,"Closing an error does not approve a retry");
 
+for (const [code, expected] of Object.entries({
+  AMBIGUOUS: "Lời nhận diện không khớp file SRT",
+  MISMATCH: "Lời nhận diện không khớp file SRT",
+  NO_SPEECH: "Không nhận diện được lời nói",
+  PARTIAL_CUE: "chọn vùng audio chứa trọn câu",
+  ORDER: "Thứ tự lời nói",
+  MEMORY_LIMIT: "từng vùng hoặc clip",
+  SIZE: "vùng audio và file SRT"
+})) {
+  const scope=fixture();
+  scope.api.begin("captions");
+  scope.api.context().stage="alignment";
+  const raw="SUBTITLE_REFERENCE_SCOPE_"+code+": raw SRT diagnostic";
+  scope.api.fail(Error(raw),"Tạo phụ đề — Không hoàn tất");
+  const message=scope.controls.workflowNoticeMessage.textContent;
+  assert(message.includes(expected),code+": "+message);
+  if (code==="AMBIGUOUS" || code==="MISMATCH") assert(message.includes("A1") && message.toLowerCase().includes("tắt tiếng"));
+  assert.equal(scope.api.current().details,raw);
+}
+console.log("SUBTITLE_SCOPE_NOTIFICATION_OK:all seven codes; raw details preserved");
+
 const input=fixture();input.api.begin("edit");input.api.fail(Error("SRT_INVALID C:\\private\\file.srt"),"Invalid input");
 assert(input.controls.workflowNotice.hidden);assert.equal(input.api.history().length,0);assert(!input.controls.srtHint.textContent.includes("SRT_INVALID"));
 console.log("NOTIFICATION_UX_OK:quiet-recovery;no-routine-history;explicit-focus-migration;foreground-success-local;background-success-notified;deduplicated-final-ranges;marker-failure-fallback;blue-markers-informational;raw-errors-hidden;recovery-lock-preserved");

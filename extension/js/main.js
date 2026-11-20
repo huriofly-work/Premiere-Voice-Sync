@@ -718,7 +718,31 @@
     fatal = !!fatal || !!context.fatal;
     if (context.impact === "changed" || context.impact === "unknown") recoveryContext = context;
     var raw = String(error && error.message || error || "Không xác định được nguyên nhân.");
-    var message = /SUBTITLE_RECOGNITION_TAIL_UNVERIFIED|SUBTITLE_EDGE_RETRY_INVALID|SUBTITLE_RECOGNITION/.test(raw) ? "Chưa xác minh đầy đủ lời nhận diện trong vùng audio. Hãy kiểm tra vùng chọn và phần lời nói ở cuối; tác vụ đã dừng để tránh tạo subtitle thiếu." : /SRT|\.srt|subtitle.*file/i.test(raw) ? "Không xử lý được SRT. Kiểm tra file đã chọn, nội dung và quyền truy cập rồi kiểm tra lại đầu vào." : /ENOENT|không tìm thấy|không mở được/i.test(raw) ? "Không truy cập được một tài nguyên cần thiết. Kiểm tra file nguồn, ổ đĩa và bộ xử lý rồi thử kiểm tra lại đầu vào." : "Tác vụ đã dừng do lỗi. Xem chi tiết và nhật ký để xác định bước cần khắc phục.";
+    var scope = /\bSUBTITLE_REFERENCE_SCOPE_(AMBIGUOUS|MISMATCH|NO_SPEECH|PARTIAL_CUE|ORDER|MEMORY_LIMIT|SIZE)\b/.exec(raw);
+    var message;
+    if (scope) {
+      switch (scope[1]) {
+        case "NO_SPEECH":
+          message = "Không nhận diện được lời nói trong vùng audio. Hãy kiểm tra vùng chọn và bật track có lời nói rồi chạy lại.";
+          break;
+        case "PARTIAL_CUE":
+          message = "Lời nhận diện chỉ khớp một phần câu trong SRT. Hãy chọn vùng audio chứa trọn câu rồi chạy lại.";
+          break;
+        case "ORDER":
+          message = "Thứ tự lời nói trong các vùng audio không khớp với SRT. Hãy kiểm tra thứ tự các vùng đã chọn và nội dung SRT.";
+          break;
+        case "MEMORY_LIMIT":
+          message = "Vùng audio và SRT vượt giới hạn bộ nhớ khi đối chiếu. Hãy chọn từng vùng hoặc clip và dùng SRT tương ứng.";
+          break;
+        case "SIZE":
+          message = "Thiếu lời nhận diện hoặc nội dung SRT để đối chiếu. Hãy kiểm tra vùng audio và file SRT đã chọn.";
+          break;
+        default:
+          message = "Lời nhận diện không khớp file SRT. Hãy kiểm tra nguồn audio và các track đang bật. Tắt tiếng các track không chứa lời cần tạo phụ đề, ví dụ track tiếng gốc trên A1, rồi chạy lại.";
+      }
+    } else {
+      message = /SUBTITLE_RECOGNITION_TAIL_UNVERIFIED|SUBTITLE_EDGE_RETRY_INVALID|SUBTITLE_RECOGNITION/.test(raw) ? "Chưa xác minh đầy đủ lời nhận diện trong vùng audio. Hãy kiểm tra vùng chọn và phần lời nói ở cuối; tác vụ đã dừng để tránh tạo subtitle thiếu." : /SRT|\.srt|subtitle.*file/i.test(raw) ? "Không xử lý được SRT. Kiểm tra file đã chọn, nội dung và quyền truy cập rồi kiểm tra lại đầu vào." : /ENOENT|không tìm thấy|không mở được/i.test(raw) ? "Không truy cập được một tài nguyên cần thiết. Kiểm tra file nguồn, ổ đĩa và bộ xử lý rồi thử kiểm tra lại đầu vào." : "Tác vụ đã dừng do lỗi. Xem chi tiết và nhật ký để xác định bước cần khắc phục.";
+    }
     if (/WORKFLOW_CHANGED_WHILE_PAUSED/.test(raw)) message = "Project, sequence hoặc trạng thái timeline đã thay đổi khi tạm dừng. Tool đã chặn tiếp tục để tránh dựng sai.";
     if (/WORKFLOW_PAUSE_STATE_UNAVAILABLE/.test(raw)) message = "Không xác minh được trạng thái để tạm dừng/tiếp tục an toàn. Tác vụ đã dừng; xem chi tiết để kiểm tra.";
     if (context.impact === "changed") message = "Tác vụ dừng khi timeline hoặc Project đã thay đổi. Kiểm tra hoặc khôi phục bản đã lưu trước khi chạy lại.";

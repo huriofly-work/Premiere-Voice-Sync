@@ -46,6 +46,28 @@ try{Select-PvsSubtitleReference $cues $wrong @($sources[0]) | Out-Null}catch{if(
 if(-not $failed){throw 'STRICT_SCOPE_POLICY_CHANGED'}
 $repeat=Select-PvsSubtitleReference @($cues+$cues) @($words | Where-Object {$_.Chapter -eq 0}) @($sources[0]) -AllowUnmatchedRanges -SkipUnverifiedCues
 if($repeat.FallbackRanges.Count -ne 1 -or $repeat.FallbackRanges[0].reason -notmatch 'SCOPE_AMBIGUOUS'){throw 'AMBIGUOUS_RANGE_ASSIGNED_REFERENCE_TEXT'}
+
+# Over 512 tied endpoints hits the C# guard in each matcher direction.
+$singleCue=[pscustomobject]@{Index=1;Text='word';Start=0;End=1}
+$singleWord=[pscustomobject]@{Text='word';Start=0;End=0.3;Chapter=0}
+$repeatedCues=1..513 | ForEach-Object {[pscustomobject]@{Index=$_;Text='word';Start=$_;End=$_+1}}
+foreach($reverse in @($false,$true)){
+    $reference=if($reverse){@($singleCue)}else{$repeatedCues}
+    $heard=if($reverse){@($singleWord)*513}else{@($singleWord)}
+    foreach($allowUnmatched in @($false,$true)){
+        $message=$null
+        try {
+            Select-PvsSubtitleReference $reference $heard @($sources[0]) -AllowAudioOutsideReference:$reverse -AllowUnmatchedRanges:$allowUnmatched -SkipUnverifiedCues | Out-Null
+        } catch {
+            $message=$_.Exception.Message
+        }
+        if($null -eq $message){throw "MATCHER_AMBIGUITY_BECAME_FALLBACK:reverse=$reverse;allowUnmatched=$allowUnmatched"}
+        if($message -notmatch '^SUBTITLE_REFERENCE_SCOPE_AMBIGUOUS\b' -or $message -match 'Exception calling'){
+            throw "MATCHER_AMBIGUITY_NOT_UNWRAPPED: $message"
+        }
+    }
+}
+Write-Host 'SUBTITLE_SCOPE_CLASSIFICATION_OK:matcher fatal in both directions; PowerShell ambiguity uses range fallback'
 $reversed=@($words | Where-Object {$_.Chapter -ne 1} | ForEach-Object {$copy=$_.PSObject.Copy();$copy.Chapter=if($_.Chapter -eq 0){1}else{0};$copy})
 $order=Select-PvsSubtitleReference $cues $reversed @($sources[0],$sources[1]) -AllowUnmatchedRanges -SkipUnverifiedCues
 if(($order.Cues.Index -join ',') -ne '3,4' -or $order.FallbackRanges.Count -ne 1 -or $order.FallbackRanges[0].reason -notmatch 'SCOPE_ORDER'){throw 'RANGE_ORDER_GUARD_LOST'}
