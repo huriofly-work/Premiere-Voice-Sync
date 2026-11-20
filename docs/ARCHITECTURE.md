@@ -1,6 +1,6 @@
 # Kiến trúc hiện tại
 
-Tài liệu này mô tả runtime 2.20.x (bản mới nhất 2.20.98, Whisper large-v3-turbo)
+Tài liệu này mô tả runtime 3.0 (bản mới nhất 3.0.0, Whisper large-v3-turbo)
 và lịch sử thiết kế của nó. Big update phát triển từng bước trên chính kiến trúc
 này; kiến trúc cue-first riêng đã đóng ngày 13/11/2026.
 
@@ -73,7 +73,7 @@ Các bước cuối của Dựng theo voice hiển thị **Tạo caption → H�
 
 Host gắn Video lên nest V1, Voice lên file voice và Caption lên file voice. Với Tạo phụ đề, binding `reviewMarkerVoiceInput` giữ các track/clip đã xuất audio. Host chọn track đầu tiên có clip đang bật giao với cảnh báo rồi chọn clip có phần giao dài nhất. `_clipMarkerMapping` đổi timeline sang giây nguồn bằng `(t-start+inPoint)*speed`, rồi chiếu ngược để kiểm cả start và end. Công thức dùng in/out đã chia speed của TrackItem theo [probe #34](reviews/VOICE_CLIP_MARKER_PROBE_2026-11-15.md). Các khoảng chồng hoặc chạm nhau trên cùng lát và cùng loại dùng một điểm giữa trên lưới frame. Nếu cảnh báo khe hở nằm ngoài clip, dùng frame mép của lát liền trước. `unattachedMarkers` giữ loại, khoảng thời gian, cue và lý do khi thiếu clip, ánh xạ hoặc frame trống.
 
-Tên và thẻ cuối ghi chú xác định quyền sở hữu Comment. Thẻ dùng `video`, `voice`, `caption:edit` hoặc `caption:captions` sau tiền tố `PremiereVoiceSync:`. Mỗi workflow chỉ đối chiếu bộ Caption của mình. Runtime 3.0.0 chỉ đọc collection marker của ProjectItem. Nếu dữ liệu đổi sau snapshot, host chặn ghi trên ProjectItem đó. Lỗi ghi thuộc tính được bù trong chính giao dịch, gồm cả hai mép marker, và báo rõ khi khôi phục thiếu. Dừng giữ timeline và các marker đã ghi. Xem sơ đồ kiểm chứng trong [tài liệu đối chiếu marker](reviews/MARKER_RECONCILIATION_2026-10-17.md).
+Tên và thẻ cuối ghi chú xác định quyền sở hữu Comment. Thẻ dùng `video`, `voice`, `caption:edit` hoặc `caption:captions` sau tiền tố `PremiereVoiceSync:`. Mỗi workflow chỉ đối chiếu bộ Caption của mình. Runtime 3.x chỉ đọc collection marker của ProjectItem. Nếu dữ liệu đổi sau snapshot, host chặn ghi trên ProjectItem đó. Lỗi ghi thuộc tính được bù trong chính giao dịch, gồm cả hai mép marker, và báo rõ khi khôi phục thiếu. Dừng giữ timeline và các marker đã ghi. Xem sơ đồ kiểm chứng trong [tài liệu đối chiếu marker](reviews/MARKER_RECONCILIATION_2026-10-17.md).
 
 ## Dữ liệu, cache và đóng gói
 

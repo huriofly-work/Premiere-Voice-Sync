@@ -2,16 +2,25 @@
 
 Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đang chờ bản kế tiếp. Các mục "Chưa phát hành" cũ hơn bên dưới đã nằm trong bản phát hành gần nhất phía trên chúng và được giữ nguyên làm lịch sử.
 
-## Chưa phát hành
+## 3.0.0 — 2026-11-20
 
-- Phiên bản 3.0.0 không còn chuyển đổi bản cài đặt hoặc thiết lập từ các phiên bản trước.
-- Gắn ba loại marker. Video để kiểm tra hình và A1, Voice để kiểm tra căn lời, Caption để rà chữ và mốc hiển thị (#96).
-- Sau khi tạo caption và hậu kiểm, Dựng theo voice gắn marker trong một bước rồi báo cáo. Mỗi chức năng cập nhật bộ Caption của riêng mình.
-- Marker 2.20.x cần được xóa thủ công một lần hoặc dùng template sạch khi chuyển lên 3.0.0.
+Bản ứng viên; chưa công bố, chưa chạy trên Premiere; 2.20.98 vẫn là stable/Latest. [Ghi chú phát hành](docs/releases/notes/RELEASE_3.0.0.md).
 
-- Dựng theo voice ghi marker một lần sau hậu kiểm. Chạy lại giữ nguyên marker đã đúng, còn lượt dựng trên project lớn có thể chậm hơn một chút. Không tạo được caption thì vẫn gắn marker hình và voice, chỉ bỏ marker caption, và panel báo rõ lỗi caption. Thông báo khi Dừng hoặc lỗi nói rõ marker chỉ được gắn ở bước cuối.
+**Không tương thích với bản cũ** (quyết định 19/11/2026):
+- Marker do 2.20.x ghi không được nhận ra. Trước lần chạy đầu bằng 3.0.0, xóa tay các marker có tên bắt đầu bằng `VOICE SYNC - ` trên file voice, nest V1 và thước, hoặc dùng template sạch.
+- Không còn chuyển đổi bản cài từ bộ cài EXE cũ, không còn đổi thiết lập tốc độ cũ 110 → 130, engine không đọc dữ liệu job/căn lời kiểu cũ (#98).
 
-- Dựng theo voice giữ timeline và marker đã ghi khi bấm Dừng hoặc gặp lỗi. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả (#90).
+**Marker**
+- Chỉ còn ba loại marker: `VOICE SYNC - Video` trên nest V1 cho mọi vấn đề của hình, `VOICE SYNC - Voice` và `VOICE SYNC - Caption` trên file voice (#96).
+- Dựng theo voice dựng V1–A1, dựng voice A2, tạo caption, hậu kiểm một lần rồi mới gắn marker một lần cho mỗi nguồn. Panel kết thúc bằng Tạo caption → Hậu kiểm → Gắn marker → Báo cáo (#94, #96).
+- Bỏ ghi marker trước khi cắt cùng phần dời lại/khôi phục đi kèm. Chạy lại khi marker đã đúng thì không ghi gì. Lượt dựng trên project lớn có thể chậm hơn một chút (#94).
+- Bước Gắn marker luôn dọn toàn bộ marker cũ của tool; cảnh báo không gắn được chỉ vào danh sách chưa gắn. Không còn marker trên thước.
+- Không tạo được caption thì vẫn gắn marker Video và Voice, chỉ bỏ marker Caption, và panel nêu lỗi caption.
+
+**Dừng và lỗi**
+- Dừng hoặc lỗi giữ timeline đến bước đã làm. Marker chỉ gắn ở bước cuối, nên dừng trước bước đó thì marker vẫn là của lần chạy trước; thông báo nói rõ điều này. Yêu cầu Dừng đến sau khi dựng xong thì panel báo hoàn tất và giữ kết quả. Lỗi gốc luôn đứng đầu câu lỗi (#90).
+
+**Dev**
 - Thêm probe dành cho dev để xem dự đoán ghi lại marker nguồn hình và đo hành vi dời marker điểm trên sequence ProjectItem (#75). Probe chỉ đọc đã chạy trên Sông Congo: sau một lượt dựng, cả 19 marker hình được giữ nguyên; lượt dời mỗi lần chạy đến từ marker cũ trong bản lưu. Lượt chạy lại thật xác nhận: 0 dời, 0 ghi end, bước cập nhật marker nguồn 0,64 s.
 
 ## 2.20.98 — 2026-11-19

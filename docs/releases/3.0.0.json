@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "version": "3.0.0",
+  "tag": "v3.0.0",
+  "channel": "prerelease",
+  "nativeAcceptance": "pending",
+  "package": {
+    "sha256": "B068D618413CDD58F5964D01FB7EA2A43C58FA6B65D169194A0BD21984F9B8C1",
+    "bytes": 1535366912,
+    "filename": "Premiere-Voice-Sync-3.0.0-Panel.zip"
+  },
+  "recognitionModel": {
+    "id": "large.v3.turbo",
+    "file": "ggml-large-v3-turbo.bin",
+    "bytes": 1624555275,
+    "sha256": "1FC70F774D38EB169993AC391EEA357EF47C88757EF72EE5943879B7E8E2BC69",
+    "source": "huggingface.co/ggerganov/whisper.cpp revision 5359861c739e955e79d9a303bcbc70fb988958b1"
+  },
+  "validationAtPackaging": {
+    "status": "built",
+    "mockEvidence": [
+      "tests/unit/diagnostic-executor.test.js: before the marker rename, final marker rows matched the previous host on 42 fixtures x 4 executors (GUIDs ignored); timeline and native-argument hashes unchanged; every steady rerun writes 0 markers.",
+      "Placement mocks at 23.976, 24, 25, 29.97 and 60 fps with voice at 90%, 100% and 150%; reversed and time-remapped A2 clips list their markers as unattached.",
+      "tests/unit/partial-markers.test.js: Stop or fault at every stage boundary, 0 partial-worse; 172/172 injected write faults compensated."
+    ],
+    "regressionGroupsPassed": 84,
+    "powershellScriptsParsed": 139,
+    "windowsIntegrationGroupsRun": 6
+  },
+  "changes": [
+    "Only three tool markers: VOICE SYNC - Video on the V1 nest, VOICE SYNC - Voice and VOICE SYNC - Caption on the voice file (#96, PR #97).",
+    "Auto edit builds V1-A1 and voice A2, creates captions, runs one post-check and writes markers once per source; the marker pre-write, journals and projection compare are removed (#94, PR #95).",
+    "Gan marker always removes every old tool marker; unplaceable warnings are listed as unattached; no ruler markers.",
+    "A caption failure still writes Video and Voice markers; only Caption markers are skipped and the panel names the caption error.",
+    "Stop or error keeps the timeline as far as the run got; markers are only written in the last step; a late Stop keeps the finished result; the original error comes first (#90, PR #91).",
+    "No compatibility with older versions: 2.20.x markers are not recognised, the EXE-installer migration and old settings, job and alignment formats are removed (#96, #98, PR #99)."
+  ],
+  "pullRequests": [
+    91,
+    93,
+    95,
+    97,
+    99,
+    100
+  ],
+  "issues": [
+    90,
+    92,
+    94,
+    96,
+    98
+  ],
+  "knownLimitations": [
+    "Not yet run in Premiere; the 3.0.0 native checklist in docs/TESTING.md is pending.",
+    "Markers written by 2.20.x are not recognised: remove them by hand once or use a clean template, otherwise new markers avoid their frames and may shift or stay unattached.",
+    "Writing markers after the cuts may make Auto edit slower on large projects; to be measured in the native run.",
+    "Setup/Remove on a clean Windows account and an antivirus scan were not recorded for this build.",
+    "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
+  ]
+}

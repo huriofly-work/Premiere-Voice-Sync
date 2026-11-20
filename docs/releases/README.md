@@ -4,7 +4,8 @@ Repo được khởi tạo lại ngày 14/11/2026 ([lý do](../maintenance/REPO_
 bản public đầu tiên là 2.20.91 (stable đến 19/11/2026, user chạy thật ngày 15/11/2026); 2.20.92,
 2.20.93, 2.20.94, bản vá 2.20.95, bản chẩn đoán 2.20.96 và 2.20.97 là prerelease; 2.20.95 và 2.20.96 đã chạy thật trên Premiere ngày
 18/11/2026, 2.20.97 hỏng khi chạy thật ngày 19/11/2026 (2.20.93/2.20.94/2.20.97 có lỗi marker). Bản vá 2.20.98 công bố
-prerelease ngày 19/11/2026, user chạy thật với hai project rồi nâng lên stable/Latest cùng ngày. Trong lịch
+prerelease ngày 19/11/2026, user chạy thật với hai project rồi nâng lên stable/Latest cùng ngày.
+3.0.0 (20/11/2026) là bản ứng viên, chưa công bố và chưa chạy trên Premiere. Trong lịch
 sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90. Các JSON đến
 2.20.90 giữ nguyên tag, SHA và link của repo cũ làm bằng chứng.
 
@@ -15,6 +16,7 @@ sử cũ, stable đã nghiệm thu là 2.20.25 và prerelease cuối là 2.20.90
 
 ## Ghi chú theo phiên bản
 
+- [3.0.0 — Ba loại marker, gắn một lần sau hậu kiểm, không tương thích với bản cũ](notes/RELEASE_3.0.0.md)
 - [2.20.98 — Bản vá: marker review ghi trước khi cắt không bị trả về vì làm tròn tick](notes/REVIEW_MARKERS_2.20.98.md)
 - [2.20.97 — Marker review được ghi trước khi cắt](notes/REVIEW_MARKERS_2.20.97.md)
 - [2.20.96 — Số đo tìm vì sao marker review chưa được ghi trước khi cắt](notes/REVIEW_MARKERS_2.20.96.md)
