@@ -790,13 +790,8 @@
     currentNotice.details += "\nDọn file tạm: " + String(error.message || error);
     displayNotice(currentNotice, true);
   }
-  async function captionTrackCount(sequenceId) {
-    // Read only. Include In/Out and temporary bins so a failed export/import is not mistaken for an untouched project.
-    // The CEP Sequence DOM does not expose captionTracks on every Premiere build.
-    // null means unavailable, never an assertion that the sequence has zero captions.
-    var script = '(function(){try{var s=app.project&&app.project.activeSequence;if(!s||String(s.sequenceID)!==' + jsxString(sequenceId) + ')return $._PVS._result({ok:false,error:"Active sequence changed"});var n=0,r=app.project.rootItem;for(var i=0;i<r.children.numItems;i++)if(String(r.children[i].name).indexOf("PVS_TEMP_SUBTITLE_")===0)n++;var c=s.captionTracks,ct=c===undefined||c===null?null:c.numTracks;if(c!==undefined&&c!==null&&(typeof ct!=="number"||!isFinite(ct)||ct<0||Math.floor(ct)!==ct))throw new Error("Invalid caption track count");var ip=s.getInPoint(),op=s.getOutPoint();if(ip===null||ip===undefined||String(ip).replace(/\\s/g,"")===""||op===null||op===undefined||String(op).replace(/\\s/g,"")==="")throw new Error("Missing sequence In/Out");return $._PVS._result({ok:true,count:ct,bins:n,inPoint:Number(ip),outPoint:Number(op)});}catch(e){return $._PVS._result({ok:false,error:String(e)});}}())';
-    var result = await evalHost(script);
-    if (!result.ok || (result.count !== null && (!Number.isInteger(result.count) || result.count < 0)) || !Number.isInteger(result.bins) || result.bins < 0 || !Number.isFinite(result.inPoint) || !Number.isFinite(result.outPoint)) throw new Error("Không đọc được trạng thái caption/In/Out để xác minh trước thao tác. Tool chưa thực hiện bước tiếp theo." + (result.error ? " Chi tiết: " + result.error : ""));
+  function captionStateKey(result) {
+    if (!result || !result.ok || (result.count !== null && (!Number.isInteger(result.count) || result.count < 0)) || !Number.isInteger(result.bins) || result.bins < 0 || !Number.isFinite(result.inPoint) || !Number.isFinite(result.outPoint)) throw new Error("Không đọc được trạng thái caption/In/Out để xác minh trước thao tác. Tool chưa thực hiện bước tiếp theo." + (result && result.error ? " Chi tiết: " + result.error : ""));
     return JSON.stringify({ count: result.count, bins: result.bins, inPoint: result.inPoint, outPoint: result.outPoint });
   }
   async function checkInputs() {
@@ -1294,13 +1289,13 @@
     var inputPath = path.join(extensionRoot(), "js", "caption-input.js");
     var bootstrap = '(function(){try{' +
       'function ready(){return $._PVS&&$._PVS.captionInputRevision===1&&$._PVS.captionInput&&$._PVS.captionInput.revision===1&&typeof $._PVS.captionInput.resolve==="function"&&typeof $._PVS.captionInput.sameKey==="function"&&typeof $._PVS.scanSequence==="function"&&typeof $._PVS.scanCaptionRange==="function"&&typeof $._PVS.beginSrtScan==="function"&&typeof $._PVS.beginCaptionAudioExport==="function"&&typeof $._PVS.workflowPauseState==="function"&&typeof $._PVS.applyCaptionOnly==="function"&&typeof $._PVS._applyCaptionMarkers==="function";}' +
-      'if($._PVS&&$._PVS.bootstrapRevision===4&&ready())return "PVS_HOST_READY";' +
+      'if($._PVS&&$._PVS.bootstrapRevision===5&&ready())return "PVS_HOST_READY";' +
       // Read explicitly: BOM-less source otherwise follows Windows ANSI in
       // ExtendScript. Evaluate in this call and publish dependencies on $._PVS.
       'function load(p){var f=new File(p);if(!f.exists)throw new Error("Missing script: "+f.fsName);f.encoding="UTF-8";if(!f.open("r"))throw new Error("Cannot read script: "+f.fsName);var s;try{s=f.read();if(f.error)throw new Error(f.error);}finally{f.close();}eval(s);}' +
       'load(' + jsxString(inputPath) + ');' +
       'load(' + jsxString(hostPath) + ');' +
-      'if(ready()){$._PVS.bootstrapRevision=4;return "PVS_HOST_READY";}' +
+      'if(ready()){$._PVS.bootstrapRevision=5;return "PVS_HOST_READY";}' +
       'return "PVS_HOST_ERROR|Incomplete Premiere host or audio planner";' +
       '}catch(e){return "PVS_HOST_ERROR|"+String(e)+"|line="+(e.line||"")+"|file="+(e.fileName||"");}}())';
     hostReadyPromise = evalRaw(bootstrap).then(function (raw) {
@@ -2334,10 +2329,9 @@
       var inputPlan = range.plan;
       if (!inputPlan) throw state.captionPlanError || inputError("Hãy cập nhật nguồn audio và phạm vi trước khi chạy.", "captionSourceMode");
       if (inputPlan.key !== displayedInputKey) throw inputError("Nguồn hoặc phạm vi đã thay đổi. Tóm tắt đã được cập nhật; hãy kiểm tra rồi bấm Tạo phụ đề lại.", "captionSourceMode");
-      runContext.captionCount = await captionTrackCount(range.sequenceId);
-      throwIfStopRequested();
+      var initialCaptionState = captionStateKey(range.captionState);
       await waitForWorkflowPause();
-      if (JSON.parse(runContext.captionCount).count === null) log("Premiere không cung cấp số Caption Track qua CEP. Tool vẫn kiểm tra video/audio, In/Out và bin tạm; nếu lỗi sau bước thêm phụ đề, hãy kiểm tra Caption Track trên timeline.", "muted");
+      if (range.captionState.count === null) log("Premiere không cung cấp số Caption Track qua CEP. Tool vẫn kiểm tra video/audio, In/Out và bin tạm; nếu lỗi sau bước thêm phụ đề, hãy kiểm tra Caption Track trên timeline.", "muted");
       var captionSettings = readCaptionSettings();
       var maxCharacters = captionSettings.maxCaptionCharacters;
       var language = captionSettings.language;
@@ -2416,7 +2410,8 @@
       status("3/3 · Đang thêm Caption Track...", "muted");
       runStage("captions");
       metrics.begin("caption-import");
-      if (await captionTrackCount(range.sequenceId) !== runContext.captionCount) throw new Error("Caption hoặc In/Out đã thay đổi trong lúc nhận diện. Hãy kiểm tra lại đầu vào; tool chưa thêm caption.");
+      var currentCaptionState = await evalHost("$._PVS.scanCaptionRange(" + jsxString(range.sequenceId) + ")");
+      if (captionStateKey(currentCaptionState) !== initialCaptionState) throw new Error("Caption hoặc In/Out đã thay đổi trong lúc nhận diện. Hãy kiểm tra lại đầu vào; tool chưa thêm caption.");
       result.reviewMarkers = buildReviewMarkers(result, null);
       metrics.reviewPlan(result);
       result.reviewMarkerRanges = sources.map(function (source) { return { start: source.start, end: source.end }; });

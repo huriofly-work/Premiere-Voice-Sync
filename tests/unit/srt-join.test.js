@@ -109,7 +109,7 @@ async function workflow(mode, enabled, language = 'vi') {
   const fakeJoin = { panel: () => ({ render() {}, read: () => enabled ? { ...appended, files: files.map(f => f.path) } : null, write(value, folder) { const file = path.win32.join(folder, "reference-joined.srt"); mockFs.writeFileSync(file, value.text); return file; } }) };
   const plan = { key: "plan", input: {}, ranges: [{ start: 0, end: 10 }] };
   const sequence = require("./edit-input.test.js")({sequenceId:"s"});
-  const range = { projectId: "p", sequenceId: "s", snapshot: "original", plan, frameRate: 30 };
+  const range = { projectId: "p", sequenceId: "s", snapshot: "original", plan, frameRate: 30, captionState: {ok:true,count:0,bins:0,inPoint:0,outPoint:10} };
   const context = { require: n => ({ fs: mockFs, path: path.win32, child_process: {} }[n]), window: { PvsEditInput:require("../../extension/js/edit-input.js"), PvsSecurity: { assertNoLinks() {} }, PvsSrtJoin: fakeJoin }, document: { ...g.document, addEventListener() {} }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, fixture: { captured, errors, sequence, range, plan } };
   const injected = `
     setWorkflowBusy=function(b){state.workflowBusy=b;};beginRun=function(w){runContext={workflow:w};};
@@ -119,7 +119,7 @@ async function workflow(mode, enabled, language = 'vi') {
     applicationDataRoot=function(){return 'C:\\\\Data';};extensionRoot=function(){return 'C:\\\\Extension';};
     createWorkflowMetrics=function(){return {begin:function(){},end:function(){},finish:function(){}};};
     status=function(){};log=function(){};runStage=function(){};reportRunFailure=function(e){fixture.errors.push(e.message);};
-    removeTreeSafe=function(){};retainLastRun=removeTreeSafe;findWavePreset=function(){return 'preset';};captionTrackCount=async function(){return JSON.stringify({count:0});};
+    removeTreeSafe=function(){};retainLastRun=removeTreeSafe;findWavePreset=function(){return 'preset';};
     function capture(jobPath){fixture.captured.job=JSON.parse(fs.readFileSync(jobPath,'utf8'));throw new Error('EXPECTED_NATIVE_BOUNDARY');}
     runPowerShell=async function(script,args){capture(args[1]);};exportCaptionAudio=async function(jobPath){capture(jobPath);};
     state.mode='${mode}';state.targetSrt='${files[0].path.replace(/\\/g, "\\\\")}';state.captionSrt=state.targetSrt;state.captionPlan=fixture.plan;
