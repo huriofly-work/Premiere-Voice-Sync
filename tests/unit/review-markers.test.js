@@ -22,7 +22,7 @@ const build = (report, plan) => JSON.parse(JSON.stringify(ui.buildReviewMarkers(
       } };
     const clip={start:{seconds:0},end:{seconds:30},inPoint:{seconds:0},outPoint:{seconds:30},getSpeed:()=>1,projectItem:{nodeId:"voice",getMarkers:()=>markers}};
     const stats = context.$._PVS._applyCaptionMarkers({ timebase: 254016000000 / 30, sequenceID:"s" }, issues, [{ start: 0, end: 30 }], null,[clip]);
-    assert.equal(stats.reviewMarkerFailureCount, 0);
+    assert.equal(stats.markerFailureCount, 0);
     assert.equal(values.length, 1);
     return values[0].comments;
   }
@@ -188,11 +188,11 @@ const apply = host.$._PVS._applyCaptionMarkers;
 let stats=apply({timebase:254016000000/30},[{start:1,end:2,reason:"number",captionIndex:12},
   {start:1,end:2,reason:"DTW",severity:"error"}],[{start:0,end:4}],null,[]);
 assert.equal(stats.unattachedMarkerCount,2);
-assert.equal(stats.reviewMarkerFailureCount,0);
+assert.equal(stats.markerFailureCount,0);
 assert.equal(stats.unattachedMarkers[0].cueLabel,"Cue 12");
 assert.equal(stats.unattachedMarkers[0].kind,"VOICE SYNC - Caption");
 stats=apply({timebase:254016000000/30},[{start:9,end:10,reason:"outside"}],[{start:0,end:4}],null,[]);
-assert.equal(stats.reviewMarkerFailureCount,1);
+assert.equal(stats.markerFailureCount,1);
 assert(main.includes("plan.reviewMarkers = buildReviewMarkers(alignment, plan)"));
 assert(main.includes("result.reviewMarkers = buildReviewMarkers(result, null)"));
 {

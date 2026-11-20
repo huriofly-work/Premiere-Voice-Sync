@@ -42,7 +42,7 @@ const review=fixture();review.api.begin("captions");review.api.context().resultH
 const markers=[{start:4,end:5,captionIndex:3,reason:"Chữ tự nhận diện: cần kiểm tra chữ"},
   {start:4,end:5,captionIndex:3,reason:"Cần nghe lại thời gian"},
   {start:4.5,end:6,reason:"Vùng âm thanh chưa xác minh"},{start:9,end:10,captionIndex:8,reason:"Kiểm tra chữ"}];
-review.api.markers({reviewMarkerCount:0,reviewMarkerFailureCount:4},markers);
+review.api.markers({captionMarkerCount:0,markerFailureCount:4},markers);
 review.api.finish("Captions","Technical source cue 102, frame 1234");
 assert.equal(review.api.current().tone,"warn");assert(review.api.current().reviewRequired);
 assert.equal(review.api.current().reviewItems.length,3,"Same final bounds merge reasons, without widening the original marker positions");
@@ -55,7 +55,7 @@ assert(!review.controls.noticeReviewIssues.hidden);assert.equal(review.api.histo
 assert.equal(policy.route({kind:"completed",reviewRequired:true},{background:true,foregroundEnabled:false}).toast,"banner-and-center");
 assert(!Array.from(review.storage.values()).join(" ").includes("Chữ tự nhận diện"),"History cannot persist speech or raw diagnostics");
 
-const blue=fixture();blue.api.begin("edit");blue.api.markers({mergeClipMarkerCount:5,reviewMarkerCount:0},[],{visualSegments:[{NewStart:0,NewEnd:3,SpeedOutsideWarningRange:false}]});blue.api.finish("Edit","Merged visuals");
+const blue=fixture();blue.api.begin("edit");blue.api.markers({mergeClipMarkerCount:5,captionMarkerCount:0},[],{visualSegments:[{NewStart:0,NewEnd:3,SpeedOutsideWarningRange:false}]});blue.api.finish("Edit","Merged visuals");
 assert.equal(blue.api.current().tone,"ok");assert.equal(blue.api.current().reviewItems.length,0,"Informational blue merge markers are not review problems");
 const speed=fixture();speed.api.begin("edit");speed.api.markers({speedWarningSentenceCount:1},[],{visualSegments:[{NewStart:2,NewEnd:4,SpeedOutsideWarningRange:true}]});
 speed.api.warning("Check speed",true,"SPEED");speed.api.finish("Edit","Details");assert.equal(speed.api.current().reviewItems.length,1);

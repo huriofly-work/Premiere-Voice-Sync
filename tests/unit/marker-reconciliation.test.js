@@ -61,11 +61,11 @@ for (const defaultDuration of [0,0.25]) {
     return m;
   };
   const issues=[{start:1,end:3,reason:"review"}];
-  assert.equal(run(f,issues).reviewMarkerCount,1);assert.equal(writes,defaultDuration?1:0);
+  assert.equal(run(f,issues).captionMarkerCount,1);assert.equal(writes,defaultDuration?1:0);
   const prior=f.values[0];prior.end=3;writes=0;
-  assert.equal(run(f,issues).reviewMarkerCount,1);assert.equal(writes,1);assert.equal(prior.end.seconds,2);
+  assert.equal(run(f,issues).captionMarkerCount,1);assert.equal(writes,1);assert.equal(prior.end.seconds,2);
   prior.end=2+1e-9;writes=0;f.events.length=0;
-  assert.equal(run(f,issues).reviewMarkerCount,1);assert.equal(f.values[0],prior);
+  assert.equal(run(f,issues).captionMarkerCount,1);assert.equal(f.values[0],prior);
   assert.equal(writes,0);assert.deepEqual(f.events,[]);
 }
 
@@ -159,7 +159,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   }
   for(const previousEnd of [1.8,2])test("#3 padding selects largest overlap, previous end="+previousEnd,()=>{
     const v=setup([[0,previousEnd],[2,4]]),r=v.invoke();
-    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.unattachedMarkerCount,0);
+    assert.equal(r.captionMarkerCount,1);assert.equal(r.unattachedMarkerCount,0);
     assert.equal(v.sources[0].values.length,0,"Previous tail must not own the issue");
     const point=state(v.sources[1])[0];assert(Math.abs(point.seconds-(10+23/30))<1e-8);assert.equal(point.end,point.seconds);
   });
@@ -169,12 +169,12 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     assert.equal(v.invoke().unattachedMarkerCount,1);
   });
   for(const missing of [undefined,{}]){
-    test("#4 unavailable ruler commits clip "+String(missing),()=>{const v=setup([[1,4]]);v.timeline.seq.markers=missing;const r=v.invoke();assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerFailureCount,0);});
-    test("#4 zero issues unavailable ruler "+String(missing),()=>{const v=setup([[1,4]]);v.timeline.seq.markers=missing;assert.equal(v.invoke([]).reviewMarkerFailureCount,0);});
+    test("#4 unavailable ruler commits clip "+String(missing),()=>{const v=setup([[1,4]]);v.timeline.seq.markers=missing;const r=v.invoke();assert.equal(r.captionMarkerCount,1);assert.equal(r.markerFailureCount,0);});
+    test("#4 zero issues unavailable ruler "+String(missing),()=>{const v=setup([[1,4]]);v.timeline.seq.markers=missing;assert.equal(v.invoke([]).markerFailureCount,0);});
     test("#4 only fallback failures counted "+String(missing),()=>{
       const v=setup([[1,4]]);v.timeline.seq.markers=missing;
       const r=v.invoke([{start:1.9,end:3.5,reason:"clip"},{start:5,end:6,reason:"gap one"},{start:7,end:8,reason:"gap two"}]);
-      assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.reviewMarkerCount,1);assert.equal(r.unattachedMarkerCount,2);
+      assert.equal(r.captionMarkerCount,1);assert.equal(r.captionMarkerCount,1);assert.equal(r.unattachedMarkerCount,2);
     });
   }
   test("#7 shared speed normalization contract",()=>{
@@ -201,7 +201,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
   const invoke=(v,issues=[issue])=>apply(v.timeline.seq,issues,[{start:0,end:30}],null,[v.clip]);
   for(const speed of [1,1.1,110])test("voice range speed "+speed,()=>{
     const v=voice(speed),r=invoke(v),factor=speed>10?speed/100:speed;
-    assert.equal(r.reviewMarkerClipCount,1);assert.equal(r.unattachedMarkerCount,0);
+    assert.equal(r.captionMarkerCount,1);assert.equal(r.unattachedMarkerCount,0);
     const m=v.source.values[0];assert(Math.abs(m.start.seconds-(467/30-12.5667+12.3667)*factor)<1e-7);
     assert(Math.abs(Number(m.end.seconds===undefined?m.end:m.end.seconds)-(467/30-12.5667+12.3667)*factor)<1e-7);
     assert.equal(state(v.source)[0].end,m.start.seconds);
@@ -221,11 +221,11 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     if(mode==="end-readback"){
       const create=v.source.collection.createMarker;v.source.collection.createMarker=s=>{const m=create(s);Object.defineProperty(m,"end",{get:()=>({seconds:s+50}),set:()=>{}});return m;};
     }
-    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(r.reviewMarkerCount,0);assert.equal(r.reviewMarkerFailureCount,0);assert.equal(v.timeline.values.length,0);assert(r.unattachedMarkers[0].reason);
+    const r=invoke(v);assert.equal(r.unattachedMarkerCount,1);assert.equal(r.captionMarkerCount,0);assert.equal(r.markerFailureCount,0);assert.equal(v.timeline.values.length,0);assert(r.unattachedMarkers[0].reason);
   });
   test("clamp at covering clip end, never span gap",()=>{
     const v=voice();v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
-    const r=invoke(v);assert.equal(r.reviewMarkerClipCount,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2))<1e-7);
+    const r=invoke(v);assert.equal(r.captionMarkerCount,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2))<1e-7);
   });
   test("shared ProjectItem reconciles Caption for the active workflow only",()=>{
     const v=voice();
@@ -267,7 +267,7 @@ for(const failure of [null,"comments","createAfter","deleteAfter","deleteNoopOnc
     const v=voice(1.1);v.clip.end.seconds=15.5;v.clip.outPoint.seconds=15.3;
     const next=Object.assign({},v.clip,{start:{seconds:15.8},end:{seconds:20},inPoint:{seconds:17},outPoint:{seconds:21.2}});
     const r=apply(v.timeline.seq,[issue],[{start:0,end:30}],null,[v.clip,next]);
-    assert.equal(r.reviewMarkerClipCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2)*1.1)<1e-7);
+    assert.equal(r.captionMarkerCount,1);assert.equal(v.source.values.length,1);assert(Math.abs(state(v.source)[0].end-(459/30-0.2)*1.1)<1e-7);
   });
   test("an unattached warning still cleans every old marker of its kind",()=>{
     // Decision 2026-11-19: Gan marker always removes the previous run's markers; a warning
@@ -289,7 +289,7 @@ for (const [captions, expected] of [[[{Index:20,Start:1,End:1.5},{Index:21,Start
   [[{Index:20,Start:3,End:4}], "Hở hình 3 frame – kiểm tra"]]) {
   const native = fixture();
   const result = run(native, [{start:1,end:2,reason:"hở hình 3 frame – kiểm tra"}], captions);
-  assert.equal(result.reviewMarkerCount, 1); assert.equal(result.reviewMarkerFailureCount, 0);
+  assert.equal(result.captionMarkerCount, 1); assert.equal(result.markerFailureCount, 0);
   assert.equal(native.values[0].comments, expected + "\n[PremiereVoiceSync:caption:captions]");
 }
 
@@ -392,7 +392,7 @@ assert.deepEqual(f.events,[],"Quantized source positions stay stable across reru
 console.log("CLIP_MARKER_RECONCILIATION_OK:read-only-plan;source-mapping;no-write-rerun;wrong-native-position;quantized-source-rerun");
 const main=fs.readFileSync(path.join(__dirname,"../../extension/js/main.js"),"utf8");
 vm.runInContext(main.slice(main.indexOf("  function postcheckError(result)"),main.indexOf("  var hostReadyPromise =")),context);
-assert(context.postcheckError({clipMarkerFailureCount:1,clipMarkerFailures:["Marker restoration incomplete; inspect before retry."]}).includes("Marker restoration incomplete"),"Restoration details must reach the visible workflow error.");
+assert(context.postcheckError({markerFailureCount:1,markerFailures:["Marker restoration incomplete; inspect before retry."]}).includes("Marker restoration incomplete"),"Restoration details must reach the visible workflow error.");
 {
   const source = fixture(), ruler = fixture();
   ruler.seq.sequenceID = "merge";
@@ -405,21 +405,21 @@ assert(context.postcheckError({clipMarkerFailureCount:1,clipMarkerFailures:["Mar
   const issues = [[20,30],[0,12],[10,20],[10,20],[31,40],[80,90],[90,100]]
     .map(([start,end],i)=>({start:start/30,end:end/30,reason:"reason "+i,severity:i===2?"error":"warning"}));
   const run = ()=>apply(ruler.seq,issues,[{start:0,end:5}],null,pieces);
-  assert.equal(run().reviewMarkerClipCount,4,"Caption groups overlapping and touching spans per piece");
+  assert.equal(run().captionMarkerCount,4,"Caption groups overlapping and touching spans per piece");
   const rows = state(source);
   assert.deepEqual(rows.map(m=>Math.round(m.seconds*30)),[15,36,85,95]);
   for(let i=0;i<4;i++) assert(rows[0].comments.toLowerCase().includes("reason "+i));
   assert.equal(rows[0].color,1);
   source.events.length=0;
-  assert.equal(run().reviewMarkerClipCount,4);
+  assert.equal(run().captionMarkerCount,4);
   assert.deepEqual(source.events,[]);
   source.collection.deleteMarker(source.values.find(m=>m.start.seconds===15/30));
   const manual=source.marker({seconds:15/30,name:"manual",comments:"keep"});
-  assert.equal(run().reviewMarkerClipCount,4);
+  assert.equal(run().captionMarkerCount,4);
   assert(source.values.some(m=>m.start.seconds===16/30));
   assert.equal(manual.comments,"keep");
   // The same start can select different pieces when one warning crosses the cut.
   const crossCut=[{start:2.8,end:3,reason:"left"},{start:2.8,end:4,reason:"right"}];
-  assert.equal(apply(ruler.seq,crossCut,[{start:0,end:5}],null,pieces).reviewMarkerClipCount,2);
+  assert.equal(apply(ruler.seq,crossCut,[{start:0,end:5}],null,pieces).captionMarkerCount,2);
   assert.deepEqual(state(source).filter(m=>m.name!=="manual").map(m=>Math.round(m.seconds*30)),[87,105]);
 }

@@ -8,6 +8,8 @@
 - **Hồi quy.** `git show c7ccb92:<file>` nạp host và executor cũ vào VM. 14 ca fps/speed/reverse/remap và 2 ca phân loại hậu kiểm đều đỏ trên bản cũ và xanh sau sửa. Mock dùng timebase Premiere ở 23.976, 24, 25, 29.97 và 60 fps, voice 90% và 150%. Clip A2 reverse/time remap liệt kê Voice và Caption chưa gắn được. 42 fixture × 4 executor giữ hash timeline và hash đối số chỉnh timeline đã ghi. Mọi lượt chạy lại đối chiếu ghi 0 lần. Log ở `_local/three-marker-kinds/`.
 - **Kết quả kiểm thử.** Ma trận ngắt và lỗi ghi có 0 `partial-worse`, 0 `transient-surplus` và khôi phục đủ 172/172 lỗi ghi end. Bộ chuẩn đạt 79 nhóm, parse 140 file PowerShell, bỏ qua sáu nhóm tích hợp Windows. Executor khớp nguồn sinh, kiểm cú pháp JavaScript và ES3 đạt.
 
+- **Sau soát PR #97 (quyết định user 20/11).** Lỗi hội tụ tốc độ mang số thứ tự đoạn hình (`pieceIndex`) thay vì cắt từ nhãn "V1 segment N"; test phân loại cảnh báo hậu kiểm kiểm trường này (đỏ trên bản trước). Báo cáo bỏ tên `reviewMarker*`/`clipMarker*`: dùng `videoMarkerCount`, `voiceMarkerCount`, `captionMarkerCount`, `markerCount`, `markerFailures`/`markerFailureCount`, `markerColorFailures`/`markerColorFailureCount`. Không đổi khuôn khoảng cảnh báo caption (khoảng do tool tự tính trong timeline) và không xử lý marker 2.20.x còn sót (user tự xoá).
+
 Native Premiere pending
 
 ## Issue #94 — Ghi marker một lần sau hậu kiểm (19/11/2026)

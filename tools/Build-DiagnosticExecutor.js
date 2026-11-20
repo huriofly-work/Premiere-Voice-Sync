@@ -75,7 +75,7 @@ function generate(source, options) {
     if (n.type === "CallExpression" && n.callee.type === "Identifier" && n.callee.name === "setClipSpeed") {
       // Generated calls add a logical track key; native mutation arguments stay intact.
       const track = n.arguments[1];
-      if (n.arguments.length !== 8 || !track || track.type !== "Identifier" || !["qeVideoTrack","qeAudioTrack"].includes(track.name)) throw Error("Review logical QE track key instrumentation.");
+      if (n.arguments.length !== 9 || !track || track.type !== "Identifier" || !["qeVideoTrack","qeAudioTrack"].includes(track.name)) throw Error("Review logical QE track key instrumentation.");
       edits.push([n.end-1, n.end-1, track.name === "qeVideoTrack" ? ', "V:0"' : ', "A:" + linkedTrackIndex']);
     }
     if (n.type === "VariableDeclaration") {
@@ -166,7 +166,7 @@ function generate(source, options) {
   if (!speedHelper || speedHelper.params[0].name !== "item") throw Error("Review speed dirty-item instrumentation.");
   const insertion = speedHelper.body.start + 1 - fn.body.start - 1;
   let instrumentedPrefix = rawPrefix.slice(0,insertion) + "\n        diagnosticTouch(item);\n" + rawPrefix.slice(insertion);
-  const speedSignature = "function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, allowTerminalEndFallback)";
+  const speedSignature = "function setClipSpeed(item, qeTrack, factor, desiredFrames, fps, tolerance, label, allowTerminalEndFallback, pieceIndex)";
   const qeLookup = "$._PVS._findQEClipAtTicks(qeTrack, item.start.ticks, tolerance)";
   if (instrumentedPrefix.split(speedSignature).length!==2 || instrumentedPrefix.split(qeLookup).length!==2) throw Error("Review logical QE helper signature.");
   const prefix = instrument(instrumentedPrefix.replace(speedSignature, speedSignature.slice(0,-1)+", lookupTrackKey)")

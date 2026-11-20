@@ -124,7 +124,7 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
   const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:mode==="tracks"?[1]:[0,1],selectedClips:[{trackIndex:1,nodeId:"voice"}]}});
   selected=[audios[0].clips[0]];
   files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
-  result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerClipCount,1);assert.equal(result.unattachedMarkerCount,0);
+  result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.captionMarkerCount,1);assert.equal(result.unattachedMarkerCount,0);
   assert.equal(voiceValues.length,1);assert.equal(voiceValues[0].start.seconds,0.5);assert.equal(Number(voiceValues[0].end),0.5);assert.equal(otherValues.length,0);assert.equal(reviewValues.length,0);
   assert.equal(api._captionOnlySnapshot(seq),bound.snapshot);assert.equal(children.length,0);
 }
@@ -137,7 +137,7 @@ for(const mode of ["tracks","clips"])for(const compact of [false,true]){
     audios[2].clips[0].projectItem={nodeId:"music-source",getMarkers:()=>bank};
     const bound=Object.assign({},reviewResult,{snapshot:api._captionOnlySnapshot(seq),reviewMarkers:[{start:1,end:2,reason:"only music covers this issue"}],reviewMarkerRanges:[{start:0,end:22}],reviewMarkerVoiceInput:{sourceMode:mode,trackIndices:[1,2],selectedClips:[]}});
     files["result.json"].text=JSON.stringify(compact?vm.runInNewContext(projection+'projectHostInput(input,"captions");',{input:bound}):bound);
-    result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.reviewMarkerClipCount,1);assert.equal(sourceValues.length,1);assert.equal(reviewValues.length,0);passed++;
+    result=parse(api.applyCaptionOnly("result.json"));assert(result.ok,JSON.stringify(result));assert.equal(result.captionMarkerCount,1);assert.equal(sourceValues.length,1);assert.equal(reviewValues.length,0);passed++;
   }catch(e){failures.push(mode+" compact="+compact+": "+e.message);}}
   console.log("PR37_CAPTION_BINDING_CASES:passed="+passed+";failed="+failures.length);
   if(failures.length)throw Error(failures.join("\n"));

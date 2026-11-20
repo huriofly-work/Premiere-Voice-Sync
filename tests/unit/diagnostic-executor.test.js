@@ -278,6 +278,8 @@ function checkNativeMarkerKinds(profile) {
   const r=profile==="direct"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
   assert(!r.ok);
   assert(r.captionCreated);
+  // The failed piece is carried as a number, never parsed back from the label text.
+  assert(r.speedConvergenceFailures.length && r.speedConvergenceFailures.every(s=>s.pieceIndex===0),JSON.stringify(r.speedConvergenceFailures));
   const picture=f.nested.getMarkers().items;
   for (const reason of ["V1/A1 lệch vị trí kế hoạch","mép V1/A1 lệch nhau","chưa xác minh liên kết V1/A1",
       "không đọc được speed","hở hình","độ dài sau speed chưa khớp","đuôi hình/tiếng lệch kế hoạch"]) {
@@ -624,13 +626,13 @@ for(const profile of ["baseline","fast","no-delay"]){
     }
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
     const result=profile==="stable"?JSON.parse(f.api.executePlan("fixture")):finishTrial(f,profile).report;
-    assert.equal(result.clipMarkerFailureCount,0,JSON.stringify(result.clipMarkerFailures || result.error));
+    assert.equal(result.markerFailureCount,0,JSON.stringify(result.markerFailures || result.error));
     assert(result.ok,JSON.stringify(result));
     assert.equal(f.seq.markers.items.length,0);
     assert.equal(result.unattachedMarkerCount,result.unattachedMarkers.length);
     const owned=result.unattachedMarkers.filter(row=>row.kind!=="VOICE SYNC - Caption");
     assert(owned.length>=1);assert(owned[0].reason);assert(owned[0].end>owned[0].start);
-    assert.equal(result.clipMarkerCount,result.markerCount);
+    assert.equal(result.markerCount,result.markerCount);
     passed++;
   }catch(e){failures.push(profile+" "+mode+": "+e.message);}}
   try{
@@ -661,7 +663,7 @@ for(const profile of ["baseline","fast","no-delay"])for(const count of [1,6,65,1
     assert.strictEqual(found[0].colorIndex,visual.AppliedSpeedPercent<90?3:visual.AppliedSpeedPercent>110?1:6);
   }
   assert.strictEqual(trial.voice.getMarkers().items.find(m=>m.name==="VOICE SYNC - Voice").colorIndex,4);
-  assert.strictEqual(result.report.clipMarkerColorFailureCount,0);
+  assert.strictEqual(result.report.markerColorFailureCount,0);
   if(count===6)assert.strictEqual(result.report.speedWarningSentenceCount,1,"Merged markers are not all speed warnings.");
 }
 const colored=fixture(6,false,false,1,false,true),coloredResult=finishTrial(colored,"fast");
@@ -673,7 +675,7 @@ const bank=failedColor.nested.getMarkers(),create=bank.createMarker;
 bank.createMarker=function(seconds){const m=create.call(this,seconds);m.setColorByIndex=function(){throw Error("NATIVE_COLOR_FAILED");};return m;};
 const colorReport=finishTrial(failedColor,"fast").report;
 assert(colorReport.ok,"Cosmetic color failure must not invalidate an otherwise correct timeline.");
-assert.strictEqual(colorReport.clipMarkerColorFailureCount,3);assert.strictEqual(colorReport.mergeClipMarkerCount,3);
+assert.strictEqual(colorReport.markerColorFailureCount,3);assert.strictEqual(colorReport.mergeClipMarkerCount,3);
 function finishTrial(f,profile){
   const api=f.api;let r=JSON.parse(api.beginDiagnosticEdit("fixture","token",profile));assert(r.ok);
   const checkpoints=[];let calls=0;
@@ -708,7 +710,7 @@ if (!process.argv.slice(2).length) {
     }
     const {report, timings} = finishTrial(f, "no-delay");
     assert(report.ok, JSON.stringify(report));
-    assert.equal(report.reviewMarkerClipCount,2);
+    assert.equal(report.captionMarkerCount,2);
     assert(!JSON.stringify(timings).includes(privatePath));
   }
   console.log("MARKER_REVIEW_TRACE_OK:fresh-wrappers;path-redaction");
@@ -783,7 +785,7 @@ for(const profile of ["baseline","fast","no-delay"]){
     vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(value.plan)+";};",value.context);
   }
   const report=JSON.parse(stable.api.executePlan("fixture")),trial=finishTrial(staged,profile);
-  assert(report.ok,JSON.stringify(report));assert.equal(report.reviewMarkerCount,1);assert.equal(report.unattachedMarkerCount,0);
+  assert(report.ok,JSON.stringify(report));assert.equal(report.captionMarkerCount,1);assert.equal(report.unattachedMarkerCount,0);
   assert.deepStrictEqual(trial.report,report);assert.deepStrictEqual(staged.actions,stable.actions);
   assert(staged.voice.getMarkers().items[0].comments.startsWith("Timing chưa xác minh – kiểm mép\n"));
 }
@@ -791,7 +793,7 @@ f=fixture(6);f.plan.reviewMarkers=[{start:0,end:1,reason:"review"}];delete f.seq
 vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
 const markerFailure=finishTrial(f,"no-delay").report;assert(markerFailure.ok);assert(markerFailure.captionCreated);assert.equal(markerFailure.unattachedMarkerCount,1);
 f=fixture(1);f.seq.videoTracks[0].clips[0].getLinkedItems=()=>[];
-const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.reviewMarkerCount,0);assert(f.nested.getMarkers().items[0].comments.includes("Chưa xác minh liên kết V1/A1 – kiểm tra"));assert.equal(f.nested.getMarkers().items[0].colorIndex,1);
+const badLink=JSON.parse(f.api.executePlan("fixture"));assert(!badLink.ok);assert.equal(badLink.linkMismatchCount,1);assert.equal(badLink.captionMarkerCount,0);assert(f.nested.getMarkers().items[0].comments.includes("Chưa xác minh liên kết V1/A1 – kiểm tra"));assert.equal(f.nested.getMarkers().items[0].colorIndex,1);
 for(const profile of ["baseline","fast","no-delay"]){
   f=fixture(1);f.seq.failSpeed=true;
   const nativeFailure=finishTrial(f,profile).report;
@@ -959,7 +961,7 @@ for (const compact of [false, true]) for (const profile of ["stable", "baseline"
     projected(f);
   } else vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(f.plan)+";};",f.context);
   const result = profile === "stable" ? JSON.parse(f.api.executePlan("fixture")) : finishTrial(f,profile).report;
-  assert.equal(result.reviewMarkerFailureCount, 0);
+  assert.equal(result.markerFailureCount, 0);
   assert(f.nested.getMarkers().items[0].comments.includes("Cue 20–21: chưa xác minh liên kết V1/A1 – kiểm tra"));
   assert.equal(f.voice.getMarkers().items.length,0);
 }
@@ -1041,7 +1043,7 @@ for(const profile of ["baseline","fast","no-delay"]){
   f.voice.getMarkers().items[0].comments="user changed while paused";
   const manualState=sourceMarkerState(f,f.voice);
   while(!response.done)response=JSON.parse(f.api.advanceDiagnosticEdit("token",response.nextCall));
-  assert(!response.result.ok);assert(response.result.clipMarkerFailures.some(x=>x.includes("changed since preparation")));assert.deepStrictEqual(sourceMarkerState(f,f.voice),manualState);
+  assert(!response.result.ok);assert(response.result.markerFailures.some(x=>x.includes("changed since preparation")));assert.deepStrictEqual(sourceMarkerState(f,f.voice),manualState);
 }
 console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-old;plan-without-write;cancel-between-owners;marker-change-guard");
 // Exercise actual moves in measured/unmeasured executors and every scheduler.

@@ -262,9 +262,9 @@
       if (segment.SpeedOutsideWarningRange) reviewPosition(segment.NewStart, segment.NewEnd, "Tốc độ hình ngoài ngưỡng đã chọn");
     });
     if (Number(result.speedWarningSentenceCount || 0)) runWarning(result.speedWarningSentenceCount + " đoạn hình ngoài ngưỡng tốc độ; kiểm tra marker Video.", true);
-    if (Number(result.reviewMarkerFailureCount || 0)) runWarning("Chưa tạo đủ marker; xem các vị trí trong Chi tiết.", true, "MARKER_MISSING");
-    if (Number(result.reviewMarkerColorFailureCount || 0) || Number(result.clipMarkerColorFailureCount || 0)) runWarning("Một số marker chưa đúng màu; phân biệt bằng tên và ghi chú.", true, "MARKER_COLOR");
-    if (Number(result.reviewMarkerCount || 0) || (markers || []).length) runWarning("Có vị trí cần nghe hoặc xem lại.", true, "POSITIONS");
+    if (Number(result.markerFailureCount || 0)) runWarning("Chưa tạo đủ marker; xem các vị trí trong Chi tiết.", true, "MARKER_MISSING");
+    if (Number(result.markerColorFailureCount || 0)) runWarning("Một số marker chưa đúng màu; phân biệt bằng tên và ghi chú.", true, "MARKER_COLOR");
+    if (Number(result.captionMarkerCount || 0) || (markers || []).length) runWarning("Có vị trí cần nghe hoặc xem lại.", true, "POSITIONS");
   }
 
   function byId(id) { return document.getElementById(id); }
@@ -1076,7 +1076,7 @@
             acousticBoundaryCount: safeCount(result.captionTimingAcousticBoundaryCount) || 0
           };
           var counts = {};
-          ["captionCueCount", "voiceCueCount", "pictureCueCount", "addedCutCount", "reviewMarkerCount", "recognitionSuppressedRangeCount"].forEach(function (key) { var value = safeCount(result[key]); if (value !== null) counts[key] = value; });
+          ["captionCueCount", "voiceCueCount", "pictureCueCount", "addedCutCount", "captionMarkerCount", "recognitionSuppressedRangeCount"].forEach(function (key) { var value = safeCount(result[key]); if (value !== null) counts[key] = value; });
           if (Object.keys(counts).length) event.counts = counts;
           if (typeof result.minNoDialogueGapSeconds === "number" && result.settings) {
             var settings = { minNoDialogueGapSeconds: result.minNoDialogueGapSeconds, speedWarningMinPercent: result.speedWarningMinPercent, speedWarningMaxPercent: result.speedWarningMaxPercent,
@@ -1183,8 +1183,7 @@
     }
     if (internalCoverageGap > Number((result.settings && result.settings.maxCoverageGapFrames) || 0)) reasons.push("khe hở hình bên trong lớn nhất " + internalCoverageGap + " frame");
     if (Number(result.linkMismatchCount || 0) > 0) reasons.push(result.linkMismatchCount + " cặp V1–A1 mất liên kết");
-    if (Number(result.clipMarkerFailureCount || 0) > 0) reasons.push(result.clipMarkerFailureCount + " lỗi gắn marker Video, Voice hoặc Caption: " + (result.clipMarkerFailures || []).join("; "));
-    if (!Number(result.clipMarkerFailureCount || 0) && Number(result.reviewMarkerFailureCount || 0) > 0) reasons.push(result.reviewMarkerFailureCount + " lỗi hậu kiểm marker: " + (result.reviewMarkerFailures || []).join("; "));
+    if (Number(result.markerFailureCount || 0) > 0) reasons.push(result.markerFailureCount + " lỗi gắn marker Video, Voice hoặc Caption: " + (result.markerFailures || []).join("; "));
     if (result.masterInOutReset === false) reasons.push("không xóa được In/Out của master nest");
     if (result.captionCreated === false) reasons.push("không tạo được caption track, nên không gắn marker caption" + (result.captionError ? " (" + result.captionError + ")" : ""));
     if (result.captionTemporaryBinRemoved === false || Number(result.captionProjectItemCountAfter || 0) !== Number(result.captionProjectItemCountBefore || 0)) reasons.push("file caption tạm vẫn còn trong Project");
@@ -1997,7 +1996,7 @@
       if ((result.omittedReferenceCueIndices || []).length) successMessage += " Đã bỏ hình/A1 ứng với " + result.omittedReferenceCueIndices.length + " cue không còn trong voice (" + (Number(result.omittedSourceFrameCount) / plan.frameRate).toFixed(2) + " giây hình nguồn).";
       if (speedMergeRequested && plan.speedMergeSummary && !plan.pictureCueRevision) successMessage += " Hình sau cân bằng: " + plan.speedMergeSummary.visualGroupsAfter + " đoạn; A2 giữ " + result.voiceCueCount + " đoạn voice.";
       if (enhanced) successMessage += " Đã dùng quy trình DTW/gộp hình/dựng không delay; " + Number(result.mergeClipMarkerCount || 0) + " đoạn hình gộp có marker Video. Hãy kiểm kết quả trước khi lưu.";
-      if (Number(result.clipMarkerColorFailureCount || 0) > 0) successMessage += " Có " + Number(result.clipMarkerColorFailureCount) + " marker chưa đặt đúng màu; xem Hỗ trợ và nhật ký.";
+      if (Number(result.markerColorFailureCount || 0) > 0) successMessage += " Có " + Number(result.markerColorFailureCount) + " marker chưa đặt đúng màu; xem Hỗ trợ và nhật ký.";
       if (performanceTrial) successMessage = "CHẨN ĐOÁN · " + successMessage + " Hậu kiểm timeline không xác nhận hết lag; hãy kiểm Preview/Play và khả năng lưu.";
       runContext.resultHeadline = (manualSummary.timingBlocks || manualSummary.pendingReferenceCues) ? "Đã dựng — còn một số đoạn cần rà." : "Đã dựng xong.";
       completedMessage = successMessage;

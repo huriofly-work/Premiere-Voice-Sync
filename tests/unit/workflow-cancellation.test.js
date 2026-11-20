@@ -78,7 +78,7 @@ async function settle(f,running){
 }
 const editRegressions = {
   async "postcheck-error-first"() {
-    const f=fixture({editResult:{ok:false,executorVersion:25,timelineMutated:true,error:"Original host error",settings:{validationToleranceFrames:1},clipMarkerFailureCount:1,clipMarkerFailures:["Marker write failed"]}});
+    const f=fixture({editResult:{ok:false,executorVersion:25,timelineMutated:true,error:"Original host error",settings:{validationToleranceFrames:1},markerFailureCount:1,markerFailures:["Marker write failed"]}});
     await settle(f,f.api.edit());
     assert.match(f.controls.workflowNoticeTechnical.textContent,/^Original host error; .*1 lỗi gắn marker Video, Voice hoặc Caption: Marker write failed/);
     assert.match(f.controls.workflowNoticeMessage.textContent,/Timeline được giữ đến bước đã thực hiện..*trước bước Gắn marker/);

@@ -30,7 +30,7 @@ vẫn giữ ASR và marker. Xem [điều kiện đầy đủ](ASR_ACCEPTANCE_POL
 
 **2.20.93:** Dựng theo voice ít "nghỉ" hơn khi chạy trên timeline: mỗi bước chạy hết một lần, marker được ghi trước khi cắt và dời thay vì xóa/tạo lại. Dừng/Tạm dừng có hiệu lực khi bước đang chạy kết thúc. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.93.md).
 
-**Thay đổi #90:** Khi dựng lỗi hoặc bấm **Dừng tác vụ**, timeline và marker nguồn được giữ đến bước đã thực hiện. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả. Đưa sequence về trạng thái template trước khi chạy lại sau khi dừng giữa chừng hoặc gặp lỗi.
+**Thay đổi #90:** Khi dựng lỗi hoặc bấm **Dừng tác vụ**, timeline được giữ đến bước đã thực hiện. Marker chỉ được gắn ở bước cuối (Gắn marker), nên dừng hoặc lỗi trước bước đó thì marker trên file voice và nest vẫn là của lần chạy trước. Nếu yêu cầu Dừng đến sau khi dựng xong, panel báo hoàn tất và giữ kết quả. Đưa sequence về trạng thái template trước khi chạy lại sau khi dừng giữa chừng hoặc gặp lỗi.
 
 **2.20.92:** Dựng theo voice không còn dừng ở bước lập kế hoạch với lỗi `ACOUSTIC_PARTITION_SOURCE_BOUNDARY_CHANGED` (gặp ở project có vùng sửa tay); log hiệu năng ghi thêm chi tiết bước dựng timeline. Chưa kiểm trên Premiere thật. Xem [phạm vi và kiểm chứng](releases/notes/AUTO_EDIT_ACOUSTIC_2.20.92.md).
 
