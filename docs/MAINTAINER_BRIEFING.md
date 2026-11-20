@@ -15,8 +15,8 @@ A Windows Adobe Premiere Pro CEP panel (id `com.premierevoicesync.local`, runtim
   and a Vietnamese SRT, align the new voice to SRT cues and rebuild picture/audio
   timing: cut/keep gaps, retime pairs (speed 70–130% is a warning/merge threshold, not
   a clamp). Build V1/A1 and then A2, import captions and clean the temporary bin.
-  Check the finished timeline, captions, preserved items and master In/Out, then
-  reconcile source markers, clean the ruler, apply review markers and report.
+  In 3.0.0, check the finished timeline, captions, preserved items and master
+  In/Out once, then reconcile Video, Voice and Caption markers on clips and report.
 - **Chỉ tạo subtitle (caption-only):** make captions from the selected voice track/range
   without touching the edit. SRT optional: matched cues keep SRT text, genuine extra
   speech is captioned from ASR, unread cues go to review.
@@ -99,7 +99,8 @@ after the feasibility check in [DEVELOPMENT_FEASIBILITY_POLICY.md](DEVELOPMENT_F
   voice projection compare saw speed-divided in-points off the frame grid by
   up to about 80 ticks, restored the markers, and restore verification
   reported "Original marker fields differ.". 2.20.98 (2026-11-19) compares
-  within tick tolerances (#83, closes #82); native run pending.
+  within tick tolerances (#83, closes #82). The user ran it on Premiere 26.2.2
+  and promoted it to stable/Latest on 2026-11-19.
   In the old repo, 2.20.90 (Whisper large-v3-turbo) was the last
   prerelease, installed on the user's machine 2026-11-13; the accepted stable was
   2.20.25.

@@ -1,5 +1,55 @@
 # Kiểm thử
 
+## Nghiệm thu native 3.0.0
+
+Người bảo trì chạy một lần đủ 7 mục dưới đây trên Premiere Pro 26.2.2 với bản ứng viên 3.0.0 trước khi công bố.
+
+### Chuẩn bị
+
+- Đóng Premiere và trình trợ giúp thông báo, sau đó cài bản ứng viên 3.0.0.
+- 3.0.0 không nhận marker do 2.20.x ghi. Dùng bản sao template sạch, hoặc xóa hết marker có tên bắt đầu bằng `VOICE SYNC - ` trên file voice, nest V1 và thước timeline của bản sao dùng để thử.
+- Lấy log của từng lượt trong `%LOCALAPPDATA%\PremiereVoiceSync\Logs`. Với Dựng theo voice, dòng `timeline-trace` trong `Workflow_*.jsonl` cho biết tên file `Performance_*.jsonl` tương ứng. Với lượt dựng có báo cáo, lấy `direct-apply-report.json` trong thư mục `%LOCALAPPDATA%\PremiereVoiceSync\Jobs\Job_*` của lượt đó. Chép báo cáo hoặc các trường cần gửi trước khi chạy lượt dựng tiếp theo vì panel chỉ giữ job gần nhất của mỗi chức năng.
+
+### Bắt buộc, project Sông Congo (trong cùng một buổi)
+
+1. **Dựng theo voice.** Chạy trên template chưa dựng. Chuẩn bị thêm hai bản sao sequence template chưa dựng trong cùng project, dùng chung ProjectItem voice và nest, để thử mục 2 và 3.
+   - **Kết quả.** Panel kết thúc theo thứ tự Tạo caption → Hậu kiểm → Gắn marker → Báo cáo. Chỉ có ba tên marker của panel: `VOICE SYNC - Video` trên clip nest V1, `VOICE SYNC - Voice` và `VOICE SYNC - Caption` trên clip voice A2. Marker là điểm ở frame giữa đoạn cảnh báo. Khi khác loại trùng điểm, chúng nằm sát nhau ở các frame trống trong đoạn. Caption được tạo và không có lỗi ghi marker.
+   - **Gửi lại.** Gửi cặp `Workflow_*.jsonl` và `Performance_*.jsonl` của lượt này, cùng các trường `videoMarkerCount`, `voiceMarkerCount`, `captionMarkerCount`, `markerCount`, `markerFailureCount`, `markerColorFailureCount`, `unattachedMarkerCount`, `captionCreated`, `captionError` trong báo cáo. Cộng `finish.timings[].milliseconds` trong `Performance_*.jsonl` để lấy tổng thời gian các bước dựng, rồi so với 2.20.98 (62,1 s ngày 19/11/2026). Chụp nhật ký panel có bốn bước cuối và timeline phóng đủ để thấy tên và vị trí các marker trên V1/A2.
+2. **Chạy lại sau khi lưu.** Lưu project sau mục 1. Mở một bản sao sequence template chưa dựng đã chuẩn bị, giữ nguyên đầu vào và cài đặt rồi chạy lại Dựng theo voice. Bản sao dùng chung nguồn để đọc lại được marker vừa lưu.
+   - **Kết quả.** Từng lần đối chiếu marker đều ghi 0. Trong mọi `finish.timings[].detail.markerCommit`, cả `creates`, `deletes`, `moves`, `nameWrites`, `commentsWrites`, `endWrites` và `colorWrites` đều bằng 0.
+   - **Gửi lại.** Gửi cặp log của lượt chạy lại và bảy bộ đếm trên cho từng `markerCommit`. Gửi `videoMarkerCount`, `voiceMarkerCount`, `captionMarkerCount` và `markerCount` của lượt chạy lại. Chụp timeline và báo cáo panel sau khi hoàn tất. [Tên trường trong log hiệu năng](PERFORMANCE_REVIEW.md#gắn-marker-sau-hậu-kiểm-issue-96-19112026)
+3. **Dừng khi đang dựng.** Dùng bản sao template chưa dựng còn lại. Bấm **Dừng tác vụ** khi timeline đã bắt đầu thay đổi và trước bước **Gắn marker**.
+   - **Kết quả.** Timeline giữ phần đã dựng. Thông báo nói marker chỉ gắn ở bước cuối, nên marker trên voice và nest vẫn là của lượt trước. Sau khi ghi nhận kết quả, Undo hoặc mở lại template trước khi chạy tiếp.
+   - **Gửi lại.** Gửi cặp log của lượt dừng để đối chiếu `outcome` và bước cuối trong dòng `stopped`. Lượt dừng ở đây không có báo cáo hoàn tất để lấy số marker. Chụp thông báo Dừng, phần timeline đã dựng và marker còn trên nguồn voice/nest; dùng ảnh mục 2 để đối chiếu marker.
+4. **Tạo phụ đề ở chế độ trộn.** Dùng đoạn có cảnh báo và có clip trên nhiều track audio để kiểm thứ tự chọn track.
+   - **Kết quả.** Marker `VOICE SYNC - Caption` gắn vào clip trên track đầu tiên có clip giao với vùng cảnh báo, xét từ A1 trở xuống. Thước timeline không có marker mới.
+   - **Gửi lại.** Gửi `Workflow_*.jsonl` của lượt Tạo phụ đề và `captionMarkerCount` từ `counts` ở dòng `stage-end` của `caption-import`. Chụp vùng cảnh báo thấy marker trên clip, các track liên quan, thước timeline và caption đã tạo.
+
+### Bắt buộc, project nháp
+
+5. **Voice đổi tốc độ.** Đặt một clip A2 ở 90% hoặc 150%, chọn mẫu có cảnh báo Voice và Caption trên clip đó rồi chạy Dựng theo voice.
+   - **Kết quả.** Hai loại marker nằm ở điểm giữa đúng đoạn lời trên timeline sau khi đổi tốc độ, dùng frame trống kề bên nếu trùng điểm.
+   - **Gửi lại.** Gửi cặp log của lượt dựng, `voiceMarkerCount`, `captionMarkerCount`, `markerFailureCount` và `unattachedMarkerCount`. Chụp tốc độ clip, vùng lời và vị trí hai loại marker trên timeline có mốc frame.
+6. **Voice phát ngược và đổi tốc độ theo thời gian.** Chạy Dựng theo voice với một clip A2 phát ngược và một clip A2 dùng Time Remapping, cả hai có vùng cảnh báo Voice và Caption.
+   - **Kết quả.** Lượt dựng hoàn tất. Chi tiết panel liệt kê marker Voice và Caption chưa gắn được cho hai clip, kèm khoảng cảnh báo và lý do.
+   - **Gửi lại.** Gửi cặp log của lượt dựng và các trường `ok`, `unattachedMarkerCount`, `unattachedMarkers`, `markerFailureCount`. Chụp thông báo hoàn tất và phần Chi tiết có các dòng chưa gắn được của cả hai clip.
+7. **Tốc độ khung hình khác 30 fps.** Chạy Dựng theo voice trên project hoặc sequence có tốc độ khung hình khác 30 fps, ví dụ 25 hoặc 23,976 fps. Dùng mẫu có cảnh báo cả ba loại.
+   - **Kết quả.** Timeline khớp kế hoạch, các điểm cắt và cả ba loại marker nằm đúng frame của sequence.
+   - **Gửi lại.** Gửi cặp log của lượt dựng, tốc độ khung hình, `videoMarkerCount`, `voiceMarkerCount`, `captionMarkerCount`, `markerFailureCount` và `unattachedMarkerCount`. Ghi mốc frame dự kiến và thực tế ở các điểm đã đối chiếu. Chụp cài đặt sequence và timeline phóng đủ để đọc mốc frame và thấy cả ba loại marker.
+
+### Không cần kiểm (user đã xác nhận trên Premiere ngày 19/11/2026)
+
+- Marker trên nest V1 đi theo clip khi di chuyển hoặc trim.
+- Phần nới mép caption tối đa 5 frame đúng.
+
+### Không làm trong bản này
+
+- Cài trên tài khoản Windows sạch và quét antivirus.
+- Kiểm giới hạn của Whisper Turbo.
+- Chạy phép thử build lại `PvsNotifications.exe` trong cây làm việc.
+- Ký panel.
+- Xóa các thư mục `.tmp-*-tests`.
+
 2.20.70: kênh duy nhất nhắc ngoài ứng dụng là toast Windows. Panel là nguồn kết quả/phê duyệt; bỏ form review và tự giành focus. Bridge kiểm danh tính phiên/run/sự kiện, không gửi nội dung panel; helper dùng NotificationWindow chỉ đọc trạng thái host thuộc ancestry, chỉ kích hoạt host khi người dùng bấm toast. Xem [phạm vi và nghiệm thu](releases/notes/NOTIFICATIONS_2.20.70.md).
 
 ## Nhãn một chữ SRT — 2.20.67
@@ -243,9 +293,9 @@ Kiểm cục bộ: 27 nhóm test qua, 73 PowerShell script parse; JavaScript syn
 
 ## Tích hợp mặc định 2.20.13
 
-UI mock kiểm một xác nhận đúng nội dung, hai preflight trước ASR, workflow mặc định DTW/gộp/fast, bỏ ô thuật toán thử, no-op vẫn dựng và template đổi thì chặn. Nút chẩn đoán giữ kế hoạch cơ sở. Full executor mock đối chiếu toàn bộ native editing calls/report giữa host, baseline và fast trên kế hoạch gộp 1/6/65/130 đoạn với voice 90%/100%/110%; A2 vẫn riêng, mọi cặp hình có đúng một marker trong khoảng source, số cảnh báo chỉ đếm speed ngoài ngưỡng.
+UI mock kiểm một xác nhận đúng nội dung, hai preflight trước ASR, workflow mặc định DTW/gộp/fast, bỏ ô thuật toán thử, no-op vẫn dựng và template đổi thì chặn. Nút chẩn đoán giữ kế hoạch cơ sở. Full executor mock đối chiếu toàn bộ native editing calls/report giữa host, baseline và fast trên kế hoạch gộp 1/6/65/130 đoạn với voice 90%/100%/110%; A2 vẫn riêng, mọi cặp hình có đúng một marker trong khoảng source, số cảnh báo chỉ đếm speed ngoài ngưỡng. (đã thay ở 3.0.0, xem Nghiệm thu native 3.0.0)
 
-Marker test kiểm tag mới, đúng mẫu legacy, tên gần giống/tự đặt/marker không rõ giữ lại, scope source nửa mở, owner V1/A1 dùng chung, các khoảng của cùng voice được hợp và ánh xạ đầy đủ trước khi xóa. Fixture dựng có marker cũ từ trước, marker thủ công và marker ngoài source; xác nhận chỉ hai marker thuộc vùng được dọn, manual/ngoài vùng giữ và không xóa marker mới. Native proxy cleanup owner được rebind trước đợt.
+Marker test kiểm tag mới, đúng mẫu legacy, tên gần giống/tự đặt/marker không rõ giữ lại, scope source nửa mở, owner V1/A1 dùng chung, các khoảng của cùng voice được hợp và ánh xạ đầy đủ trước khi xóa. Fixture dựng có marker cũ từ trước, marker thủ công và marker ngoài source; xác nhận chỉ hai marker thuộc vùng được dọn, manual/ngoài vùng giữ và không xóa marker mới. Native proxy cleanup owner được rebind trước đợt. (đã thay ở 3.0.0, xem Nghiệm thu native 3.0.0)
 
 Mock màu kiểm đỏ/cam theo hai phía ngưỡng, vàng A2, xanh dương nhóm gộp trong ngưỡng, nhóm gộp ngoài ngưỡng vẫn đỏ/cam. Giả lập native setter lỗi: marker vẫn đúng vị trí/ghi chú và hậu kiểm timeline đạt, báo ba lỗi màu riêng, không yêu cầu Undo chỉ vì lỗi màu. Cần nhìn màu trong Premiere thật khi nghiệm thu.
 
@@ -317,7 +367,7 @@ Kiểm media thật bản thử 2.20.3 bằng CUDA: chapter 1 đủ cue 1–143,
 
 `Test-ReferenceCaptionMedia.ps1 -ExportedCaptionSrtPath ... -FrameRate ...` đối chiếu toàn bộ caption xuất với kết quả mới theo chỉ số từ, báo các điểm cắt bị bỏ/thay đổi và giữ đủ chữ. Các vị trí thay đổi là danh sách cần nghe lại, không phải chứng minh mọi timestamp mới đều chính xác hơn.
 
-Kiểm tra tự động không thay thế nghiệm thu thật trong Premiere. Trước Release cần dùng một bản sao project:
+Kiểm tra tự động không thay thế nghiệm thu thật trong Premiere. Trước Release cần dùng một bản sao project: (đã thay ở 3.0.0, xem Nghiệm thu native 3.0.0)
 
 1. Mở template sạch có V1 nested, A1 linked và các chapter A2.
 2. Bấm Chẩn đoán; xác nhận báo sẵn sàng và không có thay đổi timeline.
