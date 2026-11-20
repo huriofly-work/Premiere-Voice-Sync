@@ -1,4 +1,4 @@
-﻿param([Parameter(Mandatory)][string]$JobPath,[switch]$ValidateOnly)
+﻿param([Parameter(Mandatory)][string]$JobPath)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot\lib\Srt.ps1"
@@ -11,8 +11,6 @@ $job=Get-Content -LiteralPath $JobPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $output=[IO.Path]::GetFullPath([string]$job.outputFolder)
 Assert-PvsSafePath -Path $JobPath -Root $output
 Assert-PvsSafePath -Path $output -Tree
-Assert-PvsDtwTrialInput $job
-if($ValidateOnly){Write-Host 'DTW_EDIT_TRIAL_INPUT_OK:voice-speed-preserved;no-ASR;no-Premiere-calls';return}
 $baseline=Get-Content -LiteralPath (Join-Path $output 'sentence-edit-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 Assert-PvsDtwTrialJob $job $baseline
 Assert-PvsRuntimeLock -EngineRoot $PSScriptRoot

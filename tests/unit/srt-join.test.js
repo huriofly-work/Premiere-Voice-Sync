@@ -105,15 +105,15 @@ pending.state.mode='captions';pending.panel.render();assert.equal(pending.contro
 async function workflow(mode, enabled, language = 'vi') {
   const g = panelFixture(), captured = {}, data = new Map(), errors = [];
   g.store.set(files[0].path, first);
-  const mockFs = { ...g.fileApi, existsSync: () => false, mkdirSync() {}, readdirSync: () => ["job"], writeFileSync(file, text) { data.set(file, text); }, readFileSync(file) { return data.has(file) ? data.get(file) : g.fileApi.readFileSync(file); } };
+  const mockFs = { ...g.fileApi, existsSync: file => file === "voice.mp3", mkdirSync() {}, readdirSync: () => ["job"], writeFileSync(file, text) { data.set(file, text); }, readFileSync(file) { return data.has(file) ? data.get(file) : g.fileApi.readFileSync(file); } };
   const fakeJoin = { panel: () => ({ render() {}, read: () => enabled ? { ...appended, files: files.map(f => f.path) } : null, write(value, folder) { const file = path.win32.join(folder, "reference-joined.srt"); mockFs.writeFileSync(file, value.text); return file; } }) };
   const plan = { key: "plan", input: {}, ranges: [{ start: 0, end: 10 }] };
-  const sequence = { name: "Test", frameRate: 30, sequenceId: "s", voices: [{ name: "voice" }] };
+  const sequence = require("./edit-input.test.js")({sequenceId:"s"});
   const range = { projectId: "p", sequenceId: "s", snapshot: "original", plan, frameRate: 30 };
-  const context = { require: n => ({ fs: mockFs, path: path.win32, child_process: {} }[n]), window: { PvsSecurity: { assertNoLinks() {} }, PvsSrtJoin: fakeJoin }, document: { ...g.document, addEventListener() {} }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, fixture: { captured, errors, sequence, range, plan } };
+  const context = { require: n => ({ fs: mockFs, path: path.win32, child_process: {} }[n]), window: { PvsEditInput:require("../../extension/js/edit-input.js"), PvsSecurity: { assertNoLinks() {} }, PvsSrtJoin: fakeJoin }, document: { ...g.document, addEventListener() {} }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, fixture: { captured, errors, sequence, range, plan } };
   const injected = `
     setWorkflowBusy=function(b){state.workflowBusy=b;};beginRun=function(w){runContext={workflow:w};};
-    scanSequence=async function(){return fixture.sequence;};scanCaptionRange=async function(){return fixture.range;};
+    readSequenceScan=async function(){return fixture.sequence;};scanCaptionRange=async function(){return fixture.range;};
     readSettings=function(){return {minSpeed:70,maxSpeed:130,minDialogueGap:1,voiceGroupGap:2,maxCaptionCharacters:42};};
     waitForWorkflowPause=async function(){};confirmWorkflowNotice=async function(){return true;};
     applicationDataRoot=function(){return 'C:\\\\Data';};extensionRoot=function(){return 'C:\\\\Extension';};

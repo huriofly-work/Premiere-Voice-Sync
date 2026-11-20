@@ -67,8 +67,6 @@ try {
     if($run.ExitCode -ne 0){throw "TRIAL_MEDIA_BASELINE_FAILED:$($run.Output)"}
     $baselineHash=(Get-FileHash -LiteralPath (Join-Path $temporary 'sentence-edit-plan.json')).Hash
     $baseline=Get-Content -LiteralPath (Join-Path $temporary 'sentence-edit-plan.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    $early=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') @('-NoProfile','-ExecutionPolicy','Bypass','-File',"$engine\build-dtw-trial-plan.ps1",'-JobPath',$jobPath,'-ValidateOnly')
-    if($early.ExitCode -ne 0 -or $early.Output -notmatch 'DTW_EDIT_TRIAL_INPUT_OK'){throw 'TRIAL_MEDIA_PREFLIGHT_FAILED'}
     $run=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') @('-NoProfile','-ExecutionPolicy','Bypass','-File',"$engine\build-dtw-trial-plan.ps1",'-JobPath',$jobPath)
     if($run.ExitCode -ne 0){throw "TRIAL_MEDIA_WRAPPER_FAILED:$($run.Output)"}
     if($baselineHash -ne (Get-FileHash -LiteralPath (Join-Path $temporary 'sentence-edit-plan.json')).Hash){throw 'TRIAL_BASELINE_OVERWRITTEN'}
@@ -82,8 +80,6 @@ try {
     if(($candidate.voiceClips.speedPercent -join ',') -cne ($job.sequence.voices.speedPercent -join ',')){throw 'TRIAL_VOICE_SPEED_CHANGED'}
     if($SpeedMerge){
         $candidateHash=(Get-FileHash -LiteralPath $report.planPath).Hash
-        $run=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') @('-NoProfile','-ExecutionPolicy','Bypass','-File',"$engine\build-speed-merge-trial-plan.ps1",'-JobPath',$jobPath,'-ValidateOnly')
-        if($run.ExitCode -ne 0 -or $run.Output -notmatch 'SPEED_MERGE_INPUT_OK'){throw "SPEED_MERGE_MEDIA_PREFLIGHT_FAILED:$($run.Output)"}
         $run=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') @('-NoProfile','-ExecutionPolicy','Bypass','-File',"$engine\build-speed-merge-trial-plan.ps1",'-JobPath',$jobPath,'-PlanPath',$report.planPath)
         if($run.ExitCode -ne 0){throw "SPEED_MERGE_MEDIA_WRAPPER_FAILED:$($run.Output)"}
         $mergeReport=Get-Content -LiteralPath (Join-Path $temporary 'speed-merge-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json

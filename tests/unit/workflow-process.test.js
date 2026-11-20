@@ -13,10 +13,10 @@ async function until(fn){for(let i=0;i<200;i++){if(fn())return;await sleep(50);}
 (async()=>{
   const engine=path.join(sandbox,"Máy thử ' riêng"), lib=path.join(engine,"lib"); fs.mkdirSync(lib,{recursive:true});
   for(const [src,dest] of [["extension/engine/run-workflow.ps1","run-workflow.ps1"],["extension/engine/lib/Security.ps1","lib/Security.ps1"]])fs.copyFileSync(path.join(root,src),path.join(engine,dest));
-  const fixture=String.raw`param([string]$JobPath,[string]$PlanPath,[switch]$ValidateOnly)
+  const fixture=String.raw`param([string]$JobPath,[string]$PlanPath)
 $ErrorActionPreference='Stop'
 $job=Get-Content -LiteralPath $JobPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if($job.mode -eq 'normal') { [Console]::WriteLine(('SUCCESS:'+ $PlanPath + ':' + $ValidateOnly)); exit 0 }
+if($job.mode -eq 'normal') { [Console]::WriteLine(('SUCCESS:'+ $PlanPath)); exit 0 }
 if($job.mode -eq 'fail') { [Console]::Error.WriteLine('FIXTURE_ENGINE_FAILURE'); exit 7 }
 $descendantCommand='[IO.File]::WriteAllText(' + "'" + $job.ready.Replace("'","''") + "'" + ',[string]$PID); Start-Sleep -Seconds 60'
 $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($descendantCommand))
@@ -33,11 +33,11 @@ Start-Sleep -Seconds 60
     const folder=path.join(sandbox,name);fs.mkdirSync(folder);
     const job=path.join(folder,"job.json"), req=path.join(folder,"request.json");
     fs.writeFileSync(job,JSON.stringify({mode,ready:path.join(folder,"grandchild.txt"),parent:path.join(folder,"parent.txt")}));
-    fs.writeFileSync(req,JSON.stringify({script,args:["-JobPath",job,"-PlanPath","Đường ' dẫn $() & giữ nguyên","-ValidateOnly"]}));
+    fs.writeFileSync(req,JSON.stringify({script,args:["-JobPath",job,"-PlanPath","Đường ' dẫn $() & giữ nguyên"]}));
     return {folder,req};
   }
   let f=request("normal","normal"),r=await run(wrapper,["-RequestPath",f.req]).result;
-  assert.ifError(r.error);assert(r.stdout.includes("SUCCESS:Đường ' dẫn $() & giữ nguyên:True"),JSON.stringify(r));
+  assert.ifError(r.error);assert(r.stdout.includes("SUCCESS:Đường ' dẫn $() & giữ nguyên"),JSON.stringify(r));
   f=request("fail","fail");r=await run(wrapper,["-RequestPath",f.req]).result;assert.equal(r.error.code,7,JSON.stringify(r));assert(r.stderr.includes("FIXTURE_ENGINE_FAILURE"));
   f=request("rejected","normal","..\\outside.ps1");r=await run(wrapper,["-RequestPath",f.req]).result;assert(r.error);assert(r.stderr.includes("WORKFLOW_SCRIPT_NOT_ALLOWED"));
   f=request("early","normal");fs.writeFileSync(f.req+".cancel","stop");r=await run(wrapper,["-RequestPath",f.req]).result;assert.equal(r.error.code,1223);assert(!r.stdout.includes("SUCCESS"));

@@ -113,7 +113,6 @@ function Assert-Range([string]$Name,[double]$Value,[double]$Minimum,[double]$Max
 }
 Assert-Range 'speedWarningMinPercent' $speedWarningMinPercent 10 100
 Assert-Range 'speedWarningMaxPercent' $speedWarningMaxPercent 100 400
-if ($speedWarningMinPercent -gt $speedWarningMaxPercent) { throw 'INVALID_SETTING:speedWarningMinPercent exceeds speedWarningMaxPercent.' }
 Assert-Range 'minNoDialogueGapSeconds' $minNoDialogueGapSeconds 0.2 10
 Assert-Range 'silenceNoiseDb' $silenceNoiseDb -80 -5
 Assert-Range 'minSilenceDurationSeconds' $minSilenceDurationSeconds 0.01 1
@@ -148,7 +147,7 @@ if($alignment.PSObject.Properties['editedSourceMap']){
         $copy
     })
 }
-$voiceClips = @([object[]]$job.sequence.voices | Select-Object -First ([int]$alignment.voiceChapterCount))
+$voiceClips = @([object[]]$job.sequence.voices | Sort-Object start | Select-Object -First ([int]$alignment.voiceChapterCount))
 $recoveredUnalignedCueCount=Repair-PvsUnalignedCueIntervals -Cues $cues -VoiceClips $voiceClips -FrameRate $fps
 $silences = New-Object System.Collections.Generic.List[object]
 foreach ($voice in $voiceClips) {

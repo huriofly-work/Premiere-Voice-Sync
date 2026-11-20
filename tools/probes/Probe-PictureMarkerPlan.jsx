@@ -115,27 +115,37 @@ $._PVSPictureMarkerPlanProbe = (function () {
             return speed <= 10 ? speed : speed / 100;
         } catch (ignoreSpeedRead) { return null; }
     }
+    function clipTimeMapping(item) {
+        var mapping = { isSpeedReversed: false, timeRemap: "none" };
+        try { if (item.isSpeedReversed) mapping.isSpeedReversed = !!item.isSpeedReversed(); }
+        catch (ignoreReverse) { mapping.isSpeedReversed = null; }
+        try {
+            var components = item.components;
+            if (components) for (var c = 0; c < (components.numItems === undefined ? components.length : components.numItems); c++) {
+                var component = components[c];
+                if (!/time[\s_-]*remap/i.test(String(component.matchName || "") + " " + String(component.displayName || ""))) continue;
+                if (mapping.timeRemap === "none") mapping.timeRemap = "static";
+                var properties = component.properties;
+                if (!properties || !properties.numItems) { mapping.timeRemap = "unknown"; continue; }
+                for (var p = 0; p < properties.numItems; p++) {
+                    if (typeof properties[p].isTimeVarying !== "function") mapping.timeRemap = "unknown";
+                    else if (properties[p].isTimeVarying()) { mapping.timeRemap = "varying"; return mapping; }
+                }
+            }
+        } catch (ignoreRemap) { mapping.timeRemap = "unknown"; }
+        return mapping;
+    }
     function clipMarkerMapping(item, allowNested) {
         try {
             if (!item || !item.projectItem || typeof item.projectItem.getMarkers !== "function" || typeof item.getSpeed !== "function") return null;
             if (!allowNested && item.projectItem.isSequence && item.projectItem.isSequence()) return null;
-            if (item.isSpeedReversed && item.isSpeedReversed()) return null;
+            var mapping = clipTimeMapping(item);
+            if (mapping.isSpeedReversed !== false) return null;
             var speed = speedFactor(item);
             if (speed === null) return null;
-            var components = item.components;
-            if (components) for (var c = 0; c < (components.numItems === undefined ? components.length : components.numItems); c++) {
-                var component = components[c];
-                if (/time[\s_-]*remap/i.test(String(component.matchName || "") + " " + String(component.displayName || ""))) {
-                    // No voice time-remap mapping was proven by #34, including a
-                    // static remap. Existing V1 nest warnings retain their adapter.
-                    if (!allowNested) return null;
-                    // Premiere may expose the built-in static effect too. Only a
-                    // readable, entirely non-varying effect is a constant mapping.
-                    var properties = component.properties;
-                    if (!properties || !properties.numItems) return null;
-                    for (var p = 0; p < properties.numItems; p++) if (typeof properties[p].isTimeVarying !== "function" || properties[p].isTimeVarying()) return null;
-                }
-            }
+            // #34 proved no voice time-remap mapping. V1 permits a readable,
+            // entirely non-varying built-in effect as a constant mapping.
+            if (mapping.timeRemap !== "none" && !(allowNested && mapping.timeRemap === "static")) return null;
             var start = Number(item.start.seconds), end = Number(item.end.seconds), input = Number(item.inPoint.seconds), output = Number(item.outPoint.seconds);
             if (!isFinite(start) || !isFinite(end) || !isFinite(input) || !isFinite(output) || start < 0 || input < 0 || end <= start || output <= input) return null;
             return { start: start, end: end, input: input, speed: speed,

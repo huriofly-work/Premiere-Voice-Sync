@@ -86,6 +86,7 @@ try {
     Set-Content -LiteralPath (Join-Path $source 'js\main.js') -Value 'OPEN_SOURCE_UI' -Encoding ASCII
     Set-Content -LiteralPath (Join-Path $source 'js\security.js') -Value 'OPEN_SOURCE_SECURITY' -Encoding ASCII
     Set-Content -LiteralPath (Join-Path $source 'js\caption-input.js') -Value 'OPEN_SOURCE_CAPTION_INPUT' -Encoding ASCII
+    Set-Content -LiteralPath (Join-Path $source 'js\edit-input.js') -Value 'OPEN_SOURCE_EDIT_INPUT' -Encoding ASCII
     Set-Content -LiteralPath (Join-Path $source 'js\srt-join.js') -Value 'OPEN_SOURCE_SRT_JOIN' -Encoding ASCII
     foreach ($relative in @('js\notification-policy.js','js\native-notifications.js','native\PvsNotifications.exe','native\helper-lock.json','native\NotificationIdentity.cs','native\NotificationProtocol.cs','native\NotificationHost.cs','native\NotificationWindow.cs')) {
         Set-Content -LiteralPath (Join-Path $source $relative) -Value ('OPEN_SOURCE_NOTIFICATION:'+ $relative) -Encoding ASCII
@@ -135,7 +136,7 @@ try {
     }
     if ((Get-Content -LiteralPath (Join-Path $destination 'engine\runtime\engine.json') -Raw).Trim() -ne '{"model":"fixture"}') { throw 'RELEASE_COPIED_LOCAL_CONFIGURATION' }
     foreach ($relative in @(
-        'js\main.js','js\caption-input.js','jsx\host.jsx',
+        'js\main.js','js\caption-input.js','js\edit-input.js','jsx\host.jsx',
         'engine\run-alignment.ps1','engine\build-sentence-plan.ps1','engine\resolve-backend.ps1',
         'engine\run-captions.ps1','engine\run-workflow.ps1','engine\request-attention.ps1','engine\lib\CaptionOnly.ps1','engine\lib\CaptionTiming.ps1','engine\lib\RecognitionBackend.ps1',
         'engine\lib\SubtitleTiming.ps1','engine\lib\SubtitleEnergy.ps1','engine\lib\AutoEditManualReview.ps1','engine\lib\AutoEditAcousticPartitions.ps1',

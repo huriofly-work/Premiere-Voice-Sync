@@ -75,6 +75,7 @@
     captionPlanError: null
   };
   var settingsStorageKey = "pvs.algorithm";
+  var editInput = window.PvsEditInput;
   var srtJoin = window.PvsSrtJoin ? window.PvsSrtJoin.panel({ state: state, document: document, window: window, fs: fs, path: path, security: security, inputError: inputError, changed: function () { if (inlineValidation && inlineValidation.fieldId === "srtJoinEnabled") closeWorkflowNotice(); } }) : null;
   var settingDefaults = {
     minSpeed: 70, maxSpeed: 130, minDialogueGap: 0.5, voiceGroupGap: 2, maxCaptionCharacters: 42
@@ -640,7 +641,7 @@
       catch (resumeError) { if (!resumeError.pvsCancelled) owner.impact = "unknown"; throw resumeError; }
       if (after !== before) {
         owner.impact = "unknown";
-        throw new Error("WORKFLOW_CHANGED_WHILE_PAUSED: Project, sequence hoặc trạng thái timeline đã thay đổi khi tạm dừng. Đã chặn tiếp tục tác vụ này.");
+        throw new Error("WORKFLOW_CHANGED_WHILE_PAUSED");
       }
       throwIfStopRequested();
       status("Đang tiếp tục · " + stageLabels[owner.stage] + ".", "muted");
@@ -743,10 +744,21 @@
     } else {
       message = /SUBTITLE_RECOGNITION_TAIL_UNVERIFIED|SUBTITLE_EDGE_RETRY_INVALID|SUBTITLE_RECOGNITION/.test(raw) ? "Chưa xác minh đầy đủ lời nhận diện trong vùng audio. Hãy kiểm tra vùng chọn và phần lời nói ở cuối; tác vụ đã dừng để tránh tạo subtitle thiếu." : /SRT|\.srt|subtitle.*file/i.test(raw) ? "Không xử lý được SRT. Kiểm tra file đã chọn, nội dung và quyền truy cập rồi kiểm tra lại đầu vào." : /ENOENT|không tìm thấy|không mở được/i.test(raw) ? "Không truy cập được một tài nguyên cần thiết. Kiểm tra file nguồn, ổ đĩa và bộ xử lý rồi thử kiểm tra lại đầu vào." : "Tác vụ đã dừng do lỗi. Xem chi tiết và nhật ký để xác định bước cần khắc phục.";
     }
-    if (/WORKFLOW_CHANGED_WHILE_PAUSED/.test(raw)) message = "Project, sequence hoặc trạng thái timeline đã thay đổi khi tạm dừng. Tool đã chặn tiếp tục để tránh dựng sai.";
+    var templateMessage = "";
+    if (/WORKFLOW_CHANGED_WHILE_PAUSED/.test(raw)) {
+      if (context.workflow === "edit") templateMessage = "Template đã thay đổi trong lúc tạm dừng. Hãy kiểm tra lại sequence trước khi dựng.";
+      else message = "Project, sequence hoặc timeline đã thay đổi trong lúc tạm dừng. Hãy kiểm tra lại nguồn và phạm vi.";
+    } else if (context.workflow === "edit") {
+      if (/EDIT_TEMPLATE_CHANGED_DURING_ANALYSIS/.test(raw)) templateMessage = "Template đã thay đổi trong lúc phân tích. Hãy kiểm tra lại đầu vào rồi chạy lại.";
+      else if (/DIAGNOSTIC_TIMELINE_CHANGED_BETWEEN_BATCHES|DIAGNOSTIC_SEQUENCE_CHANGED/.test(raw)) templateMessage = "Template đã thay đổi giữa các đợt dựng. Hãy kiểm tra lại sequence trước khi dựng.";
+      else if (/Active sequence ID does not match direct plan|Could not locate linked original audio|V1 main clip no longer matches plan|Could not map voice chapter for marker reconciliation|DIAGNOSTIC_NO_ACTIVE_SEQUENCE/.test(raw)) {
+        templateMessage = "Template đã thay đổi kể từ lúc kiểm tra. Hãy kiểm tra lại V1/A1 và voice A2 rồi chạy lại.";
+      }
+    }
+    if (templateMessage) message = templateMessage;
     if (/WORKFLOW_PAUSE_STATE_UNAVAILABLE/.test(raw)) message = "Không xác minh được trạng thái để tạm dừng/tiếp tục an toàn. Tác vụ đã dừng; xem chi tiết để kiểm tra.";
     if (context.impact === "changed" || context.impact === "unknown") {
-      if (context.workflow === "edit") message = "Tác vụ dừng do lỗi. Timeline được giữ đến bước đã thực hiện. Nếu lỗi xảy ra trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước.";
+      if (context.workflow === "edit") message = (templateMessage ? templateMessage + " " : "Tác vụ dừng do lỗi. ") + "Timeline được giữ đến bước đã thực hiện. Nếu lỗi xảy ra trước bước Gắn marker thì marker trên file voice và nest vẫn là của lần chạy trước.";
       else message += " Timeline được giữ đến bước đã thực hiện.";
     }
     if (context.workflow === "captions") message += captionAudioNotice(context);
@@ -794,7 +806,7 @@
       if (state.mode === "captions") {
         var range = await scanCaptionRange();
         if (!range.plan) throw state.captionPlanError || new Error("Chưa chọn được nguồn audio và phạm vi.");
-      } else await scanSequence();
+      } else if (!(await scanEditInput(readSettings(true))).validation.ok) return;
       closeWorkflowNotice(); status("Đầu vào sẵn sàng.", "ok");
     } catch (error) {
       log(String(error.message || error), "error");
@@ -1282,13 +1294,13 @@
     var inputPath = path.join(extensionRoot(), "js", "caption-input.js");
     var bootstrap = '(function(){try{' +
       'function ready(){return $._PVS&&$._PVS.captionInputRevision===1&&$._PVS.captionInput&&$._PVS.captionInput.revision===1&&typeof $._PVS.captionInput.resolve==="function"&&typeof $._PVS.captionInput.sameKey==="function"&&typeof $._PVS.scanSequence==="function"&&typeof $._PVS.scanCaptionRange==="function"&&typeof $._PVS.beginSrtScan==="function"&&typeof $._PVS.beginCaptionAudioExport==="function"&&typeof $._PVS.workflowPauseState==="function"&&typeof $._PVS.applyCaptionOnly==="function"&&typeof $._PVS._applyCaptionMarkers==="function";}' +
-      'if($._PVS&&$._PVS.bootstrapRevision===3&&ready())return "PVS_HOST_READY";' +
+      'if($._PVS&&$._PVS.bootstrapRevision===4&&ready())return "PVS_HOST_READY";' +
       // Read explicitly: BOM-less source otherwise follows Windows ANSI in
       // ExtendScript. Evaluate in this call and publish dependencies on $._PVS.
       'function load(p){var f=new File(p);if(!f.exists)throw new Error("Missing script: "+f.fsName);f.encoding="UTF-8";if(!f.open("r"))throw new Error("Cannot read script: "+f.fsName);var s;try{s=f.read();if(f.error)throw new Error(f.error);}finally{f.close();}eval(s);}' +
       'load(' + jsxString(inputPath) + ');' +
       'load(' + jsxString(hostPath) + ');' +
-      'if(ready()){$._PVS.bootstrapRevision=3;return "PVS_HOST_READY";}' +
+      'if(ready()){$._PVS.bootstrapRevision=4;return "PVS_HOST_READY";}' +
       'return "PVS_HOST_ERROR|Incomplete Premiere host or audio planner";' +
       '}catch(e){return "PVS_HOST_ERROR|"+String(e)+"|line="+(e.line||"")+"|file="+(e.fileName||"");}}())';
     hostReadyPromise = evalRaw(bootstrap).then(function (raw) {
@@ -1452,7 +1464,6 @@
       voiceGroupGap: numberSetting("voiceGroupGap", "Gap tách nhóm voice", 0.2, 20, false),
       maxCaptionCharacters: numberSetting("maxCaptionCharacters", "Ký tự tối đa mỗi caption", 20, 80, true)
     };
-    if (values.minSpeed > values.maxSpeed) throw inputError("Ngưỡng cảnh báo chậm không được lớn hơn ngưỡng cảnh báo nhanh.", "minSpeed");
     if (!readOnly) {
       localStorage.setItem(settingsStorageKey, JSON.stringify(values));
     }
@@ -1496,23 +1507,34 @@
       else element.value = value;
     });
   }
-  async function scanSequence() {
-    try {
-      var info = await evalHost("$._PVS.scanSequence()");
-      if (!info.ok) throw new Error(info.error);
-      if (!info.mainVideoClip || !info.linkedAudio.length) throw new Error("V1 phải là nested video đã linked với audio gốc A1.");
-      if (!info.voices.length) throw new Error("Không tìm thấy voice mới trên A2.");
-      if (Number(info.mainVideoPieceCount) !== 1 || Number(info.captionTrackCount) > 0) throw new Error("Sequence này có vẻ đã được dựng. Hãy mở lại sequence template sạch.");
-      state.sequence = info;
-      byId("sequenceSummary").textContent = info.name + "\nV1+A1 linked: " + info.mainVideoClip.name + "\nA2: " + info.voices.length + " clip voice";
-      byId("sequenceSummary").className = "summary edit-only";
-      return info;
-    } catch (error) {
+  async function readSequenceScan() {
+    var info = await evalHost("$._PVS.scanSequence()");
+    if (!info.ok) throw new Error(info.error || "Premiere không đọc được sequence.");
+    return info;
+  }
+  async function scanEditInput(settings, quiet) {
+    var summary = byId("sequenceSummary"), sequence;
+    try { sequence = await readSequenceScan(); } catch (error) {
       state.sequence = null;
-      byId("sequenceSummary").textContent = error.message;
-      byId("sequenceSummary").className = "summary error edit-only";
+      summary.textContent = error.message;
+      summary.className = "summary error edit-only";
       throw error;
     }
+    var validation = editInput.validateEditInput(sequence, settings, function (file) { return fs.existsSync(file); });
+    state.sequence = sequence.hasSequence === false ? null : sequence;
+    if (validation.ok) {
+      summary.textContent = sequence.name + "\nV1+A1 linked: " + sequence.mainVideoClip.name + "\nA2: " + sequence.voices.length + " clip voice";
+      summary.className = "summary edit-only";
+      if (currentNotice && currentNotice.code === "EDIT_INPUT_INVALID") closeWorkflowNotice();
+    } else {
+      var messages = validation.reasons.map(function (reason) { return reason.message; }).join("\n");
+      var details = validation.reasons.map(function (reason) { return reason.code + " — " + reason.message; }).join("\n");
+      summary.textContent = messages;
+      summary.className = "summary error edit-only";
+      // Startup and refresh only update the summary; explicit checks and runs show the notice.
+      if (!quiet) showWorkflowNotice("Sequence chưa dùng được", messages, "error", { kind: "validation", stage: "preflight", code: "EDIT_INPUT_INVALID", impact: "unchanged", details: details });
+    }
+    return { sequence: sequence, validation: validation };
   }
   function pickTargetSrt() {
     var start = state.targetSrt ? path.dirname(state.targetSrt) : null;
@@ -1617,7 +1639,7 @@
           try { await scanCaptionRange(); }
           catch (error) { log("Không đọc được phạm vi subtitle: " + error.message, startup ? "muted" : "error"); }
         } else {
-          try { await scanSequence(); }
+          try { await scanEditInput(readSettings(true), true); }
           catch (error) { log((startup ? "Sequence chưa sẵn sàng: " : "Không đọc được sequence: ") + error.message, startup ? "muted" : "error"); }
         }
         // A tab changed while the native read was pending: read the new mode,
@@ -1658,24 +1680,18 @@
     try {
       setWorkflowBusy(true);
       diagnosticStatus("Đang kiểm tra sequence, voice, SRT và bộ xử lý...", "muted");
-      var sequence = await scanSequence();
-      var settings = readSettings();
+      var settings = readSettings(true);
+      var checked = await scanEditInput(settings);
+      if (!checked.validation.ok) {
+        diagnosticStatus(checked.validation.reasons.map(function (reason) { return reason.message; }).join("\n"), "error");
+        return;
+      }
+      var sequence = checked.sequence;
       var joinedReference = srtJoin && srtJoin.read();
       if (!joinedReference && (!state.targetSrt || !fs.existsSync(state.targetSrt))) await detectSrt(false);
       if (!joinedReference && (!state.targetSrt || !fs.existsSync(state.targetSrt))) throw new Error("Chưa chọn được file SRT cùng ngôn ngữ với voice.");
       var srt = joinedReference || inspectSrt(state.targetSrt);
-      var missingVoices = sequence.voices.filter(function (voice) { return !voice.path || !fs.existsSync(voice.path); });
-      if (missingVoices.length) throw new Error("Có " + missingVoices.length + " clip A2 không đọc được file nguồn.");
-      for (var voiceIndex = 1; voiceIndex < sequence.voices.length; voiceIndex++) {
-        if (Number(sequence.voices[voiceIndex].start) < Number(sequence.voices[voiceIndex - 1].end) - (0.5 / Number(sequence.frameRate || 30))) {
-          throw new Error("Các clip voice A2 đang chồng lên nhau.");
-        }
-      }
-      var mainVoiceCount = sequence.voices.length ? 1 : 0;
-      for (var chapterIndex = 1; chapterIndex < sequence.voices.length; chapterIndex++) {
-        if (Number(sequence.voices[chapterIndex].start) - Number(sequence.voices[chapterIndex - 1].end) > settings.voiceGroupGap) break;
-        mainVoiceCount++;
-      }
+      var mainVoiceCount = editInput.mainVoiceGroup(sequence.voices, settings.voiceGroupGap).length;
       if (state.backendPromise) await state.backendPromise;
       var backendLabel = state.backend && state.backend.label ? state.backend.label : "CPU fallback";
       var notes = [];
@@ -1860,12 +1876,14 @@
       setWorkflowBusy(true);
       beginRun("edit");
       await recoverPendingRuns(false);
-      if (state.backendPromise) await state.backendPromise;
       throwIfStopRequested();
-      var sequence = await scanSequence();
-      throwIfStopRequested();
-      await waitForWorkflowPause();
       var settings = readSettings();
+      var checked = await scanEditInput(settings);
+      throwIfStopRequested();
+      if (!checked.validation.ok) return;
+      var sequence = checked.sequence;
+      if (state.backendPromise) await state.backendPromise;
+      await waitForWorkflowPause();
       var language = readVoiceLanguage();
       var joinedReference = srtJoin && srtJoin.read();
       if (!joinedReference && (!state.targetSrt || !fs.existsSync(state.targetSrt))) throw new Error("Hãy chọn SRT cùng ngôn ngữ với voice.");
@@ -1926,13 +1944,9 @@
       }
       fs.writeFileSync(jobPath, JSON.stringify(job, null, 2), "utf8");
       if (enhanced) {
-        status("Đang kiểm tra đầu vào DTW trước khi nhận diện...", "muted");
-        await runPowerShell(path.join(extensionRoot(), "engine", "build-dtw-trial-plan.ps1"), ["-JobPath", jobPath, "-ValidateOnly"]);
-        if (speedMergeRequested) await runPowerShell(path.join(extensionRoot(), "engine", "build-speed-merge-trial-plan.ps1"), ["-JobPath", jobPath, "-ValidateOnly"]);
         log("DTW: giữ tốc độ voice hiện tại, quy đổi timestamp và khoảng lặng theo từng chapter.", "ok");
-        var trialVoices = sequence.voices.slice().sort(function (a, b) { return Number(a.start) - Number(b.start); });
+        var trialVoices = editInput.mainVoiceGroup(sequence.voices, settings.voiceGroupGap);
         for (var chapterIndex = 0; chapterIndex < trialVoices.length; chapterIndex++) {
-          if (chapterIndex > 0 && Number(trialVoices[chapterIndex].start) - Number(trialVoices[chapterIndex - 1].end) > settings.voiceGroupGap) break;
           log("Voice chapter " + (chapterIndex + 1) + ": speed " + Number(trialVoices[chapterIndex].speedPercent).toFixed(6) + "%; media In " + Number(trialVoices[chapterIndex].inPoint).toFixed(6) + "s.", "muted");
         }
       }
@@ -2034,10 +2048,8 @@
       status("3/3 · Đang dựng trực tiếp và hậu kiểm...", "muted");
       runStage("timeline");
       metrics.begin("template-check");
-      {
-        var diagnosticSequence = await scanSequence();
-        if (JSON.stringify(diagnosticSequence) !== JSON.stringify(sequence)) throw new Error("Template đã thay đổi trong lúc phân tích. Timeline chưa được tool chỉnh; hãy dùng template sạch.");
-      }
+      var currentSequence = await readSequenceScan();
+      if (JSON.stringify(currentSequence) !== JSON.stringify(sequence)) throw new Error("EDIT_TEMPLATE_CHANGED_DURING_ANALYSIS");
       metrics.end();
       phase = Date.now();
       metrics.begin("timeline");
@@ -2069,9 +2081,7 @@
     } catch (error) {
       if (error.pvsCancelled) outcome = "cancelled";
       if (metrics) metrics.end(null, outcome);
-      var failureMessage = error.message;
-      if (enhanced && error.message.indexOf("TRIAL_VOICE_MEDIA_IN_NONZERO") >= 0) failureMessage = "DTW chưa hỗ trợ voice đã trim phần đầu media. Hãy dùng template có đầu voice nguyên vẹn; speed voice vẫn được giữ. Timeline chưa được tool chỉnh.\n\n" + failureMessage;
-      if (!error.pvsCancelled) reportRunFailure(inputError(failureMessage, error.pvsInputField), "Dựng theo voice — Không hoàn tất");
+      if (!error.pvsCancelled) reportRunFailure(error, "Dựng theo voice — Không hoàn tất");
     } finally {
       if (runContext && runContext.fatal) outcome = "failed";
       if (outputFolder) {

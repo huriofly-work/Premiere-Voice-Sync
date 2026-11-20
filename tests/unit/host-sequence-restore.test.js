@@ -51,4 +51,7 @@ assert.deepStrictEqual(preflight({ sequenceID: "original" }).calls, []);
 assert.deepStrictEqual(preflight({ sequenceID: "other" }).calls, ["original"]);
 assert.deepStrictEqual(preflight(null).calls, ["original"]);
 assert.strictEqual(preflight(null, true).report.cleanupError, "open original: restore failed; ");
+const closed = { $: {}, app: { project: { activeSequence: null, openSequence() { throw Error("SCAN_MUST_NOT_REOPEN"); } } } };
+vm.runInNewContext(source, closed);
+assert.deepStrictEqual(JSON.parse(closed.$._PVS.scanSequence()), { ok: true, hasSequence: false });
 console.log("HOST_SEQUENCE_RESTORE_OK:same-ID-no-open;different-ID-restore;missing-active-restore;no-original-no-read;cleanup-errors;executor-preflight");

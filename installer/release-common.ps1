@@ -19,6 +19,7 @@ function Copy-PvsReleaseExtension {
         Copy-Item -LiteralPath (Join-Path $Source $relative) -Destination $targetFile -Force
     }
     Copy-Item -LiteralPath (Join-Path $Source 'js\caption-input.js') -Destination (Join-Path $Destination 'js\caption-input.js') -Force
+    Copy-Item -LiteralPath (Join-Path $Source 'js\edit-input.js') -Destination (Join-Path $Destination 'js\edit-input.js') -Force
     Copy-Item -LiteralPath (Join-Path $Source 'js\srt-join.js') -Destination (Join-Path $Destination 'js\srt-join.js') -Force
     Copy-Item -LiteralPath (Join-Path $Source 'index.html') -Destination $Destination -Force
 

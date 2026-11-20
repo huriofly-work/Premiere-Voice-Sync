@@ -14,18 +14,6 @@ function Make-Plan([int[]]$Sources,[int[]]$Outputs,[int[]]$Chapters=@(),[int]$Ga
 }
 function Check([bool]$Value,[string]$Message){if(-not $Value){throw "SPEED_MERGE_TEST_FAILED:$Message"}}
 function Reject([scriptblock]$Action,[string]$Message){try{& $Action}catch{if($_.Exception.Message -eq $Message){return};throw};throw "SPEED_MERGE_REJECTION_MISSING:$Message"}
-$job=[pscustomobject]@{workflow='experimental-dtw-direct';speedMergeTrial='adjacent-speed-v2';speedWarningMinPercent=70;speedWarningMaxPercent=130}
-Assert-PvsSpeedMergeInput $job
-$defaultJob=$job | ConvertTo-Json | ConvertFrom-Json;$defaultJob.workflow='one-click-dtw-direct'
-Assert-PvsSpeedMergeInput $defaultJob
-$oldProtocol=$job | ConvertTo-Json | ConvertFrom-Json;$oldProtocol.speedMergeTrial='adjacent-speed-v1'
-Reject {Assert-PvsSpeedMergeInput $oldProtocol} 'SPEED_MERGE_EXPLICIT_OPT_IN_REQUIRED'
-$bad=$job | ConvertTo-Json | ConvertFrom-Json;$bad.workflow='one-click-direct'
-Reject {Assert-PvsSpeedMergeInput $bad} 'SPEED_MERGE_EXPLICIT_OPT_IN_REQUIRED'
-$bad.speedMergeTrial='wrong';Reject {Assert-PvsSpeedMergeInput $bad} 'SPEED_MERGE_EXPLICIT_OPT_IN_REQUIRED'
-$bad=$job | ConvertTo-Json | ConvertFrom-Json;$bad.speedWarningMaxPercent=20
-Reject {Assert-PvsSpeedMergeInput $bad} 'SPEED_MERGE_THRESHOLDS_INVALID'
-
 # One adjacent pair only, even if the pair is still outside the band.
 $base=Make-Plan @(40,60,100,100,100) @(100,100,100,100,100)
 $original=$base | ConvertTo-Json -Depth 30 -Compress
@@ -105,12 +93,19 @@ $temporary=Join-Path $env:TEMP ('PVS-SpeedMergeInput-'+[guid]::NewGuid().ToStrin
 Assert-PvsSafePath -Path $temporary -Root $env:TEMP
 try {
     New-Item -ItemType Directory -Path $temporary | Out-Null
-    $job | Add-Member outputFolder $temporary
+    $base=Make-Plan @(40,60,100) @(100,100,100)
+    $job=[pscustomobject]@{outputFolder=$temporary;sequence=[pscustomobject]@{sequenceId=$base.sequenceId};speedWarningMinPercent=$base.speedWarningMinPercent;speedWarningMaxPercent=$base.speedWarningMaxPercent}
     $jobPath=Join-Path $temporary 'job.json'
     [IO.File]::WriteAllText($jobPath,($job | ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
-    $run=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') @('-NoProfile','-ExecutionPolicy','Bypass','-File',"$root\extension\engine\build-speed-merge-trial-plan.ps1",'-JobPath',$jobPath,'-ValidateOnly')
-    Check ($run.ExitCode -eq 0 -and $run.Output -match 'SPEED_MERGE_INPUT_OK') "wrapper-preflight:$($run.Output)"
-    Check (-not (Test-Path -LiteralPath (Join-Path $temporary 'speed-merge-trial'))) 'preflight-no-plan-or-ASR'
+    $planPath=Join-Path $temporary 'sentence-edit-plan.json'
+    [IO.File]::WriteAllText($planPath,($base | ConvertTo-Json -Depth 30),(New-Object Text.UTF8Encoding($false)))
+    $wrapperArgs=@('-NoProfile','-ExecutionPolicy','Bypass','-File',"$root\extension\engine\build-speed-merge-trial-plan.ps1",'-JobPath',$jobPath)
+    $run=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') $wrapperArgs
+    Check ($run.ExitCode -eq 0 -and $run.Output -match 'SPEED_MERGE_READY:merges=1') "wrapper-full-run:$($run.Output)"
+    $job.speedWarningMaxPercent++
+    [IO.File]::WriteAllText($jobPath,($job | ConvertTo-Json),(New-Object Text.UTF8Encoding($false)))
+    $run=Invoke-NativeCapture (Join-Path $PSHOME 'powershell.exe') $wrapperArgs
+    Check ($run.ExitCode -ne 0 -and $run.Output -match 'SPEED_MERGE_JOB_MISMATCH') "wrapper-job-mismatch:$($run.Output)"
 } finally {Remove-PvsSafeTree -Path $temporary -Root $env:TEMP}
 Check (-not [IO.File]::ReadAllText("$root\extension\index.html").Contains('id="allowSpeedMerge"')) 'default-no-opt-in'
 Write-Host 'SPEED_MERGE_TRIAL_OK:weighted-neighbors;single-pair-only;no-reuse;bounds;cross-chapter;protected-gap;voice-caption-unchanged;markers;80-frame-property-cases'

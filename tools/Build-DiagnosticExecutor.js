@@ -68,10 +68,17 @@ function generate(source, options) {
   const attempt = fn.body.body.find(n => n.type === "TryStatement");
   const start = attempt.block.start + 1, end = attempt.block.end - 1;
   const edits = [], names = new Set(), helpers = [];
+  // Preserve prepare-stage counters for the matcher shared with scanSequence.
+  const linkedTrack = ast.body.find(n => n.type === "ExpressionStatement" && n.expression.type === "AssignmentExpression" &&
+    source.slice(n.expression.left.start, n.expression.left.end) === "$._PVS._findLinkedTrack");
+  if (linkedTrack) helpers.push(source.slice(linkedTrack.start, linkedTrack.end).replace("$._PVS._findLinkedTrack = function", "function findLinkedTrack"));
   function walk(n) {
     if (!n || typeof n !== "object") return;
     if (n.type === "FunctionDeclaration") { helpers.push(source.slice(n.start, n.end)); edits.push([n.start, n.end, " ".repeat(n.end - n.start)]); return; }
     if (n.type === "FunctionExpression") return;
+    if (linkedTrack && n.type === "CallExpression" && source.slice(n.callee.start, n.callee.end) === "$._PVS._findLinkedTrack") {
+      edits.push([n.callee.start, n.callee.end, "findLinkedTrack"]);
+    }
     if (n.type === "CallExpression" && n.callee.type === "Identifier" && n.callee.name === "setClipSpeed") {
       // Generated calls add a logical track key; native mutation arguments stay intact.
       const track = n.arguments[1];

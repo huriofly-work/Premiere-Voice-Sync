@@ -108,7 +108,7 @@ Tiến trình, kết quả và lỗi thay nhau trong cùng vùng dưới nút ch
 
 Khi đang xem kết quả trong panel, chương trình không nhắc ra ngoài. Nếu đang dùng ứng dụng khác, hoàn tất/lỗi/cần quyết định/dừng xong được nhắc một lần qua Windows khi bật **Nhắc khi hoàn tất hoặc cần tôi xử lý**. Bấm thông báo để mở đúng kết quả; không tự phê duyệt hoặc chạy lại. Đọc kết quả sẽ dọn toast và giữ kết quả trong panel. Không có cửa sổ xem riêng hoặc tự đưa Premiere lên trước. Windows vẫn quyết định hiển thị theo quyền thông báo/Không làm phiền; có thể dùng **Hỗ trợ và nhật ký → Thử thông báo Windows** để kiểm độc lập.
 
-Nếu có vấn đề chất lượng, bấm **Xem vị trí cần kiểm tra** để xem phụ đề/timecode và lý do. Số liệu thuật toán và lỗi gốc nằm trong **Chi tiết → Thông tin kỹ thuật**. Nút **Kiểm tra đầu vào** đọc nguồn và phạm vi của chế độ đang chọn. Khi tác vụ cũ kết thúc, có thể bắt đầu lượt mới ngay cả khi thông báo lỗi còn mở. Không cần đóng kết quả mới dọn file tạm; project không tự lưu.
+Nếu có vấn đề chất lượng, bấm **Xem vị trí cần kiểm tra** để xem phụ đề/timecode và lý do. Số liệu thuật toán và lỗi gốc nằm trong **Chi tiết → Thông tin kỹ thuật**. Nút **Kiểm tra đầu vào** kiểm tra template khi dùng **Dựng theo voice**, hoặc kiểm tra nguồn audio và phạm vi khi dùng **Tạo phụ đề**. Khi tác vụ cũ kết thúc, có thể bắt đầu lượt mới ngay cả khi thông báo lỗi còn mở. Không cần đóng kết quả mới dọn file tạm; project không tự lưu.
 
 Trong panel chỉ hiển thị hướng dẫn sử dụng từng chức năng: **Dựng theo voice** có mục **Hướng dẫn dựng và màu marker**, **Tạo phụ đề** có mục **Hướng dẫn tạo phụ đề**. Hướng dẫn cài đặt, xử lý lỗi và gỡ cài đặt nằm trong tài liệu này, được kèm bộ cài dưới tên `HUONG_DAN_SU_DUNG.md`.
 
@@ -155,7 +155,7 @@ Nếu Whisper đẩy token ra ngoài mép audio hoặc bỏ sót phần cuối c
 
 Nút **Phân tích và dựng tự động** dùng DTW để tìm thêm điểm cắt câu an toàn, gộp hình ngoài ngưỡng tốc độ một lần với đoạn liền kề và dựng chia đợt nhanh. Không cần bật lựa chọn DTW/gộp, chạy thử hay xác nhận thêm sau phân tích. Nếu không tìm được điểm cắt hoặc cặp gộp phù hợp, tool vẫn dựng theo kế hoạch đã kiểm bảo toàn.
 
-Có thể chỉnh tốc độ voice trước khi chạy, kể cả mỗi chapter một tốc độ khác; tool giữ speed đó và quy đổi word timing/khoảng lặng theo chapter. Hiện yêu cầu speed dương từ 1% trở lên, không reverse/0%; chưa hỗ trợ voice đã trim đầu media (media In phải bằng 0). Kiểm đầu vào trước nhận diện. Dùng template sạch, không chạy chồng lên timeline đã xử lý.
+Có thể chỉnh tốc độ voice trước khi chạy, kể cả mỗi chapter một tốc độ khác; tool giữ speed đó và quy đổi word timing/khoảng lặng theo chapter. Giữ tốc độ voice từ 1% trở lên và dùng clip phát xuôi, còn nguyên phần đầu, không áp dụng Time Remapping. Tool kiểm tra template trước khi hiện xác nhận và trước khi nhận diện.
 
 Planner tính điểm cắt từ mốc âm học mới; điểm cắt có thể khác phiên bản trước. Bước DTW bổ sung chỉ thêm điểm cắt khi timestamp đầy đủ và có khoảng lặng đo được đủ biên an toàn, đồng thời giữ các điểm cắt của kế hoạch vừa tính, hình nguồn, voice, nội dung caption, tổng thời lượng và khoảng không lời. Mốc nới caption 5 frame không dùng làm mốc cắt voice; chưa an toàn thì giữ nhiều câu trong một đoạn.
 
@@ -192,19 +192,19 @@ Nếu không gắn được marker, **Chi tiết** ghi loại, vị trí, cue n�
 
 Lưu project trước khi chạy, để có bản có thể mở lại nếu cần. Dùng sequence template chưa bị tool cắt/retime:
 
-- **V1:** một nested video chính còn nguyên, không phải nhiều clip đã cắt sẵn.
-- **A1:** audio của nested video, đã linked với V1. Tool cắt và chỉnh V1/A1 theo cặp. Tool không tự tách giọng gốc khỏi nhạc/ambient; bạn tự xử lý lời gốc nếu cần.
-- **A2:** các file voice tiếng Việt theo chapter, đặt liên tiếp đúng thứ tự, không chồng nhau. Một file voice dài cũng được. Các clip sau khoảng cách tách nhóm, như CTA, không thuộc nhóm voice chính.
+- **V1:** một nest hình chính chưa bị cắt đoạn, còn nguyên phần đầu, bắt đầu ở mốc 0 và phát xuôi ở 100%. Time Remapping chỉ được chấp nhận khi đọc được hiệu ứng và tốc độ cố định.
+- **A1:** audio gốc đã liên kết với nest V1, cùng bắt đầu ở đầu timeline và khớp điểm kết thúc. Tool cắt và chỉnh V1/A1 theo cặp. Tool không tự tách giọng gốc khỏi nhạc/ambient; bạn tự xử lý lời gốc nếu cần.
+- **A2:** các clip voice của nhóm chính đặt nối tiếp, không chồng nhau và có file nguồn. Giữ nguyên đầu clip, phát xuôi ở tốc độ từ 1% trở lên và bỏ Time Remapping. Một file voice dài cũng được. Các clip sau khoảng cách tách nhóm, như CTA, không thuộc nhóm voice chính.
 - **Ngôn ngữ voice và SRT:** chọn tiếng nói thực tế; SRT cùng ngôn ngữ, đúng nội dung đã dùng tạo voice. Timestamp vẫn cần tương ứng với các vùng hình của video nguồn; tool sẽ nhận diện voice để xác định thời gian mới. Không dùng SRT chỉ có timestamp của bản voice mới nhưng không còn liên hệ với hình nguồn.
 
-Các element khác trong template không cần xóa. Nếu hình sau dựng dài hơn và chạm cụm outro, tool có thể dời cụm outro để nối sau đuôi mới; nội dung và khoảng cách tương đối của cụm được giữ. Tool không tự xuất H.264 hay thay thế bước duyệt.
+Sequence dùng tốc độ khung hình từ 1 đến 240 fps và có thể đã có Caption Track. Các element khác trong template không cần xóa. Nếu hình sau dựng dài hơn và chạm cụm outro, tool có thể dời cụm outro để nối sau đuôi mới; nội dung và khoảng cách tương đối của cụm được giữ. Tool không tự xuất H.264 hay thay thế bước duyệt.
 
 ### Các bước chạy
 
 1. Mở sequence template đã chuẩn bị. Chọn **Dựng theo voice**.
 2. Xem **Timeline đang mở**. Nếu vừa đổi sequence/import SRT, bấm **Cập nhật đầu vào**.
 3. Chọn SRT trong danh sách được lấy từ Project, hoặc bấm **Chọn ngoài** để chọn file trên ổ đĩa. Nếu có nhiều SRT, bật **Nối nhiều file SRT**, thêm file và sắp theo thứ tự nội dung voice trước khi chạy.
-4. Không cần chạy thử/chẩn đoán trước. Khi cần tìm nguyên nhân lỗi đầu vào, mở **Hỗ trợ và nhật ký → Chẩn đoán đầu vào**; tác vụ chỉ đọc, không thay đổi timeline.
+4. **Cập nhật đầu vào**, **Kiểm tra đầu vào**, **Chẩn đoán đầu vào** và nút dựng đều dùng cùng bộ kiểm tra template. Khi có lỗi, thông báo **Sequence chưa dùng được** liệt kê từng lý do và cách xử lý. Mã lỗi nằm trong **Chi tiết**.
 5. Chỉnh **Tùy chỉnh theo video** nếu cần theo giải thích bên dưới; nếu chưa chắc, giữ mặc định.
 6. Bấm **Phân tích và dựng tự động**, đọc xác nhận rồi chạy. Không sửa timeline hoặc đổi sequence trong lúc chạy.
 7. Chờ kết quả dưới nút chạy. Tool căn voice, dựng theo câu hoàn chỉnh, tạo Caption Track và hậu kiểm. File SRT caption tạm không được giữ trong Project.

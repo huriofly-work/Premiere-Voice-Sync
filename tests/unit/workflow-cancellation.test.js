@@ -8,10 +8,10 @@ function fixture(options={}){
   const calls=[],files={},controls={runSync:{disabled:false},runCaptions:{disabled:false},captionVoiceTrack:{value:"1"},subtitleMaxCharacters:{value:"42"},captionLanguage:{value:"vi"}};
   let api, advances=0, engineCallback=null, resumeCallback=null, journal;
   const directories=new Set(),pendingJournals=options.pendingJournals||new Set();
-  const sequence={name:"fixture",sequenceId:"seq",voices:[{start:0,end:4,speedPercent:100,inPoint:0}]};
+  const sequence=require("./edit-input.test.js")();
   const plan={ok:true,schemaVersion:8,sequenceId:"seq",summary:{punctuationSentenceCount:2,captionCueCount:2},speedMergeTrial:"adjacent-speed-v2",visualSegments:[],reviewMarkers:[]};
   function stopAt(key){if(options.onPoint)options.onPoint(key,api);if(options.stopAt===key){api.stop();api.stop();assert(api.busy(),"Stop cannot unlock an outstanding call");assert(controls.stopWorkflow.disabled);assert(controls.stopWorkflow.textContent.includes("Đang yêu cầu"));}}
-  const fakeFs={existsSync:p=>p.endsWith(".srt")||directories.has(p)||pendingJournals.has(p),
+  const fakeFs={existsSync:p=>p.endsWith(".srt")||p==="voice.mp3"||directories.has(p)||pendingJournals.has(p),
     mkdirSync(p){for(let folder=p;folder!==path.dirname(folder);folder=path.dirname(folder))directories.add(folder);},
     readdirSync(p){return [...new Set([...directories,...pendingJournals].map(item=>path.dirname(item)===p?path.basename(item):null).filter(Boolean))];},
     lstatSync:p=>({isDirectory:()=>directories.has(p),isSymbolicLink:()=>false,mtime:new Date()}),
@@ -32,7 +32,7 @@ function fixture(options={}){
     if(options.holdEngine)engineCallback=finish;else Promise.resolve().then(finish);
     return {};
   }};
-  const context={require:n=>({fs:fakeFs,path,child_process:childProcess,crypto}[n]),window:{PvsSecurity:{assertNoLinks(){}},PvsNotificationPolicy:policy},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){},hasFocus:()=>true},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},process:{env:{SystemRoot:"C:\\Windows"}},fixture:{calls,sequence,options,stopAt},setTimeout:(fn)=>{stopAt("export-yield");Promise.resolve().then(fn);}};
+  const context={require:n=>({fs:fakeFs,path,child_process:childProcess,crypto}[n]),window:{PvsEditInput:require("../../extension/js/edit-input.js"),PvsSecurity:{assertNoLinks(){}},PvsNotificationPolicy:policy},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){},hasFocus:()=>true},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},process:{env:{SystemRoot:"C:\\Windows"}},fixture:{calls,sequence,options,stopAt},setTimeout:(fn)=>{stopAt("export-yield");Promise.resolve().then(fn);}};
   const storage=options.storage||new Map();
   context.localStorage={getItem:key=>storage.get(key)||null,setItem:(key,v)=>storage.set(key,v),removeItem:key=>storage.delete(key)};
   context.window.setTimeout=(fn)=>Promise.resolve().then(fn);
@@ -81,7 +81,7 @@ function fixture(options={}){
   }};
   const inject=`
     applicationDataRoot=()=>"C:\\\\fixture";extensionRoot=()=>"C:\\\\panel";ensureHostLoaded=async()=>{};
-    scanSequence=async()=>{fixture.calls.push(["scan-edit",fixture.sequence.sequenceId]);fixture.stopAt("scan");return fixture.sequence;};
+    readSequenceScan=async()=>{fixture.calls.push(["scan-edit",fixture.sequence.sequenceId]);fixture.stopAt("scan");return fixture.sequence;};
     state.captionPlan={key:"fixture",input:{sourceMode:"tracks",scopeMode:"whole",trackIndices:[1]},ranges:[{start:0,end:4},{start:5,end:9}]};
     scanCaptionRange=async()=>{fixture.calls.push(["scan-captions",fixture.sequence.sequenceId]);fixture.stopAt("scan");return {projectId:"project",sequenceId:fixture.sequence.sequenceId,snapshot:"base",frameRate:30,plan:state.captionPlan};};
     readSettings=()=>settingDefaults;findWavePreset=()=>"preset.epr";

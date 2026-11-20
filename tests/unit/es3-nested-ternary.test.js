@@ -43,6 +43,7 @@ const files = [
     "extension/jsx/host.jsx",
     "extension/jsx/diagnostic-executor.jsx",
     "extension/js/caption-input.js",
+    "extension/js/edit-input.js",
     "tools/diagnostic-fast-support.jsx",
     ...fs.readdirSync(path.join(root, "tools/probes")).filter(name => name.endsWith(".jsx")).map(name => "tools/probes/" + name)
 ];

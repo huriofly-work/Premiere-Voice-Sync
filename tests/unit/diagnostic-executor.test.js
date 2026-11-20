@@ -743,6 +743,16 @@ for(const profile of ["baseline","fast","no-delay"]){
     assert.strictEqual(result.result.error,"DIAGNOSTIC_TIMELINE_CHANGED_BETWEEN_BATCHES");assert.strictEqual(guarded.actions.length,0);
   }
 }
+for (const [change, error] of [
+  [f => { f.seq.audioTracks[0].clips[0].name = "Renamed"; }, "Could not locate linked original audio."],
+  [f => { f.seq.videoTracks[0].clips[0].end = time(1); }, "V1 main clip no longer matches plan."],
+  [f => { f.seq.audioTracks[1].clips[0].name = "Renamed voice"; }, "Could not map voice chapter for marker reconciliation: 1"]
+]) {
+  const changed = fixture(1); change(changed);
+  const result = finishTrial(changed, "no-delay").report;
+  assert.strictEqual(result.error, error);
+  assert.strictEqual(result.timelineMutated, false);
+}
 const invalid=fixture();assert.strictEqual(JSON.parse(invalid.api.beginDiagnosticEdit("fixture","token","invalid")).error,"DIAGNOSTIC_PROFILE_INVALID");assert.strictEqual(invalid.actions.length,0);
 for(const profile of ["fast","no-delay"]){
   const stalled=fixture(1),root=stalled.context.app.project.rootItem,create=root.createBin;let sleeps=0;

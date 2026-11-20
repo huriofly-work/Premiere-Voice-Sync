@@ -136,37 +136,28 @@ function Assert-PvsTrialPlanConservation {
 }
 
 function Assert-PvsDtwTrialInput {
-    param($Job)
-    if(-not $Job.PSObject.Properties['editBoundaryTrial'] -or $Job.editBoundaryTrial -cne 'dtw-additive-v1' -or $Job.workflow -cnotin @('experimental-dtw-direct','one-click-dtw-direct')){throw 'TRIAL_EXPLICIT_OPT_IN_REQUIRED'}
-    $fps=[double]$Job.sequence.frameRate
-    if([double]::IsNaN($fps) -or [double]::IsInfinity($fps) -or $fps -lt 1 -or $fps -gt 240){throw 'TRIAL_FRAME_RATE_INVALID'}
-    $gap=2.0
-    if($Job.PSObject.Properties['algorithm'] -and $Job.algorithm.PSObject.Properties['voiceGroupGapSeconds']){$gap=[double]$Job.algorithm.voiceGroupGapSeconds}
-    if([double]::IsNaN($gap) -or [double]::IsInfinity($gap) -or $gap -lt 0.2 -or $gap -gt 20){throw 'TRIAL_GROUP_GAP_INVALID'}
-    $voices=@($Job.sequence.voices | Sort-Object start)
-    if(-not $voices.Count){throw 'TRIAL_VOICE_MISSING'}
-    for($i=0;$i -lt $voices.Count;$i++){
-        if($i -gt 0 -and [double]$voices[$i].start-[double]$voices[$i-1].end -gt $gap){break}
-        $voice=$voices[$i]
-        if(-not $voice.PSObject.Properties['inPoint'] -or $null -eq $voice.inPoint -or -not $voice.PSObject.Properties['speedPercent'] -or $null -eq $voice.speedPercent){throw "TRIAL_VOICE_METADATA_REQUIRED:chapter-$($i+1)"}
+    param([double]$FrameRate, [object[]]$Voices)
+    if([double]::IsNaN($FrameRate) -or [double]::IsInfinity($FrameRate) -or $FrameRate -lt 1 -or $FrameRate -gt 240){throw 'TRIAL_FRAME_RATE_INVALID'}
+    for($i=0;$i -lt $Voices.Count;$i++){
+        $voice=$Voices[$i]
         $inPoint=[double]$voice.inPoint;$speed=[double]$voice.speedPercent
         if([double]::IsNaN($inPoint) -or [double]::IsInfinity($inPoint) -or [double]::IsNaN($speed) -or [double]::IsInfinity($speed) -or $speed -lt 1){throw "TRIAL_VOICE_METADATA_INVALID:chapter-$($i+1)"}
         # DTW words, legacy words and source-file quiet intervals already use
         # 100/speed. Preserve that scale; do not normalize the voice to 100%.
         # A nonzero media In is different: existing recognition does not
-        # subtract it, so it remains unsupported by this opt-in trial.
+        # subtract it, so it remains unsupported.
         if([Math]::Abs($inPoint) -gt 0.000001){throw ('TRIAL_VOICE_MEDIA_IN_NONZERO:chapter-{0};inPointSeconds={1};speedPercent={2}' -f ($i+1),$inPoint.ToString('R',[Globalization.CultureInfo]::InvariantCulture),$speed.ToString('R',[Globalization.CultureInfo]::InvariantCulture))}
     }
 }
 
 function Assert-PvsDtwTrialJob {
     param($Job,$Baseline)
-    Assert-PvsDtwTrialInput $Job
     if(-not $Baseline.ok -or $Baseline.schemaVersion -ne 8 -or $Baseline.plannerRevision -ne 18){throw 'TRIAL_STABLE_PLAN_REQUIRED'}
     if(-not $Job.sequence.sequenceId -or $Baseline.sequenceId -cne $Job.sequence.sequenceId -or -not $Job.sequence.mainVideoClip.nodeId -or -not @($Job.sequence.linkedAudio).Count){throw 'TRIAL_LIVE_TEMPLATE_REQUIRED'}
     if(($Baseline.mainVideoClip | ConvertTo-Json -Depth 12 -Compress) -cne ($Job.sequence.mainVideoClip | ConvertTo-Json -Depth 12 -Compress) -or ($Baseline.linkedAudio | ConvertTo-Json -Depth 12 -Compress) -cne ($Job.sequence.linkedAudio | ConvertTo-Json -Depth 12 -Compress) -or $Baseline.frameRate -ne $Job.sequence.frameRate){throw 'TRIAL_BASELINE_JOB_MISMATCH'}
     $jobVoices=@($Job.sequence.voices | Sort-Object start | Select-Object -First @($Baseline.voiceClips).Count)
     if(($Baseline.voiceClips | ConvertTo-Json -Depth 12 -Compress) -cne ($jobVoices | ConvertTo-Json -Depth 12 -Compress)){throw 'TRIAL_BASELINE_VOICES_MISMATCH'}
+    Assert-PvsDtwTrialInput $Job.sequence.frameRate $jobVoices
 }
 
 function Assert-PvsDtwTrialCuts {

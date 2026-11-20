@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$JobPath,[string]$PlanPath='',[switch]$ValidateOnly)
+param([Parameter(Mandatory)][string]$JobPath,[string]$PlanPath='')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot\lib\Paths.ps1"
@@ -8,8 +8,6 @@ $job=Get-Content -LiteralPath $JobPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $output=[IO.Path]::GetFullPath([string]$job.outputFolder)
 Assert-PvsSafePath -Path $JobPath -Root $output
 Assert-PvsSafePath -Path $output -Tree
-Assert-PvsSpeedMergeInput $job
-if($ValidateOnly){Write-Host 'SPEED_MERGE_INPUT_OK:no-ASR;no-Premiere-calls';return}
 if(-not $PlanPath){$PlanPath=Join-Path $output 'sentence-edit-plan.json'}
 Assert-PvsSafePath -Path $PlanPath -Root $output
 $baseline=Get-Content -LiteralPath $PlanPath -Raw -Encoding UTF8 | ConvertFrom-Json

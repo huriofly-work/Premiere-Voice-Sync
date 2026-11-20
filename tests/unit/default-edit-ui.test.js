@@ -1,6 +1,8 @@
 "use strict";
 const assert=require("assert"),vm=require("vm"),fs=require("fs"),path=require("path").win32;
 const source=fs.readFileSync(require("path").join(__dirname,"../../extension/js/main.js"),"utf8");
+const scanFixture = require("./edit-input.test.js");
+const editInput = require("../../extension/js/edit-input.js");
 async function scenario(options={}){
   const calls=[],alerts=[],controls={pausePerformanceTrial:{checked:true}};let folder="",scans=0;
   const base={ok:true,schemaVersion:8,sequenceId:"seq",summary:{punctuationSentenceCount:2,captionCueCount:2}};
@@ -8,30 +10,48 @@ async function scenario(options={}){
   const merged=Object.assign({},options.noCuts?base:dtw,{speedMergeTrial:"adjacent-speed-v2",visualSegments:[],speedMergeSummary:{visualGroupsAfter:1}});
   const report=Object.assign({ok:true,revision:"dtw-additive-v1",canApply:!options.noCuts,addedCutCount:options.noCuts?0:1,coverageVerified:true,existingCutsPreserved:true,durationChangedFrames:0,newPauses:0,boundaries:[]},options.report||{});
   const merge=Object.assign({ok:true,revision:"adjacent-speed-v2",canApply:!options.noMerge,coverageVerified:true,voiceUnchanged:true,captionsUnchanged:true,durationChangedFrames:0,newPauses:0,summary:{mergeCount:options.noMerge?0:1,visualGroupsBefore:2,visualGroupsAfter:options.noMerge?2:1,warningsBefore:1,warningsAfter:0}},options.mergeReport||{});
-  const fakeFs={existsSync:p=>p.endsWith(".srt"),mkdirSync:p=>{folder=p;},writeFileSync(p,t){if(p.endsWith("job.json"))calls.push(["job",JSON.parse(t)]);if(p.endsWith("timeline-executor.json"))calls.push(["executor-input",p,JSON.parse(t)]);},readFileSync(p){
+  const fakeFs={existsSync:p=>p.endsWith(".srt") || p === "voice.mp3",mkdirSync:p=>{folder=p;},writeFileSync(p,t){if(p.endsWith("job.json"))calls.push(["job",JSON.parse(t)]);if(p.endsWith("timeline-executor.json"))calls.push(["executor-input",p,JSON.parse(t)]);},readFileSync(p){
     if(p.endsWith("alignment-result.json"))return JSON.stringify(Object.assign({recognitionBackend:"cpu",recognitionBackendLabel:"CPU"}, options.preserveTimeline?{preserveTimeline:true,recognitionReviewTasks:[{chapter:0,start:1,end:4}]}:{}));
     if(p.endsWith("dtw-trial-report.json"))return JSON.stringify(Object.assign({},report,{planPath:options.badPath?"C:\\outside\\plan.json":path.join(folder,"dtw-trial","sentence-edit-plan.json")}));
     if(p.endsWith("speed-merge-report.json"))return JSON.stringify(Object.assign({},merge,{planPath:path.join(folder,"speed-merge-trial","sentence-edit-plan.json")}));
     if(p.endsWith("sentence-edit-plan.json"))return JSON.stringify(p.includes("speed-merge-trial")?merged:p.includes("dtw-trial")?dtw:base);
     throw Error("Unexpected read");
   }};
-  const context={require:n=>({fs:fakeFs,path,child_process:{}}[n]),window:{PvsSecurity:{assertNoLinks(){}},confirm(){throw Error("NATIVE_CONFIRM_FORBIDDEN");},alert:t=>alerts.push(t)},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){}},localStorage:{getItem(){return null;},setItem(){}},process:{env:{}},console,fixture:{calls}};
+  const context={require:n=>({fs:fakeFs,path,child_process:{}}[n]),window:{PvsEditInput:editInput,PvsSecurity:{assertNoLinks(){}},confirm(){throw Error("NATIVE_CONFIRM_FORBIDDEN");},alert:t=>alerts.push(t)},document:{getElementById:id=>controls[id]||(controls[id]={}),addEventListener(){}},localStorage:{getItem(){return null;},setItem(){}},process:{env:{}},console,fixture:{calls,executorError:options.executorError,scan(){
+    calls.push(["scan"]); const changed = ++scans > 1;
+    const sequence = scanFixture({projectId:changed && options.staleProject ? "other-project" : "project", mainVideoPieceCount:changed && options.stale ? 2 : 1});
+    if (options.invalidInput) Object.assign(sequence.voices[0],{inPoint:1,path:"missing.mp3"});
+    return sequence;
+  }}};
   const inject=`
     applicationDataRoot=function(){return "C:\\\\fixture";};extensionRoot=function(){return "C:\\\\extension";};
-    scanSequence=async function(){fixture.calls.push(["scan"]);return {name:"fixture",projectId:${!!options.staleProject} && fixture.calls.filter(c=>c[0]==="scan").length>1?"other-project":"project",sequenceId:${JSON.stringify(options.stale)} && fixture.calls.filter(c=>c[0]==="scan").length>1?"changed":"seq",voices:[{start:0,end:4,speedPercent:110,inPoint:0}]};};
     applySettings(Object.assign({},settingDefaults,${JSON.stringify(options.settings||{})}));
     if(${!!options.commaGap})byId("minDialogueGap").value="0,5";
     setWorkflowBusy=function(b){state.workflowBusy=b;};
     createWorkflowMetrics=function(workflow){fixture.calls.push(["metrics-start",workflow]);return {begin:s=>fixture.calls.push(["metrics-begin",s]),end:(r,o)=>fixture.calls.push(["metrics-end",o||"success"]),finish:o=>fixture.calls.push(["metrics-finish",o])};};
-    runPowerShell=async function(file,args){fixture.calls.push(["script",file,args]);if(${!!options.invalidInput} && args.includes("-ValidateOnly"))throw Error("TRIAL_VOICE_MEDIA_IN_NONZERO");};
-    executeStagedPlan=async function(p,pause,fast,workflow,metrics,noDelay){fixture.calls.push(["staged",p,pause,fast,workflow,noDelay]);return {ok:true,executorVersion:25,clearedClipMarkerCount:1,mergeClipMarkerCount:1};};
-    evalHost=async function(){throw Error("DIRECT_SINGLE_CALL_EXECUTOR_FORBIDDEN");};
+    runPowerShell=async function(file,args){fixture.calls.push(["script",file,args]);};
+    executeStagedPlan=async function(p,pause,fast,workflow,metrics,noDelay){fixture.calls.push(["staged",p,pause,fast,workflow,noDelay]);return fixture.executorError ? {ok:false,error:fixture.executorError,executorVersion:25} : {ok:true,executorVersion:25,clearedClipMarkerCount:1,mergeClipMarkerCount:1};};
+    evalHost=async function(script){if(script==="$._PVS.scanSequence()")return fixture.scan();throw Error("DIRECT_SINGLE_CALL_EXECUTOR_FORBIDDEN");};
     removeTreeSafe=function(){fixture.calls.push(["cleanup"]);};retainLastRun=removeTreeSafe;status=log=renderBackend=function(){};
-    state.targetSrt="C:\\\\fixture.srt";window.testApi={runSync,runPerformanceTrial,runFastPerformanceTrial,choose:chooseWorkflowNotice,pending:function(){return !!state.noticeChoice;},busy:function(){return state.workflowBusy;}};
+    state.targetSrt="C:\\\\fixture.srt";window.testApi={runDiagnostics,checkInputs,runSync,runPerformanceTrial,runFastPerformanceTrial,choose:chooseWorkflowNotice,pending:function(){return !!state.noticeChoice;},busy:function(){return state.workflowBusy;}};
   `;
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);',inject),context);
   const running=context.window.testApi[options.kind||"runSync"]();
   for(let i=0;i<10&&!context.window.testApi.pending();i++)await Promise.resolve();
+  if (options.invalidInput) {
+    assert(!context.window.testApi.pending(), "Invalid input must stop before confirmation.");
+    await running;
+    assert(!calls.some(c=>["job","script","staged"].includes(c[0])), "Invalid input must stop before any engine call.");
+    const notice = () => [controls.workflowNoticeTitle.textContent, controls.workflowNoticeMessage.textContent, controls.workflowNoticeTechnical.textContent];
+    const expected = notice();
+    assert(expected[0].includes("Sequence chưa dùng được"));
+    assert(expected[2].includes("VOICE_HEAD_TRIMMED") && expected[2].includes("VOICE_FILE_MISSING"));
+    for (const check of ["runDiagnostics","checkInputs"]) {
+      await context.window.testApi[check]();
+      assert.deepStrictEqual(notice(), expected);
+    }
+    return {calls,alerts,controls};
+  }
   assert(context.window.testApi.pending(),"Start requires explicit in-panel approval.");
   assert(context.window.testApi.busy());assert(!calls.some(c=>["job","script","staged"].includes(c[0])));
   calls.push(["confirm",controls.workflowNoticeMessage.textContent]);
@@ -42,9 +62,10 @@ async function scenario(options={}){
   assert.strictEqual(alerts.length,0,"Workflow results must not open a native alert.");return {calls,alerts,controls};
 }
 (async()=>{
+  for(const kind of ["runSync","runPerformanceTrial","runFastPerformanceTrial"]) await scenario({kind,invalidInput:true});
   const preserved=await scenario({preserveTimeline:true});
   assert(!preserved.calls.some(c=>c[0]==="staged"),"Unproven source mapping must never call the editing executor.");
-  assert(!preserved.calls.some(c=>c[0]==="script"&&/build-sentence|build-dtw-trial.*(?!ValidateOnly)|build-speed-merge.*(?!ValidateOnly)/.test(c[1])&&!c[2].includes("-ValidateOnly")),"Whole-template preservation must not create an edit plan.");
+  assert(!preserved.calls.some(c=>c[0]==="script"&&/build-sentence|build-dtw-trial|build-speed-merge/.test(c[1])),"Whole-template preservation must not create an edit plan.");
   assert(preserved.calls.some(c=>c[0]==="metrics-finish"&&c[1]==="success"),"Recognition uncertainty finishes with review, not a failed workflow.");
   assert.strictEqual(preserved.controls.workflowNoticeCard.className,"workflow-notice-card warn");
   assert(preserved.controls.workflowNoticeTechnical.textContent.includes("00:00:01.000"),"The review includes the preserved voice range.");
@@ -74,8 +95,8 @@ async function scenario(options={}){
     const packet=r.calls.find(c=>c[0]==="executor-input");assert.equal(packet[1],execution[1]);assert.equal(packet[2].speedMergeTrial,"adjacent-speed-v2");assert.equal(!!packet[2].editBoundaryTrial,!options.noCuts);
     assert.strictEqual(execution[2],false);assert.strictEqual(execution[3],true);assert.strictEqual(execution[4],"auto-edit-dtw-merge");
     assert.strictEqual(execution[5],true);assert(!r.calls.find(c=>c[0]==="confirm")[1].includes("BẢN THỬ KHÔNG DELAY"));
-    const scripts=r.calls.filter(c=>c[0]==="script");assert(scripts[0][1].includes("build-dtw-trial-plan")&&scripts[0][2].includes("-ValidateOnly"));assert(scripts[1][1].includes("build-speed-merge")&&scripts[1][2].includes("-ValidateOnly"));
-    const mergeCall=scripts.find(c=>c[1].includes("build-speed-merge")&&!c[2].includes("-ValidateOnly"));assert(mergeCall[2].includes("-PlanPath"));assert.strictEqual(mergeCall[2][3].includes("dtw-trial"),!options.noCuts);
+    const scripts=r.calls.filter(c=>c[0]==="script");assert(scripts[0][1].includes("run-alignment"));assert(!scripts.some(c=>c[2].includes("-ValidateOnly")));
+    const mergeCall=scripts.find(c=>c[1].includes("build-speed-merge"));assert(mergeCall[2].includes("-PlanPath"));assert.strictEqual(mergeCall[2][3].includes("dtw-trial"),!options.noCuts);
     assert.strictEqual(r.calls.filter(c=>c[0]==="scan").length,2);assert(r.calls.some(c=>c[0]==="cleanup"));
     assert.strictEqual(r.controls.workflowNotice.hidden,false);
     assert(r.controls.workflowNoticeTitle.textContent.includes("Đã dựng xong"));
@@ -91,9 +112,14 @@ async function scenario(options={}){
   for(const mergeReport of [{voiceUnchanged:false},{captionsUnchanged:false},{coverageVerified:false},{durationChangedFrames:1},{newPauses:1},{revision:"wrong"},{canApply:false}]){
     const r=await scenario({mergeReport});assert(!r.calls.some(c=>c[0]==="staged"));assert(r.calls.some(c=>c[0]==="cleanup"));
   }
-  for(const options of [{stale:true},{badPath:true},{invalidInput:true},{cancel:true}]){
+  for(const options of [{stale:true},{badPath:true},{cancel:true}]){
     const r=await scenario(options);assert(!r.calls.some(c=>c[0]==="staged"));
-    if(options.invalidInput)assert(!r.calls.some(c=>c[0]==="script"&&c[1].includes("run-alignment")));
+    if(options.stale)assert(r.controls.workflowNoticeMessage.textContent.includes("Template đã thay đổi trong lúc phân tích"));
+  }
+  for (const executorError of ["Could not locate linked original audio.", "V1 main clip no longer matches plan.", "Could not map voice chapter for marker reconciliation: 1", "DIAGNOSTIC_TIMELINE_CHANGED_BETWEEN_BATCHES"]) {
+    const r = await scenario({executorError});
+    assert.match(r.controls.workflowNoticeMessage.textContent, /Template đã thay đổi (kể từ lúc kiểm tra|giữa các đợt dựng)/);
+    assert(r.controls.workflowNoticeTechnical.textContent.includes(executorError));
   }
   for(const kind of ["runPerformanceTrial","runFastPerformanceTrial"]){
     const r=await scenario({kind}),job=r.calls.find(c=>c[0]==="job")[1],execution=r.calls.find(c=>c[0]==="staged");
@@ -105,5 +131,5 @@ async function scenario(options={}){
   }
   assert(!/allowDtwTrial|allowSpeedMerge|runDtwTrial/.test(source));
   assert(!/noDelayAutoEditTrial|noDelayTrial|BẢN THỬ KHÔNG DELAY/.test(source),"Accepted scheduling is the default, not a trial toggle.");
-  console.log("DEFAULT_EDIT_UI_OK:DTW-merge-fast-default;one-confirmation;safe-no-op-continues;both-preflights-before-ASR;baseline-diagnostics;stale-path-report-guards;cleanup");
+  console.log("DEFAULT_EDIT_UI_OK:DTW-merge-fast-default;one-confirmation;safe-no-op-continues;shared-input-check-before-confirmation;baseline-diagnostics;stale-path-report-guards;cleanup");
 })().catch(e=>{console.error(e);process.exitCode=1;});
