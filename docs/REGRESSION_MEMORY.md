@@ -1,5 +1,11 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #98 — Bỏ chuyển đổi dữ liệu và bản cài cũ trong 3.0.0
+
+- Giá trị tốc độ 110% đã lưu được nạp nguyên giá trị. Chỉ điền mặc định cho trường còn thiếu. Planner dùng tên trường ngưỡng hiện tại, revision căn lời v2 và khoảng trống nguồn do alignment xuất.
+- Setup và gỡ ZIP bỏ xử lý mục Installed apps và uninstaller của bản EXE. Vẫn thay panel có rollback, sao lưu và khôi phục PlayerDebugMode, kiểm dấu sở hữu panel-only trước khi gỡ dữ liệu và giữ TEMP ngoài vùng dữ liệu.
+- Test UI đọc 130 trước sửa và 110 sau sửa. Bộ chuẩn đạt 78 nhóm và parse 139 file PowerShell, gồm các fixture khoảng trống nguồn. Bản đầy đủ qua 42 nhóm, gồm năm nhóm tích hợp Windows, rồi dừng tại PanelRegistry vì bị từ chối tạo khóa HKCU thử nghiệm. Gỡ ZIP bỏ qua registry đã đạt. Chưa nghiệm thu Premiere. Log ở _local/remove-legacy-compat/.
+
 ## Issue #96 — Ba loại marker trong 3.0.0 (19/11/2026)
 
 - **Quyết định.** Video trên nest V1 nhận tốc độ, gộp hình và hậu kiểm V1/A1. Voice trên file voice nhận cảnh báo căn voice và lệch vị trí A2. Caption nhận toàn bộ `plan.reviewMarkers`. Tạo phụ đề lấy track đã dùng đầu tiên có clip giao với cảnh báo. Dựng theo voice hoàn tất theo thứ tự Tạo caption → Hậu kiểm → Gắn marker → Báo cáo. Mỗi ProjectItem được đối chiếu một lần, nest trước, rồi các nguồn voice. Dành chỗ Voice trước Caption.

@@ -8,9 +8,6 @@ $planner = [IO.File]::ReadAllText((Join-Path $projectRoot 'extension\engine\buil
 
 foreach ($required in @(
     'minSpeed: 70, maxSpeed: 130, minDialogueGap: 0.5, voiceGroupGap: 2, maxCaptionCharacters: 42',
-    'settingsSchemaVersion = "3"',
-    'Number(migrated.maxSpeed) === 110',
-    'migrated.maxSpeed = settingDefaults.maxSpeed',
     'function runDiagnostics()',
     'function inspectSrt(filePath)',
     'function setWorkflowBusy(busy)',

@@ -35,10 +35,10 @@ Check ($candidate.visualSegments.Count -eq 4 -and $candidate.visualSegments[0].A
 Check (($base | ConvertTo-Json -Depth 30 -Compress) -ceq $original) 'baseline-untouched'
 # Faster raw neighbor is not necessarily the best combined speed (duration weight).
 $anchored=Make-Plan @(40,100) @(100,100)
-$anchored|Add-Member acousticEditBoundaryRevision 'raw-dtw-quiet-partition-v1'
+$anchored|Add-Member acousticEditBoundaryRevision 'dtw-cue-quiet-partition-v2'
 Check ((Get-PvsSpeedMergeTrial $anchored).speedMergeSummary.mergeCount -eq 0) 'speed-balancing-cannot-move-sync-anchor'
 $unchangedAnchor=Make-Plan @(68,69) @(100,100)
-$unchangedAnchor|Add-Member acousticEditBoundaryRevision 'raw-dtw-quiet-partition-v1'
+$unchangedAnchor|Add-Member acousticEditBoundaryRevision 'dtw-cue-quiet-partition-v2'
 Check ((Get-PvsSpeedMergeTrial $unchangedAnchor).speedMergeSummary.mergeCount -eq 1) 'anchor-preserving-merge-still-allowed'
 $candidate=Get-PvsSpeedMergeTrial (Make-Plan @(130,3500,11000) @(100,10000,10000))
 Check ($candidate.speedMergeSummary.steps[0].Direction -eq 'next') 'evaluate-both-weighted'

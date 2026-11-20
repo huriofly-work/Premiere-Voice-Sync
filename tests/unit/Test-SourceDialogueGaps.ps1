@@ -13,8 +13,7 @@ function Invoke-GapCase($Cues,[string]$Quiet="silence_start: 1.4`nsilence_end: 1
     $voice=Join-Path $case 'voice.wav';Set-Content -LiteralPath $voice -Value '' -Encoding ASCII
     $native='. "$PSScriptRoot\Security.ps1"; . "$PSScriptRoot\AudioCache.ps1"; function Invoke-NativeCapture {param($FilePath,$Arguments);[pscustomobject]@{ExitCode=0;Output="'+$Quiet.Replace('"','`"').Replace("`r",'').Replace("`n",'`n')+'"}}'
     Set-Content -LiteralPath "$temp\engine\lib\Native.ps1" -Value $native -Encoding ASCII
-    $alignment=[ordered]@{voiceChapterCount=1;cues=$Cues}
-    if($SourceGaps.Count){$alignment.sourceSubtitleGaps=$SourceGaps}
+    $alignment=[ordered]@{voiceChapterCount=1;cues=$Cues;sourceSubtitleGaps=$SourceGaps}
     $alignment | ConvertTo-Json -Depth 18 | Set-Content "$case\alignment-result.json" -Encoding UTF8
     $job=@{outputFolder=$case;speedWarningMinPercent=70;speedWarningMaxPercent=130;algorithm=@{useWhisperCache=$false;minNoDialogueGapSeconds=$Threshold};sequence=@{frameRate=$Fps;sequenceId='source-gap';name='source-gap';mainVideoClip=@{start=0;end=$MainEnd};voices=@(@{start=$VoiceStart;end=$VoiceEnd;path=$voice;speedPercent=100;inPoint=0});linkedAudio=@();voiceTrackIndex=1}}
     if($OmitThreshold){$job.algorithm.Remove('minNoDialogueGapSeconds')}
@@ -31,8 +30,9 @@ try {
         [pscustomobject]@{Index=1;Text='First words without sentence punctuation,';Start=0.0;End=1.4;OriginalStart=0.0;OriginalEnd=1.0;Chapter=0;Confidence=1.0;WordTimings=@()},
         [pscustomobject]@{Index=2;Text='next words complete this sentence.';Start=1.6;End=3.0;OriginalStart=2.0;OriginalEnd=3.0;Chapter=0;Confidence=1.0;WordTimings=@()}
     )
+    $sourceGaps=@([pscustomobject]@{leftCue=1;rightCue=2;sourceStart=1.0;sourceEnd=2.0})
     foreach($fps in @(30.0,(30000.0/1001))){
-        $plan=Invoke-GapCase -Cues $cues -Fps $fps
+        $plan=Invoke-GapCase -Cues $cues -Fps $fps -SourceGaps $sourceGaps
         $gaps=@($plan.segments | Where-Object Kind -eq 'gap')
         if($gaps.Count -ne 1 -or $gaps[0].SourceStartFrame -ne [Math]::Round($fps) -or $gaps[0].SourceEndFrame -ne [Math]::Round(2*$fps) -or $gaps[0].OutputDurationFrames -ne $gaps[0].SourceDurationFrames){throw 'SOURCE_GAP_SWALLOWED_BEFORE_PUNCTUATION'}
         $final=Get-PvsSpeedMergeTrial $plan
@@ -40,14 +40,15 @@ try {
         if(@($final.visualSegments | Where-Object Kind -eq 'gap').Count -ne 1 -or ($final.captions.Text -join ' ') -cne ($cues.Text -join ' ')){throw 'SOURCE_GAP_OR_CAPTION_LOST_AFTER_SPEED_MERGE'}
     }
     # No safe voice cut: retain speech, but explicitly disclose the source gap.
-    $pending=Invoke-GapCase -Cues $cues -Quiet ''
+    $pending=Invoke-GapCase -Cues $cues -SourceGaps $sourceGaps -Quiet ''
     if(@($pending.segments | Where-Object Kind -eq 'retime').Count -ne 1 -or @($pending.sourceGapReviewRanges).Count -ne 1){throw 'UNSAFE_GAP_NOT_REPORTED_FOR_REVIEW'}
-    $below=Invoke-GapCase -Cues $cues -Threshold 1.1
+    $below=Invoke-GapCase -Cues $cues -SourceGaps $sourceGaps -Threshold 1.1
     if(@($below.segments | Where-Object Kind -eq 'gap').Count -or @($below.sourceGapReviewRanges).Count){throw 'CUSTOM_GAP_THRESHOLD_IGNORED'}
     $exact=@($cues | ForEach-Object {$_.PSObject.Copy()});$exact[1].OriginalStart=1.5
-    $atThreshold=Invoke-GapCase -Cues $exact
+    $exactGaps=@([pscustomobject]@{leftCue=1;rightCue=2;sourceStart=1.0;sourceEnd=1.5})
+    $atThreshold=Invoke-GapCase -Cues $exact -SourceGaps $exactGaps
     if(@($atThreshold.segments | Where-Object Kind -eq 'gap').Count -ne 1){throw 'GAP_EQUAL_TO_CUSTOM_THRESHOLD_LOST'}
-    $fallback=Invoke-GapCase -Cues $exact -OmitThreshold
+    $fallback=Invoke-GapCase -Cues $exact -SourceGaps $exactGaps -OmitThreshold
     if($fallback.minNoDialogueGapSeconds -ne 0.5 -or @($fallback.segments | Where-Object Kind -eq 'gap').Count -ne 1){throw 'ENGINE_DEFAULT_GAP_NOT_HALF_SECOND'}
 
     # A compact raw DTW token supplies a measured sentence edge, without
@@ -65,7 +66,8 @@ try {
     $recovered[0] | Add-Member EditBoundaryReviewRequired $true
     Set-PvsSourceGapSpeechEvidence $recovered $observed $words $voices
     if(-not $recovered[0].PSObject.Properties['SourceGapEndEvidence'] -or -not $recovered[1].PSObject.Properties['SourceGapStartEvidence'] -or $recovered[0].WordTimings[-1].SubtitleTimingQuality -ne 'estimated'){throw 'COMPACT_RAW_EDGE_MISSING_OR_TIMING_PROMOTED'}
-    $numeric=Invoke-GapCase -Cues $recovered -Quiet "silence_start: 1.5`nsilence_end: 1.7" -VoiceStart 10 -VoiceEnd 13 -MainEnd 12
+    $reviewGaps=@([pscustomobject]@{leftCue=1;rightCue=2;sourceStart=4;sourceEnd=8.16})
+    $numeric=Invoke-GapCase -Cues $recovered -SourceGaps $reviewGaps -Quiet "silence_start: 1.5`nsilence_end: 1.7" -VoiceStart 10 -VoiceEnd 13 -MainEnd 12
     if(@($numeric.segments | Where-Object Kind -eq 'gap').Count -ne 1 -or ($numeric.captions.Text -join ' ') -cne ($texts -join ' ')){throw 'RECOVERED_SOURCE_GAP_NOT_PRESERVED'}
     foreach($fault in @('estimated','ambiguous','wrong-digits','invalid-time')){
         $badWords=@($words | ForEach-Object {$_.PSObject.Copy()});$badObserved=@($observed | ForEach-Object {$_.PSObject.Copy()});$badCues=@($recovered | ForEach-Object {$_.PSObject.Copy()})
@@ -75,10 +77,10 @@ try {
         if($badCues[0].PSObject.Properties['SourceGapEndEvidence']){throw "UNSAFE_RAW_EDGE_ACCEPTED:$fault"}
     }
     $withoutProof=@($recovered | ForEach-Object {$_.PSObject.Copy()});foreach($c in $withoutProof){$c.PSObject.Properties.Remove('SourceGapStartEvidence');$c.PSObject.Properties.Remove('SourceGapEndEvidence')}
-    $guarded=Invoke-GapCase -Cues $withoutProof -Quiet "silence_start: 1.5`nsilence_end: 1.7" -VoiceStart 10 -VoiceEnd 13 -MainEnd 12
+    $guarded=Invoke-GapCase -Cues $withoutProof -SourceGaps $reviewGaps -Quiet "silence_start: 1.5`nsilence_end: 1.7" -VoiceStart 10 -VoiceEnd 13 -MainEnd 12
     if(@($guarded.segments | Where-Object Kind -eq 'gap').Count -or @($guarded.sourceGapReviewRanges).Count -ne 1){throw 'RECOVERED_TEXT_ALONE_AUTHORIZED_CUT'}
     $manual=[pscustomobject]@{Index=1;Text=($texts -join ' ');Start=10.0;End=13.0;OriginalStart=0;OriginalEnd=12;Chapter=0;Confidence=0;WordTimings=@();ManualEditBlock=$true;EditBoundaryReviewRequired=$true;ManualReferenceCueIndices=@(1,2);ManualCaptionCues=@([pscustomobject]@{Text=$texts[0];Start=10.0;End=11.5;ReferenceCueIndices=@(1)},[pscustomobject]@{Text=$texts[1];Start=11.7;End=13.0;ReferenceCueIndices=@(2)})}
-    $manualPlan=Invoke-GapCase -Cues @($manual) -Quiet "silence_start: 1.5`nsilence_end: 1.7" -VoiceStart 10 -VoiceEnd 13 -MainEnd 12 -SourceGaps @([pscustomobject]@{leftCue=1;rightCue=2;sourceStart=4;sourceEnd=8.16})
+    $manualPlan=Invoke-GapCase -Cues @($manual) -SourceGaps $reviewGaps -Quiet "silence_start: 1.5`nsilence_end: 1.7" -VoiceStart 10 -VoiceEnd 13 -MainEnd 12
     if(@($manualPlan.segments | Where-Object Kind -eq 'retime').Count -ne 1 -or @($manualPlan.sourceGapReviewRanges).Count -ne 1){throw 'MANUAL_BLOCK_CUT_OR_INTERNAL_GAP_HIDDEN'}
     Write-Host 'SOURCE_DIALOGUE_GAPS_OK:pre-punctuation;custom-threshold;30-29.97fps;raw-DTW-edge-not-estimated-words;unsafe-review;speed-merge;final-SRT;negative-evidence'
 } finally {

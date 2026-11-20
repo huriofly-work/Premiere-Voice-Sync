@@ -301,7 +301,7 @@ Kiểm bằng Whisper CUDA thật ngày 2026-10-06: ba chapter “Tàu vũ trụ
 
 `Test-MissingWordTimingRecovery.ps1` kiểm nhận diện lại block thiếu timestamp từ, offset chapter, không remap mốc neo, cùng 10 trường hợp phải từ chối. Kiểm thêm hòa ranh giới caption chồng đúng 1 frame và từ chối chồng lấn lớn hơn. `tests/manual/Test-AutoEditAlignmentMedia.ps1` nhận rõ thư mục voice/SRT, chạy alignment và planner thật nhưng không gọi Premiere; có thể dùng bản sao cache/backend có sẵn trong fixture riêng, không tải GPU. Mọi dữ liệu tạm tự dọn; không sửa voice/SRT/project gốc.
 
-`Test-PanelRegistry.ps1` dùng khóa HKCU riêng có tên ngẫu nhiên và thư mục fixture riêng, không dùng registry CEP thật. Kiểm thiết lập không đăng ký Installed apps, chuyển từ mục đăng ký cũ đúng tool, giữ cache, thiết lập nhiều lần, khôi phục PlayerDebugMode khi gỡ và từ chối đăng ký của ứng dụng khác. Kiểm fixture không thay thế nghiệm thu trên máy khác.
+`Test-PanelRegistry.ps1` dùng khóa HKCU riêng có tên ngẫu nhiên và thư mục fixture riêng, không dùng registry CEP thật. Kiểm thiết lập nhiều lần, giữ cache, gỡ panel ZIP trên tài khoản thử nghiệm sạch, khôi phục PlayerDebugMode và từ chối checksum sai hoặc đường dẫn thoát gói. Kiểm fixture không thay thế nghiệm thu trên máy khác.
 
 Để nghiệm thu subtitle độc lập: chạy trên một clip ở giữa timeline, nhiều clip rời nhau, toàn sequence không chọn clip, sequence có nest và audio nhiều track, với/không SRT tham chiếu, tiếng Việt và một ngôn ngữ khác. Xác nhận video/audio giữ nguyên, In/Out cũ được khôi phục, caption đúng vị trí, không có SRT/bin tạm trong Project. Nghe lại rồi lưu/đóng/mở project để kiểm caption còn nguyên.
 

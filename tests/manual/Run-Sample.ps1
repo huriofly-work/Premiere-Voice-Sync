@@ -29,8 +29,8 @@ $job = [ordered]@{
     sourceSrtPath = $sourceSrt.FullName
     targetSrtPath = $targetSrt.FullName
     outputFolder = $output
-    minSpeedPercent = 70
-    maxSpeedPercent = 130
+    speedWarningMinPercent = 70
+    speedWarningMaxPercent = 130
     sequence = @{ name='Engine sample'; voices=$voices }
 }
 $jobPath = Join-Path $output 'job.json'

@@ -104,8 +104,8 @@ $maxCaptionCharacters = [int](Get-AlgorithmSetting 'maxCaptionCharacters' $maxCa
 $voiceMappingToleranceFrames = [int](Get-AlgorithmSetting 'voiceMappingToleranceFrames' 2)
 $validationToleranceFrames = [int](Get-AlgorithmSetting 'validationToleranceFrames' 1)
 $maxCoverageGapFrames = [int](Get-AlgorithmSetting 'maxCoverageGapFrames' 0)
-$speedWarningMinPercent = if ($job.PSObject.Properties['speedWarningMinPercent']) { [double]$job.speedWarningMinPercent } else { [double]$job.minSpeedPercent }
-$speedWarningMaxPercent = if ($job.PSObject.Properties['speedWarningMaxPercent']) { [double]$job.speedWarningMaxPercent } else { [double]$job.maxSpeedPercent }
+$speedWarningMinPercent = [double]$job.speedWarningMinPercent
+$speedWarningMaxPercent = [double]$job.speedWarningMaxPercent
 function Assert-Range([string]$Name,[double]$Value,[double]$Minimum,[double]$Maximum) {
     if ([double]::IsNaN($Value) -or [double]::IsInfinity($Value) -or $Value -lt $Minimum -or $Value -gt $Maximum) {
         throw "INVALID_SETTING:$Name must be between $Minimum and $Maximum."
@@ -308,15 +308,13 @@ for ($i=0; $i -lt $sentences.Count; $i++) {
 }
 
 $acousticPartitioned=$false;$acousticCuts=@();$cueEvidence=@();$pictureReferences=@()
-if($alignment.PSObject.Properties['acousticEditBoundaryRevision'] -and $alignment.acousticEditBoundaryRevision -cin @('raw-dtw-quiet-partition-v1','dtw-cue-quiet-partition-v2')){
+if($alignment.PSObject.Properties['acousticEditBoundaryRevision'] -and $alignment.acousticEditBoundaryRevision -ceq 'dtw-cue-quiet-partition-v2'){
     # Recompute from the complete independent DTW stream and measured quiet;
     # manual caption estimates never grant picture/voice cut permission.
     $acousticCuts=@(Get-PvsAcousticReferenceCuts $alignment.acousticEditReferenceCues $alignment.acousticEditWords $voiceClips $voiceSilenceArray $fps $minSilenceDurationSeconds $boundarySafetyMarginSeconds)
-    if($alignment.acousticEditBoundaryRevision -ceq 'dtw-cue-quiet-partition-v2'){
-        $pictureReferences=@($alignment.acousticEditReferenceCues)
-        $cueEvidence=@(Get-PvsReferenceCueEvidence $pictureReferences $alignment.acousticEditWords $cues $voiceClips)
-        $acousticCuts=@(Get-PvsWholeCueQuietCuts $cueEvidence $alignment.acousticEditWords $voiceClips $voiceSilenceArray $fps $acousticCuts $minSilenceDurationSeconds $boundarySafetyMarginSeconds)
-    }
+    $pictureReferences=@($alignment.acousticEditReferenceCues)
+    $cueEvidence=@(Get-PvsReferenceCueEvidence $pictureReferences $alignment.acousticEditWords $cues $voiceClips)
+    $acousticCuts=@(Get-PvsWholeCueQuietCuts $cueEvidence $alignment.acousticEditWords $voiceClips $voiceSilenceArray $fps $acousticCuts $minSilenceDurationSeconds $boundarySafetyMarginSeconds)
     $partitions=@(New-PvsAcousticEditGroups $cues $alignment.acousticEditReferenceCues $voiceClips $acousticCuts $voiceSilenceArray $fps $minSilenceDurationSeconds $boundarySafetyMarginSeconds)
     if($partitions.Count){$groups.Clear();foreach($partition in $partitions){$groups.Add($partition)};$acousticPartitioned=$true}
 }
@@ -539,18 +537,15 @@ if($acousticPartitioned){
     $result.acousticEditQuiet=$voiceSilenceArray
     $result.summary.independentAcousticCutCount=$acousticCuts.Count
 }
-$physicalGapCoordinates=[bool]$alignment.PSObject.Properties['sourceSubtitleGaps']
-$sourceGaps=@(if($alignment.PSObject.Properties['sourceSubtitleGaps']){$alignment.sourceSubtitleGaps}else{
-    for($i=0;$i+1 -lt $cues.Count;$i++){if($cues[$i+1].OriginalStart -gt $cues[$i].OriginalEnd){[pscustomobject]@{leftCue=[int]$cues[$i].Index;rightCue=[int]$cues[$i+1].Index;sourceStart=$cues[$i].OriginalEnd;sourceEnd=$cues[$i+1].OriginalStart}}}
-})
 $gapReview=New-Object System.Collections.Generic.List[object]
 $gapBoundaries=New-Object System.Collections.Generic.List[object]
-foreach($gap in $sourceGaps){
+foreach($gap in $alignment.sourceSubtitleGaps){
     if($gap.sourceEnd-$gap.sourceStart -lt $minNoDialogueGapSeconds){continue}
     $a=[double]$gap.sourceStart;$b=[double]$gap.sourceEnd
     if($null -ne $editedSourceMap){
         if(@($cues | Where-Object Index -eq $gap.leftCue).Count -ne 1 -or @($cues | Where-Object Index -eq $gap.rightCue).Count -ne 1){continue}
-        if($physicalGapCoordinates){$a=ConvertTo-PvsEditedSourceTime $a $editedSourceMap $fps;$b=ConvertTo-PvsEditedSourceTime $b $editedSourceMap $fps}
+        $a=ConvertTo-PvsEditedSourceTime $a $editedSourceMap $fps
+        $b=ConvertTo-PvsEditedSourceTime $b $editedSourceMap $fps
     }
     $af=To-Frame $a;$bf=To-Frame $b
     if($af -lt $mainSourceStartFrame -or $bf -gt $mainSourceEndFrame -or $bf -le $af){continue}

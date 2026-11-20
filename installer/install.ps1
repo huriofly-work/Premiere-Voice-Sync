@@ -12,10 +12,8 @@ $targetRoot=Join-Path $roamingRoot 'Adobe\CEP\extensions'
 $target=Join-Path $targetRoot $extensionId
 $appDataRoot=Join-Path $localRoot 'PremiereVoiceSync'
 $debugKey=Join-Path $RegistryBasePath 'Adobe\CSXS.12'
-$uninstallKey=Join-Path $RegistryBasePath 'Microsoft\Windows\CurrentVersion\Uninstall\PremiereVoiceSync'
 $backupFile=Join-Path $appDataRoot 'player-debug-mode-backup.txt'
 $deploymentFile=Join-Path $appDataRoot 'deployment-mode.txt'
-$programRoot=Join-Path $localRoot 'Programs\PremiereVoiceSync'
 $notificationShortcut=Join-Path $roamingRoot 'Microsoft\Windows\Start Menu\Programs\Premiere Voice Sync Notifications.lnk'
 $notificationExecutable=Join-Path $target 'native\PvsNotifications.exe'
 Assert-PvsSafePath -Path $notificationShortcut
@@ -23,16 +21,9 @@ if (-not ('PvsNotificationIdentity' -as [type])) { Add-Type -Path (Join-Path $pa
 if ((Test-Path -LiteralPath $notificationShortcut) -and -not [PvsNotificationIdentity]::IsOwned($notificationShortcut,$notificationExecutable)) { throw 'SECURITY_NOTIFICATION_SHORTCUT_NOT_OWNED' }
 $shortcutBefore=if (Test-Path -LiteralPath $notificationShortcut) { [IO.File]::ReadAllBytes($notificationShortcut) } else { $null }
 $shortcutChanged=$false
-foreach ($path in @($target,$appDataRoot,$programRoot)) { Assert-PvsSafePath -Path $path -Tree }
+foreach ($path in @($target,$appDataRoot)) { Assert-PvsSafePath -Path $path -Tree }
 if (Test-Path -LiteralPath $target) { Assert-PvsPanelIdentity -Path $target }
 if (-not $SkipProcessCheck -and @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Adobe Premiere Pro*' }).Count) { throw 'Hay dong Adobe Premiere Pro truoc khi thiet lap panel.' }
-$legacyValues=@{}
-if (-not $SkipRegistry -and (Test-Path -LiteralPath $uninstallKey)) {
-    $registration=Get-ItemProperty -LiteralPath $uninstallKey
-    if ([string]$registration.DisplayName -ne 'Premiere Voice Sync' -or [IO.Path]::GetFullPath([string]$registration.InstallLocation) -ne [IO.Path]::GetFullPath($target)) { throw 'SECURITY_LEGACY_REGISTRATION_MISMATCH' }
-    $key=Get-Item -LiteralPath $uninstallKey
-    foreach ($name in $key.GetValueNames()) { $legacyValues[$name]=@($key.GetValue($name),$key.GetValueKind($name)) }
-}
 $debugBefore=$null
 if (-not $SkipRegistry -and (Test-Path -LiteralPath $debugKey)) {
     $key=Get-Item -LiteralPath $debugKey
@@ -64,7 +55,6 @@ try {
         New-ItemProperty -Path $debugKey -Name PlayerDebugMode -Value '1' -PropertyType String -Force | Out-Null
     }
     Set-Content -LiteralPath $deploymentFile -Value 'panel-only' -Encoding ASCII
-    if (-not $SkipRegistry -and $legacyValues.Count) { Remove-Item -LiteralPath $uninstallKey -Recurse -Force }
     $committed=$true
 } catch {
     $failure=$_
@@ -81,10 +71,6 @@ try {
         if ($null -ne $debugBefore) { New-Item -Path $debugKey -Force | Out-Null; New-ItemProperty -Path $debugKey -Name PlayerDebugMode -Value $debugBefore -PropertyType String -Force | Out-Null }
         elseif (Test-Path -LiteralPath $debugKey) { Remove-ItemProperty -Path $debugKey -Name PlayerDebugMode -ErrorAction SilentlyContinue }
         if (-not $hadBackup -and (Test-Path -LiteralPath $backupFile)) { Remove-Item -LiteralPath $backupFile -Force }
-        if ($legacyValues.Count) {
-            New-Item -Path $uninstallKey -Force | Out-Null
-            foreach ($name in $legacyValues.Keys) { New-ItemProperty -Path $uninstallKey -Name $name -Value $legacyValues[$name][0] -PropertyType $legacyValues[$name][1] -Force | Out-Null }
-        }
     }
     throw $failure
 } finally {
@@ -92,14 +78,6 @@ try {
     if ($committed -and $oldMoved) { Remove-PvsSafeTree -Path $oldPanel -Root $targetRoot }
 }
 # Do not discover/delete extensions merely by their display name.
-$oldUninstaller=Join-Path $programRoot 'uninstall.ps1'
-if (Test-Path -LiteralPath $oldUninstaller -PathType Leaf) {
-    $oldSource=[IO.File]::ReadAllText($oldUninstaller)
-    if ($oldSource -match "\`$extensionId\s*=\s*'com\.premierevoicesync\.local'") {
-        Remove-Item -LiteralPath $oldUninstaller -Force
-        if (@(Get-ChildItem -LiteralPath $programRoot -Force).Count -eq 0) { Remove-Item -LiteralPath $programRoot -Force }
-    }
-}
 Write-Host 'PANEL_SETUP_OK:checksums,allowlist,rollback; no Installed apps.'
 Write-Host 'Mo Premiere: Window > Extensions (Legacy) > Premiere Voice Sync.'
 Write-Host 'Go sach bang Remove-Panel.cmd trong goi ZIP; cache/model duoc giu khi cap nhat.'

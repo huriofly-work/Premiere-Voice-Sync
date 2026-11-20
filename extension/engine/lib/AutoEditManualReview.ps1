@@ -246,7 +246,7 @@ function Assert-PvsManualReviewPlan {
     if(-not $Plan.PSObject.Properties['manualReviewBlocks'] -or -not @($Plan.manualReviewBlocks).Count){return}
     if($Plan.PSObject.Properties['editedSourceMap'] -or $Plan.PSObject.Properties['omittedReferenceCueIndices']){throw 'MANUAL_REVIEW_CANNOT_AUTHORIZE_OMISSIONS'}
     $fps=[double]$Plan.frameRate
-    $partitioned=[bool]($Plan.PSObject.Properties['acousticEditBoundaryRevision'] -and $Plan.acousticEditBoundaryRevision -cin @('raw-dtw-quiet-partition-v1','dtw-cue-quiet-partition-v2'))
+    $partitioned=[bool]($Plan.PSObject.Properties['acousticEditBoundaryRevision'] -and $Plan.acousticEditBoundaryRevision -ceq 'dtw-cue-quiet-partition-v2')
     $captionAcoustic=$partitioned -or ($Plan.PSObject.Properties['manualCaptionTimingRevision'] -and $Plan.manualCaptionTimingRevision -ceq 'raw-dtw-cell-overlay-v1')
     if($partitioned){Assert-PvsAcousticPartitionPlan $Plan}
     if($Plan.PSObject.Properties['pictureCueRevision']){Assert-PvsCuePicturePlan $Plan}

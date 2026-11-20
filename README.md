@@ -111,11 +111,11 @@ Các giá trị nhập đều được kiểm tra kiểu số và miền hợp l
 
 Gói ZIP offline chứa sẵn Whisper CPU, FFmpeg, model và từ vựng caption. Script kiểm hash nội bộ rồi chép panel vào `%APPDATA%\Adobe\CEP\extensions\com.premierevoicesync.local`, bật `PlayerDebugMode` cho CSXS 12. Không cần quyền Administrator, Python hoặc module ngoài; không đăng ký Windows Installed apps và không tạo bộ cài EXE.
 
-Nếu máy đang dùng bản EXE cũ của tool, thiết lập mới kiểm tra đúng tên/đường dẫn trước khi gỡ mục Installed apps và file uninstaller cũ, giữ cache/model/backend. Các file không thuộc tool được giữ nguyên. Đây là gói không đăng ký ứng dụng, không phải portable hoàn toàn: panel và dữ liệu vẫn nằm trong AppData. Giữ thư mục giải nén hoặc ZIP để dùng Remove-Panel.cmd; xóa gói ZIP không tự gỡ panel.
+Panel và dữ liệu nằm trong AppData. Giữ thư mục giải nén hoặc ZIP để dùng Remove-Panel.cmd; xóa gói ZIP không tự gỡ panel.
 
 ### Mã nguồn trong bản phân phối
 
-ZIP giữ nguyên JavaScript giao diện, ExtendScript điều khiển Premiere, PowerShell engine và các thư viện script ở dạng đọc được. Quy trình build không mã hóa, làm rối, đóng gói thành `.pvsbin` hay tạo loader giải mã. Người dùng có thể kiểm tra trực tiếp mã đang được cài trong thư mục extension.
+ZIP giữ nguyên JavaScript giao diện, ExtendScript điều khiển Premiere, PowerShell engine và các thư viện script ở dạng đọc được. Người dùng có thể kiểm tra trực tiếp mã đang được cài trong thư mục extension.
 
 Gói phát hành vẫn không chứa lịch sử Git, file test và công cụ build vì các thành phần đó không cần thiết để extension hoạt động. Gói có kèm `THIRD_PARTY_NOTICES.md` liệt kê nguồn và giấy phép của FFmpeg, whisper.cpp, SDL2, model Whisper và danh sách cụm từ tiếng Việt, cùng toàn văn giấy phép GPL v3 của FFmpeg trong `licenses/GPL-3.0.txt` và file LICENSE gốc của whisper.cpp trong `licenses/whisper.cpp-LICENSE.txt`.
 
@@ -129,7 +129,7 @@ Repository được công khai để xem và kiểm tra mã nguồn. Mã của P
 2. Mở thư mục gói ZIP đã giải nén.
 3. Chạy **Remove-Panel.cmd**, đọc xác nhận rồi chọn **Y** để gỡ sạch.
 
-Bộ gỡ chỉ xóa đúng extension ID `com.premierevoicesync.local` và vùng `%LOCALAPPDATA%\PremiereVoiceSync` sau khi kiểm tra danh tính/đường dẫn. Không dò xóa ID khác theo tên hiển thị và không xóa thư mục TEMP theo tiền tố. `PlayerDebugMode` được trả về trạng thái trước lần thiết lập đầu tiên nếu chưa bị người dùng/ứng dụng khác đổi. Whisper/FFmpeg của chương trình khác và thư mục ZIP giải nén được giữ nguyên. Bản EXE cũ cần chạy Setup-Panel.cmd để chuyển trước khi dùng script gỡ mới.
+Bộ gỡ chỉ xóa đúng extension ID `com.premierevoicesync.local` và vùng `%LOCALAPPDATA%\PremiereVoiceSync` sau khi kiểm tra danh tính/đường dẫn. Không dò xóa ID khác theo tên hiển thị và không xóa thư mục TEMP theo tiền tố. `PlayerDebugMode` được trả về trạng thái trước lần thiết lập đầu tiên nếu chưa bị người dùng/ứng dụng khác đổi. Whisper/FFmpeg của chương trình khác và thư mục ZIP giải nén được giữ nguyên.
 
 Model nhận diện là Whisper large-v3-turbo (khoảng 1,6 GB, nằm trong ZIP) từ 2.20.90; chạy CPU chậm hơn Small khoảng 2 lần nên máy NVIDIA nên dùng CUDA. Máy NVIDIA có thể cho phép tải thêm backend CUDA khoảng 678 MB. Chưa cho phép tải, không có NVIDIA hoặc CUDA không vượt qua kiểm tra thì dùng CPU và hiển thị lý do. Chưa có backend GPU đóng gói cho AMD/Intel.
 
@@ -155,7 +155,7 @@ Khởi động lại Premiere Pro và mở `Window > Extensions (Legacy) > Premi
 ## Cấu trúc mã nguồn
 
 - `extension`: duy nhất mã được cài vào Adobe CEP; cấu trúc thư mục này không đổi so với 2.19.1.
-- `installer`: tạo ZIP và quản lý thiết lập/gỡ panel, chuyển từ bản EXE cũ.
+- `installer`: tạo ZIP và quản lý thiết lập/gỡ panel.
 - `tests/unit`: kiểm tra tự động, độc lập với project Premiere của người dùng.
 - `tests/manual`: kiểm tra cần fixture media được chỉ định rõ ràng.
 - `tools`: công cụ dành cho phát triển, không được đóng gói cho người dùng.
@@ -180,7 +180,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\installer\build-releas
 
 Gói `Premiere-Voice-Sync-<VERSION>-Panel.zip` (theo file `VERSION`) được tạo trong `dist`, chứa một thư mục phiên bản duy nhất, Setup-Panel.cmd, Remove-Panel.cmd và HUONG_DAN_SU_DUNG.md. Có helper EXE nhỏ chỉ cho thông báo Windows và mở panel khi người dùng bấm; mã C# đi kèm. Không chứa EXE installer, test, downloads, VAD, ffprobe, pipeline XML hay code rehearsal cũ. Cache audio và log tự lưu được giữ nguyên. Auto edit mặc định không delay như baseline đã nghiệm thu. Xem [hướng dẫn sử dụng](docs/USER_GUIDE.md) và [đánh giá tăng tốc](docs/PERFORMANCE_REVIEW.md).
 
-`build-release.ps1` sao chép nguyên mã nguồn vận hành vào vùng staging, kiểm tra không còn payload `.pvsbin`, rồi tính checksum và nén ZIP. Công cụ IExpress/Setup.exe đã được loại bỏ. Phát hành một ZIP và công bố SHA-256 trong ghi chú Release; người dùng không cần mang theo file checksum riêng.
+`build-release.ps1` sao chép nguyên mã nguồn vận hành vào vùng staging, rồi tính checksum và nén ZIP. Phát hành một ZIP và công bố SHA-256 trong ghi chú Release; người dùng không cần mang theo file checksum riêng.
 
 Runtime cho developer phải được nhập từ bộ artifact đã duyệt đúng `runtime-lock.json`, không tự tải bản latest:
 

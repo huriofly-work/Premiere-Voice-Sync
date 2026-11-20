@@ -4,6 +4,7 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## Chưa phát hành
 
+- Phiên bản 3.0.0 không còn chuyển đổi bản cài đặt hoặc thiết lập từ các phiên bản trước.
 - Gắn ba loại marker. Video để kiểm tra hình và A1, Voice để kiểm tra căn lời, Caption để rà chữ và mốc hiển thị (#96).
 - Sau khi tạo caption và hậu kiểm, Dựng theo voice gắn marker trong một bước rồi báo cáo. Mỗi chức năng cập nhật bộ Caption của riêng mình.
 - Marker 2.20.x cần được xóa thủ công một lần hoặc dùng template sạch khi chuyển lên 3.0.0.
