@@ -66,9 +66,9 @@ function fixture(options = {}) {
     state.targetSrt = path.join(fixture.home, "reference.srt"); fs.writeFileSync(state.targetSrt, "REFERENCE");
     window.api = { edit: runSync, captions: runCaptions, cleanup: cleanupStaleJobs, prune: function (root, workflow, current) { cleanupPreviousJobs(root, workflow, current); }, active: function (folder) { runContext = folder ? { outputFolder: folder } : null; } };
   `), context);
-  function job(name, workflow, finishedAt = "2026-01-01T00:00:00.000Z") {
+  function job(name, workflow, finishedAt = "2026-01-01T00:00:00.000Z", outcome = "success") {
     const folder = path.join(jobs, name); fs.mkdirSync(folder, { recursive: true });
-    if (workflow) fs.writeFileSync(path.join(folder, "last-run.json"), JSON.stringify({ workflow, outcome: "failed", finishedAt, toolVersion }));
+    if (workflow) fs.writeFileSync(path.join(folder, "last-run.json"), JSON.stringify({ workflow, outcome, finishedAt, toolVersion }));
     fs.writeFileSync(path.join(folder, "keep.txt"), "KEEP"); return folder;
   }
   return { api: context.window.api, jobs, home, logs, external, job, options };
@@ -93,11 +93,16 @@ for (const workflow of ["edit", "captions"]) for (const outcome of ["success", "
 for (const workflow of ["edit", "captions"]) test(workflow + ":replace-only-same-workflow", async () => {
   const f = fixture(), prefix = workflow === "edit" ? "Job_" : "Job_Subtitle_", other = workflow === "edit" ? "captions" : "edit";
   const previous = [f.job(prefix + "old1", workflow), f.job(prefix + "old2", workflow)];
+  const latestFailure = f.job(prefix + "failed", workflow, "2026-02-01T00:00:00Z", "failed");
+  previous.push(f.job(prefix + "older_failure", workflow, "2026-01-01T00:00:00Z", "failed"));
   const untouched = f.job(other === "edit" ? "Job_Other" : "Job_Subtitle_Other", other);
   await f.api[workflow]();
   previous.forEach(p => assert(!fs.existsSync(p), "previous kept job must be removed"));
   assert(fs.existsSync(untouched), "other workflow must remain");
-  assert.equal(folders(f).length, 2);
+  assert.equal(folders(f).length, 3);
+  old(latestFailure);
+  f.api.cleanup();
+  assert(fs.existsSync(path.join(latestFailure, "keep.txt")), "retain failed diagnostics after a newer success");
 });
 test("recovery-journal-protected-at-start-and-finish", async () => {
   const f = fixture({ journal: true, failed: true }), previous = f.job("Job_Subtitle_pending", "captions");

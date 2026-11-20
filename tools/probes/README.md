@@ -1,5 +1,21 @@
 # Probe native marker
 
+## Đo giới hạn kéo dài đoạn nest khi giảm tốc, vòng 2 (issue #102)
+
+Chuẩn bị sequence mẫu có một clip nest trên V1, liên kết với một clip A1, cùng bắt đầu ở frame 0 và chạy xuôi ở 100%. Để panel Premiere Voice Sync đang mở với cổng gỡ lỗi CEP đã dùng ở vòng 1.
+
+1. Nhân đôi sequence mẫu.
+2. Đổi tên bản sao sao cho bắt đầu bằng `PVS Probe`, rồi mở bản sao.
+3. Từ thư mục gốc của worktree, chạy `node tools/probes/run-probe.js slowcap-auto`. Lệnh in kế hoạch trước khi cắt và kéo dài các đoạn trên bản sao, rồi tự đọc lại trong một lần gọi Premiere riêng.
+4. Dán toàn bộ JSON kết quả, kể cả khi có lỗi. Tìm vị trí từng đoạn ở `variants[].startFrame`.
+5. Trên V1, phát **2 giây cuối** của mỗi đoạn A, B và C, rồi dùng **Rate Stretch** kéo nhẹ mép phải của từng đoạn. Ghi kết quả riêng cho A, B và C theo mẫu `A — phát bình thường / đứng hình / màn đen, mép nhảy / không nhảy`.
+
+A đặt lại mép phải sau khi QE giảm tốc. B khôi phục Out rồi đặt lại mép phải nếu đoạn vẫn ngắn. C bật cờ ripple của QE và nằm cuối timeline. Mỗi mục `summary` gộp kết quả của V1 và A1. `inOutChanged` so sánh In/Out giữa hai lần đọc trên từng track. Trường thời gian QE có giá trị `null` khi không đọc được. `qeInOutChanged` có thể là `null` nếu thiếu dữ liệu để kết luận.
+
+### Kết quả ngày 20/11/2026
+
+Hai vòng trên Premiere 26.2.2 ở 30 fps cho thấy QE giới hạn độ dài bằng số frame từ In đến cuối media của nest và dịch Out. Đoạn nằm trong giới hạn giữ đủ nguồn. A chỉ đặt `end`: đủ độ dài nhưng lần đọc sau chỉ còn khoảng 287/300 frame nguồn. B đặt Out theo tọa độ đã chia cho tốc độ rồi đặt `end`: đủ độ dài và đủ 300 frame nguồn ở cả hai lần đọc. C bật ripple vẫn gặp giới hạn. Người dùng phát đuôi và kéo mép phải bằng Rate Stretch trên cả ba đoạn: phát bình thường, mép không nhảy.
+
 ## TrackItem giữ qua hai lần gọi host — ghi trước marker không chạy
 
 `Probe-StaleTrackItem.jsx` **chỉ đọc**: không sửa clip, marker, sequence hay project, không Save/Undo. Probe kiểm tra một TrackItem lấy ở một lần `evalScript` có còn báo đúng nguồn (`projectItem.nodeId`) ở lần gọi sau hay không. Mỗi stage của executor là một lần gọi riêng. Theo trace của 2.20.93–2.20.95, khoá nguồn tính từ TrackItem cũ không khớp, nên marker review không được ghi trước khi cắt (hậu kiểm báo `ownerIndex = -1`).

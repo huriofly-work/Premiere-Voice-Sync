@@ -882,21 +882,33 @@
       var folder = path.join(jobsRoot, name), stat = fs.lstatSync(folder);
       if (stat.isSymbolicLink() || !stat.isDirectory()) return null;
       var marker = path.join(folder, "last-run.json"), kept = fs.existsSync(marker), finishedAt = stat.mtime.getTime();
+      var failed = false;
       if (kept) {
         try {
           security.assertNoLinks(fs, path, marker, false);
           var record = JSON.parse(fs.readFileSync(marker, "utf8"));
+          failed = record.workflow === jobWorkflow(name) && record.outcome === "failed";
           if (record.workflow === jobWorkflow(name) && isFinite(Date.parse(record.finishedAt))) finishedAt = Date.parse(record.finishedAt);
         } catch (ignoreInvalidLastRun) { /* A damaged marker still protects the most recent diagnostic folder by mtime. */ }
       }
-      return { folder: folder, workflow: jobWorkflow(name), stat: stat, kept: kept, finishedAt: finishedAt,
+      return { folder: folder, workflow: jobWorkflow(name), stat: stat, kept: kept, failed: failed, finishedAt: finishedAt,
         audioRecoveryPath: path.join(folder, "job.json.audio-recovery.json") };
     }).filter(function (item) { return !!item; });
   }
+  function newestJobsByWorkflow(jobs) {
+    var newest = {};
+    jobs.forEach(function (item) {
+      var previous = newest[item.workflow];
+      if (item.kept && (!previous || item.finishedAt > previous.finishedAt || (item.finishedAt === previous.finishedAt && item.folder > previous.folder))) newest[item.workflow] = item;
+    });
+    return newest;
+  }
   function cleanupPreviousJobs(jobsRoot, workflow, currentFolder) {
     try {
-      listJobFolders(jobsRoot).forEach(function (item) {
-        if (item.workflow !== workflow || !item.kept || isActiveJob(item.folder, currentFolder) || fs.existsSync(item.audioRecoveryPath)) return;
+      var jobs = listJobFolders(jobsRoot);
+      var failures = newestJobsByWorkflow(jobs.filter(function (item) { return item.failed; }));
+      jobs.forEach(function (item) {
+        if (item.workflow !== workflow || failures[workflow] === item || !item.kept || isActiveJob(item.folder, currentFolder) || fs.existsSync(item.audioRecoveryPath)) return;
         try { removeTreeSafe(item.folder, jobsRoot); }
         catch (error) { log("Không xóa được dữ liệu lượt trước: " + error.message, "warn"); }
       });
@@ -927,16 +939,13 @@
   function cleanupStaleJobs() {
     var jobsRoot = path.join(applicationDataRoot(), "Jobs");
     if (!fs.existsSync(jobsRoot)) return 0;
-    var jobs = listJobFolders(jobsRoot), newest = {};
-    jobs.forEach(function (item) {
-      var previous = newest[item.workflow];
-      if (item.kept && (!previous || item.finishedAt > previous.finishedAt || (item.finishedAt === previous.finishedAt && item.folder > previous.folder))) newest[item.workflow] = item;
-    });
+    var jobs = listJobFolders(jobsRoot), newest = newestJobsByWorkflow(jobs);
+    var failures = newestJobsByWorkflow(jobs.filter(function (item) { return item.failed; }));
     var cutoff = Date.now() - (24 * 60 * 60 * 1000);
     var removed = 0;
     jobs.forEach(function (item) {
       if (fs.existsSync(item.audioRecoveryPath)) return;
-      if (isActiveJob(item.folder) || newest[item.workflow] === item || item.stat.mtime.getTime() >= cutoff) return;
+      if (isActiveJob(item.folder) || failures[item.workflow] === item || newest[item.workflow] === item || item.stat.mtime.getTime() >= cutoff) return;
       removeTreeSafe(item.folder, jobsRoot);
       removed++;
     });
@@ -1152,7 +1161,7 @@
             acousticBoundaryCount: safeCount(result.captionTimingAcousticBoundaryCount) || 0
           };
           var counts = {};
-          ["captionCueCount", "voiceCueCount", "pictureCueCount", "addedCutCount", "captionMarkerCount", "recognitionSuppressedRangeCount"].forEach(function (key) { var value = safeCount(result[key]); if (value !== null) counts[key] = value; });
+          ["captionCueCount", "voiceCueCount", "pictureCueCount", "cappedSpeedCorrectionCount", "addedCutCount", "captionMarkerCount", "recognitionSuppressedRangeCount"].forEach(function (key) { var value = safeCount(result[key]); if (value !== null) counts[key] = value; });
           if (Object.keys(counts).length) event.counts = counts;
           if (typeof result.minNoDialogueGapSeconds === "number" && result.settings) {
             var settings = { minNoDialogueGapSeconds: result.minNoDialogueGapSeconds, speedWarningMinPercent: result.speedWarningMinPercent, speedWarningMaxPercent: result.speedWarningMaxPercent,
@@ -1247,7 +1256,7 @@
     if (Number(result.finalVideoTailExtraFrames || 0) > 0) reasons.push("V1 bị thừa " + result.finalVideoTailExtraFrames + " frame ở cuối");
     if (Number(result.finalAudioTailMissingFrames || 0) > 0) reasons.push("A1 bị thiếu " + result.finalAudioTailMissingFrames + " frame ở cuối");
     if (Number(result.finalAudioTailExtraFrames || 0) > 0) reasons.push("A1 bị thừa " + result.finalAudioTailExtraFrames + " frame ở cuối");
-    if (Number(result.speedNonConvergenceCount || 0) > 0) reasons.push(result.speedNonConvergenceCount + " clip không hội tụ duration, còn lệch tối đa " + Number(result.maxSpeedDurationErrorAfterCorrectionFrames || 0) + " frame");
+    if (Number(result.speedNonConvergenceCount || 0) > 0) reasons.push(result.speedNonConvergenceCount + " clip chưa xác minh được độ dài hoặc phạm vi nguồn sau khi đổi tốc độ");
     else if (Number(result.timelineEndMismatchCount || 0) > 0) reasons.push(result.timelineEndMismatchCount + " cặp clip không đúng duration kế hoạch");
     var internalCoverageGap = 0;
     if (result.videoCoverageGaps && result.videoCoverageGaps.length) {
@@ -2051,8 +2060,12 @@
       var result = await executeStagedPlan(executorPath, pauseAtStages, fastPerformance, enhanced ? "auto-edit-dtw-merge" : "diagnostic-baseline", metrics, enhanced);
       if (typeof result.timelineMutated === "boolean") runContext.impact = result.timelineMutated ? "changed" : "unchanged";
       fs.writeFileSync(path.join(outputFolder, "direct-apply-report.json"), JSON.stringify(result, null, 2), "utf8");
+      if (result.cappedSpeedCorrectionCount) log("Đã thử khôi phục Out và mép cuối cho " + result.cappedSpeedCorrectionCount + " clip bị Premiere giới hạn độ dài.", "muted");
       logReviewMarkers(result, plan.reviewMarkers, plan);
-      if (!result.ok || Number(result.executorVersion) !== 25) throw new Error(postcheckError(result));
+      if (!result.ok || Number(result.executorVersion) !== 25) {
+        metrics.end(result, "failed");
+        throw new Error(postcheckError(result));
+      }
       metrics.end(result);
       if (Number(result.tailShiftFrames || 0) > 0) log("Đã dời " + Number(result.tailShiftItemCount || 0) + " element cuối timeline thêm " + Number(result.tailShiftFrames) + " frame để theo đuôi video mới.", "ok");
       if (result.speedMetadataReadable) log("Tốc độ Premiere thực tế: " + Number(result.minimumObservedSpeedPercent).toFixed(3) + "–" + Number(result.maximumObservedSpeedPercent).toFixed(3) + "%; sai số metadata lớn nhất " + Number(result.maxSpeedMetadataErrorPercent || 0).toFixed(3) + "%.", "ok");

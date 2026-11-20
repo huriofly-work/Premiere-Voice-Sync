@@ -21,7 +21,7 @@ assert.strictEqual(diagnostic,output().text,"Generated source must match stable 
 function collection(items) { Object.defineProperty(items,"numItems",{get(){return this.length;}}); return items; }
 function tracks(items) { Object.defineProperty(items,"numTracks",{get(){return this.length;}}); return items; }
 function time(frame) { return { ticks:String(frame*TPF),seconds:frame/30 }; }
-function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, seedWarnings=false, trace=false, observe=false, {nativeWrappers=false, nativeVoiceSourceTicks=false, timebase=TPF, voiceMapping=""}={}) {
+function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged=false, seedWarnings=false, trace=false, observe=false, {nativeWrappers=false, nativeVoiceSourceTicks=false, timebase=TPF, voiceMapping="", segmentLengths, capSlowSpeedAtMediaEnd=false}={}) {
   let nextId=0;
   const TPF=timebase, fps=254016000000/TPF;
   function time(frame) { return {ticks:String(frame*TPF),seconds:frame/fps}; }
@@ -50,21 +50,24 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
       remove(ripple,align){assert.strictEqual(ripple,false);assert.strictEqual(align,false);actions.push(["remove",this.nodeId]);track.clips.splice(track.clips.indexOf(this),1);this.deleted=true;}
     };const id=item.nodeId;Object.defineProperty(item,"nodeId",{get(){if(this.deleted)throw Error("REMOVED_PROXY_MUST_NOT_BE_READ");return id;}});track.clips.push(item);return item;
   }
-  const segments=[];let outputFrame=0,voiceFrame=0;
+  const segments=[];let sourceFrame=0,outputFrame=0,voiceFrame=0;
   for(let i=0;i<count;i++){
-    const duration=i%3===0?100:i%3===1?150:120;
-    segments.push({Kind:"retime",SourceDuration:120/fps,SourceStart:i*120/fps,SourceEnd:(i+1)*120/fps,SourceStartFrame:i*120,SourceEndFrame:(i+1)*120,NewStart:outputFrame/fps,NewEnd:(outputFrame+duration)/fps,NewStartFrame:outputFrame,NewVoiceStart:outputFrame/fps,VisualDurationFrames:duration,OutputDurationFrames:duration,AppliedSpeedPercent:120/duration*100,OriginalVoiceStartFrame:voiceFrame,OriginalVoiceEndFrame:voiceFrame+duration,NewVoiceStartFrame:outputFrame,FirstTargetCue:i+1,LastTargetCue:i+1});
+    const [sourceLength,duration]=segmentLengths ? segmentLengths[i] : [120,i%3===0?100:i%3===1?150:120];
+    const sourceEnd=sourceFrame+sourceLength;
+    segments.push({Kind:"retime",SourceDuration:sourceLength/fps,SourceStart:sourceFrame/fps,SourceEnd:sourceEnd/fps,SourceStartFrame:sourceFrame,SourceEndFrame:sourceEnd,NewStart:outputFrame/fps,NewEnd:(outputFrame+duration)/fps,NewStartFrame:outputFrame,NewVoiceStart:outputFrame/fps,VisualDurationFrames:duration,OutputDurationFrames:duration,AppliedSpeedPercent:sourceLength/duration*100,OriginalVoiceStartFrame:voiceFrame,OriginalVoiceEndFrame:voiceFrame+duration,NewVoiceStartFrame:outputFrame,FirstTargetCue:i+1,LastTargetCue:i+1});
+    sourceFrame=sourceEnd;
     outputFrame+=duration;voiceFrame+=duration+(withGaps && i<count-1 ? 6 : 0);
   }
-  clip("Nest",seq.videoTracks[0],0,count*120,0,count*120,nested);
-  clip("Nest",seq.audioTracks[0],0,count*120,0,count*120,nested);
+  const nestMediaEnd=sourceFrame;
+  clip("Nest",seq.videoTracks[0],0,nestMediaEnd,0,nestMediaEnd,nested);
+  clip("Nest",seq.audioTracks[0],0,nestMediaEnd,0,nestMediaEnd,nested);
   const originalVoice=clip("Voice",seq.audioTracks[1],0,voiceFrame,0,voiceFrame,voice);originalVoice.speed=voiceSpeed;
   if (voiceMapping === "reverse") originalVoice.isSpeedReversed=()=>true;
   if (voiceMapping === "remap") originalVoice.components=[{matchName:"Time Remapping",properties:[{isTimeVarying:()=>true}]}];
   if (nativeVoiceSourceTicks) originalVoice.outPoint=speedDividedTime(voiceFrame*TPF*voiceSpeed-2,voiceSpeed);
   // Preserved tail moves first and must remain identical across both paths.
-  clip("End screen",seq.videoTracks[0],count*120,count*120+60,0,60,{nodeId:"end"});
-  clip("Adjustment",Object.assign(seq.videoTracks[1]={clips:collection([])}),count*120,count*120+60,0,60,{nodeId:"adjustment"});
+  clip("End screen",seq.videoTracks[0],nestMediaEnd,nestMediaEnd+60,0,60,{nodeId:"end"});
+  clip("Adjustment",Object.assign(seq.videoTracks[1]={clips:collection([])}),nestMediaEnd,nestMediaEnd+60,0,60,{nodeId:"adjustment"});
   function razor(track,frame){
     const item=track.clips.find(c=>Number(c.start.ticks)/TPF<frame&&Number(c.end.ticks)/TPF>frame);
     if(!item)return;
@@ -83,7 +86,28 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     track.clips.sort((a,b)=>Number(a.start.ticks)-Number(b.start.ticks));
   }
   function tcFrames(tc){const v=tc.split(":").map(Number);return ((v[0]*3600+v[1]*60+v[2])*Math.round(fps))+v[3];}
-  function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {type:"Clip",get start(){return c.start;},setSpeed(factor,duration){if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");actions.push(["speed",c.nodeId,factor,duration]);const oldSpeed=c.speed;c.inPoint=time(Number(c.inPoint.ticks)/TPF*oldSpeed/factor);c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);c.speed=factor;c.end=time(Number(c.start.ticks)/TPF+tcFrames(duration)+(seq.speedDurationOffset ? seq.speedDurationOffset(c,isVideo) : 0));return true;}};},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
+  function qeTrack(track,isVideo){return {get numItems(){return track.clips.length;},getItemAt(i){qeReads++;const c=track.clips[i];return {
+    type:"Clip",get start(){return c.start;},
+    setSpeed(factor,duration){
+      if(seq.failSpeed)throw Error("NATIVE_SPEED_FAILED");
+      actions.push(["speed",c.nodeId,factor,duration]);
+      const oldSpeed=c.speed, sourceIn=Number(c.inPoint.ticks)/TPF*oldSpeed;
+      c.inPoint=time(sourceIn/factor);
+      c.outPoint=time(Number(c.outPoint.ticks)/TPF*oldSpeed/factor);
+      c.speed=factor;
+      let frames=tcFrames(duration)+(seq.speedDurationOffset ? seq.speedDurationOffset(c,isVideo) : 0);
+      if(capSlowSpeedAtMediaEnd && c.projectItem===nested && factor<1) {
+        frames=Math.min(frames,nestMediaEnd-Math.round(sourceIn));
+        c.outPoint=time(sourceIn/factor+frames);
+        if (seq.refuseOutRestore && frames<tcFrames(duration)) {
+          const cappedOut=c.outPoint;
+          Object.defineProperty(c,"outPoint",{get(){return cappedOut;},set(value){}});
+        }
+      }
+      c.end=time(Number(c.start.ticks)/TPF+frames);
+      return true;
+    }
+  };},razor(tc,linked){actions.push(["razor",isVideo?"V":"A",tc,linked]);const frame=tcFrames(tc);razor(track,frame);if(linked)razor(seq.audioTracks[0],frame);return true;}};}
   const rootItem={children:collection([]),nodeId:"root",createBin(){actions.push(["createBin"]);const bin={nodeId:"bin",children:collection([]),deleteBin(){actions.push(["deleteBin"]);rootItem.children.splice(rootItem.children.indexOf(bin),1);return true;}};rootItem.children.push(bin);return bin;}};
   seq.createCaptionTrack=function(){actions.push(["captionTrack"]);return true;};
   // Expose fresh TrackItems only at the host boundary. The mock keeps its raw arrays.
@@ -116,7 +140,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
   const hostSequence = nativeWrappers ? view(seq, (value, key) =>
     key === "videoTracks" || key === "audioTracks" ? view(value, readTrack) : value) : seq;
   const project={activeSequence:hostSequence,rootItem,openSequence(){actions.push(["openSequence"]);},importFiles(paths,a,bin){actions.push(["importCaption"]);bin.children.push({nodeId:"srt",getMediaPath(){return paths[0];}});return true;},save(){throw Error("MUST_NOT_SAVE");}};
-  const plan={schemaVersion:8,sequenceId:"seq",frameRate:fps,mainVideoSourceEnd:count*120/fps,plannedMainVideoEnd:outputFrame/fps,plannedMainVideoEndFrame:outputFrame,voiceTrackIndex:1,voiceClips:[{name:"Voice",end:voiceFrame/fps}],linkedAudio:[{name:"Nest"}],segments,captionSrtPath:"fixture.srt",captions:segments.map(()=>({})),summary:{captionCueCount:count},speedWarningMinPercent:90,speedWarningMaxPercent:110,markers:[],reviewMarkers:[]};
+  const plan={schemaVersion:8,sequenceId:"seq",frameRate:fps,mainVideoSourceEnd:nestMediaEnd/fps,plannedMainVideoEnd:outputFrame/fps,plannedMainVideoEndFrame:outputFrame,voiceTrackIndex:1,voiceClips:[{name:"Voice",end:voiceFrame/fps}],linkedAudio:[{name:"Nest"}],segments,captionSrtPath:"fixture.srt",captions:segments.map(()=>({})),summary:{captionCueCount:count},speedWarningMinPercent:90,speedWarningMaxPercent:110,markers:[],reviewMarkers:[]};
   if(seedWarnings)plan.markers.push({Owner:"A2",SegmentIndex:0,Name:"VOICE SYNC - Voice",Comments:"căn voice – nghe lại",ColorIndex:1});
   if(merged){
     assert(!withGaps);
@@ -161,7 +185,7 @@ function fixture(count=65, noCaption=false, withGaps=false, voiceSpeed=1, merged
     });
     proxies.set(value,proxy);rawByProxy.set(proxy,value);ids.set(proxy,id);return proxy;
   }
-  const context=vm.createContext({$: {_PVS:{}},Sequence:{CAPTION_FORMAT_SUBTITLE:0},app:native({project,enableQE(){actions.push(["enableQE"]);}}),qe:native({project:{getActiveSequence(){return {getVideoTrackAt(i){return qeTrack(seq.videoTracks[i],true);},getAudioTrackAt(i){return qeTrack(seq.audioTracks[i],false);}};}}}),Time:function(){this.ticks="0";},File:function(file){this.exists=!noCaption;this.name=String(file).split("/").pop();this.parent={fsName:String(file).includes("/")?String(file).slice(0,String(file).lastIndexOf("/")):"/fixture"};this.open=()=>trace!=="denied";this.write=text=>nativeRows.push(JSON.parse(text));this.close=()=>{};}});
+  const context=vm.createContext({$: {_PVS:{}},Sequence:{CAPTION_FORMAT_SUBTITLE:0},app:native({project,enableQE(){actions.push(["enableQE"]);}}),qe:native({project:{getActiveSequence(){return {getVideoTrackAt(i){return qeTrack(seq.videoTracks[i],true);},getAudioTrackAt(i){return qeTrack(seq.audioTracks[i],false);}};}}}),Time:function(){this.ticks="0";Object.defineProperty(this,"seconds",{get(){return Number(this.ticks)/254016000000;}});},File:function(file){this.exists=!noCaption;this.name=String(file).split("/").pop();this.parent={fsName:String(file).includes("/")?String(file).slice(0,String(file).lastIndexOf("/")):"/fixture"};this.open=()=>trace!=="denied";this.write=text=>nativeRows.push(JSON.parse(text));this.close=()=>{};}});
   vm.runInContext(fixtureHost,context);vm.runInContext(fixtureExecutor,context);
   vm.runInContext("$._PVS._readJsonFile=function(){return "+JSON.stringify(plan)+";};",context);
   context.$._PVS._findItemByMediaPath=(bin,p)=>bin.children.find(c=>c.getMediaPath()===p);
@@ -263,7 +287,7 @@ function checkNativeMarkerKinds(profile) {
   // Inject a speed duration mismatch on the first V1 piece and several final
   // timeline readbacks. The post-check runs before any marker commit.
   const f=fixture(3);
-  f.seq.speedDurationOffset=(clip,isVideo)=>isVideo && Number(clip.start.ticks)===0 ? -3 : 0;
+  f.seq.speedDurationOffset=(clip,isVideo)=>isVideo && Number(clip.start.ticks)===0 ? 3 : 0;
   const createCaption=f.seq.createCaptionTrack;
   f.seq.createCaptionTrack=function() {
     const video=f.seq.videoTracks[0].clips, audio=f.seq.audioTracks[0].clips, voice=f.seq.audioTracks[1].clips;
@@ -1091,3 +1115,52 @@ console.log("MARKER_EXECUTOR_LIFECYCLE_OK:all-profiles;native-failure-preserves-
   console.log("MARKER_MOVE_EXECUTOR_PARITY_OK:measured-unmeasured;direct-baseline-fast-no-delay;two-owner-moves");
 }
 console.log("DIAGNOSTIC_EXECUTOR_MOCK_OK:exact-native-call-parity;exact-report-parity;profile-batch-policy;five-checkpoints;duplicate-call-guard;timeline-and-sequence-guard;abort-no-new-edit;no-save-or-Undo-clear;generated-source-current;review-markers-all-profiles;marker-failure-reports-partial-result");
+
+function slowedPieceReport(segmentLengths) {
+  const f=fixture(segmentLengths.length,false,false,1,false,false,false,false,{
+    timebase:10160640000, segmentLengths, capSlowSpeedAtMediaEnd:true
+  });
+  const report=finishTrial(f,"no-delay").report;
+  for (const track of [f.seq.videoTracks[0], f.seq.audioTracks[0]]) {
+    const piece=track.clips.filter(c=>c.projectItem===f.nested)[1];
+    const span=(Number(piece.outPoint.ticks)-Number(piece.inPoint.ticks))*piece.getSpeed()/f.seq.timebase;
+    assert(Math.abs(span-segmentLengths[1][0])<0.01,"Lost source frames: "+span);
+  }
+  return report;
+}
+
+{
+  const report=slowedPieceReport([[79,79],[337,340]]);
+  assert.strictEqual(report.maxSpeedDurationErrorBeforeCorrectionFrames,3);
+  assert.strictEqual(report.cappedSpeedCorrectionCount,2,"Both V1 and A1 need the cap correction.");
+  assert.strictEqual(report.maxSpeedDurationErrorAfterCorrectionFrames,0);
+  assert.strictEqual(report.maxVideoCoverageGapFrames,0);
+  assert.strictEqual(report.speedNonConvergenceCount,0);
+  assert(report.ok,JSON.stringify(report));
+  console.log("SLOWED_PIECE_TERMINAL_OK:V1/A1;337 source frames;340 timeline frames");
+}
+
+{
+  const report=slowedPieceReport([[79,79],[337,472],[79,79]]);
+  assert(report.ok,JSON.stringify(report));
+  assert.strictEqual(report.cappedSpeedCorrectionCount,2);
+  const {maxVideoCoverageGapFrames,speedNonConvergenceCount}=report;
+  assert.deepStrictEqual({maxVideoCoverageGapFrames,speedNonConvergenceCount},
+    {maxVideoCoverageGapFrames:0,speedNonConvergenceCount:0},
+    "Issue #102: non-terminal 337 → 472 frame retime must close the picture gap and converge: "+
+    JSON.stringify(report.speedConvergenceFailures || report));
+  console.log("SLOWED_PIECE_NONTERMINAL_OK:V1/A1;337 source frames;472 timeline frames;zero gap");
+}
+
+{
+  const f=fixture(2,false,false,1,false,false,false,false,{
+    segmentLengths:[[79,79],[337,340]], capSlowSpeedAtMediaEnd:true
+  });
+  f.seq.refuseOutRestore=true;
+  const report=finishTrial(f,"no-delay").report;
+  assert.strictEqual(report.ok,false);
+  assert.strictEqual(report.speedNonConvergenceCount,2);
+  assert(report.speedConvergenceFailures.every(failure=>
+    failure.actualFrames===failure.desiredFrames && failure.sourceSpanErrorFrames>1));
+  console.log("SLOWED_PIECE_SOURCE_LOSS_REJECTED:V1/A1;exact timeline length");
+}
