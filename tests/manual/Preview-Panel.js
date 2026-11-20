@@ -16,14 +16,14 @@ const fixture = `
     if (script.indexOf('scanCaptionRange') >= 0) return {ok:true,inputVersion:1,projectId:'fixture-project',sequenceId:'fixture',name:'Video mẫu',frameRate:30,sequenceEnd:60,snapshot:'fixture-snapshot',selectionRanges:[{start:10,end:40}],selectedAudio:[{trackIndex:1,nodeId:'voice'}],inOut:{start:20,end:30,valid:true},audioTracks:[{index:0,key:'A1',name:'Âm thanh gốc',clipCount:1,muted:false,clips:[{nodeId:'original',start:0,end:60,disabled:false}]},{index:1,key:'A2',name:'Voice tiếng Việt',clipCount:1,muted:true,clips:[{nodeId:'voice',start:10,end:40,disabled:false}]},{index:2,key:'A3',name:'Nhạc nền',clipCount:1,muted:false,clips:[{nodeId:'music',start:0,end:60,disabled:false}]}]};
     throw new Error('Unexpected host operation in layout fixture');
   };
-  cleanupStaleJobs = function(){return 0;};
+  applicationDataRoot = function(){return "C:\\\\Fixture\\\\PremiereVoiceSync";};
   runPowerShell = async function(){return JSON.stringify({backend:'cuda',label:'NVIDIA CUDA · GPU mẫu',reason:'Đã xác minh bằng nhận diện thực tế.'});};
   window.previewBackend = renderBackend;
-  window.previewStop={begin:function(mode){setWorkflowBusy(true);beginRun(mode);runStage("alignment");},checkpoint:waitForWorkflowPause,finish:function(){runContext=null;saveRecoveryJournal();setWorkflowBusy(false);status("Sẵn sàng.","muted");}};
+  window.previewStop={begin:function(mode){setWorkflowBusy(true);beginRun(mode);runStage("alignment");},checkpoint:waitForWorkflowPause,finish:function(){runContext=null;setWorkflowBusy(false);status("Sẵn sàng.","muted");}};
   window.previewNotices = {show:showWorkflowNotice,confirm:confirmWorkflowNotice,close:closeWorkflowNotice,complete:function(review){
     beginRun("captions");runContext.resultHeadline="Đã tạo 120 phụ đề.";
     if(review)logReviewMarkers({reviewMarkerCount:1,reviewMarkerFailureCount:1},[{start:4,end:5,captionIndex:3,reason:"Chữ tự nhận diện: hãy kiểm tra chữ"},{start:9,end:10,captionIndex:8,reason:"Cần nghe lại thời gian"}]);
-    finishRunNotice("Tạo phụ đề","Chi tiết mô phỏng: 120 caption; nguồn SRT 85 cue; CPU.");runContext=null;saveRecoveryJournal();setWorkflowBusy(false);
+    finishRunNotice("Tạo phụ đề","Chi tiết mô phỏng: 120 caption; nguồn SRT 85 cue; CPU.");runContext=null;setWorkflowBusy(false);
   }};
   window.previewLongInputs = function(){
     srtJoin.setProjectCandidates(Array.from({length:40},function(_,i){return {name:'Phần '+(i+1)+'.srt',path:'C:\\\\Fixture\\\\Part-'+(i+1)+'.srt'};}));

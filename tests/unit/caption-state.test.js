@@ -2,7 +2,7 @@
 const assert = require("assert"), fs = require("fs"), path = require("path"), vm = require("vm");
 const source = fs.readFileSync(path.join(__dirname, "../../extension/js/main.js"), "utf8");
 const start = source.indexOf("  async function captionTrackCount(");
-const end = source.indexOf("  function saveRecoveryJournal(", start);
+const end = source.indexOf("  async function checkInputs(", start);
 assert(start >= 0 && end > start);
 async function read(options = {}) {
   const sequence = { sequenceID: "seq", getInPoint: () => options.inPoint === undefined ? "-400000" : options.inPoint, getOutPoint: () => "60" };

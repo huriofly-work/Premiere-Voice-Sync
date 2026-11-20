@@ -38,7 +38,10 @@ function fixture(options = {}) {
     log = function (message, level) { fixture.logs.push({ message: message, level: level }); };
     status = renderBackend = logCaptionTiming = function () {};
     exportCaptionAudio = async function () { return { ok: true, restored: true }; };
-    evalHost = async function () { return { ok: true, captionCreated: true, captionCueCount: 1 }; };
+    evalHost = async function (expression) {
+      if (expression.includes("restorePendingCaptionAudioExport")) return { ok: false, restored: false, error: "RESTORE_FAILED" };
+      return { ok: true, captionCreated: true, captionCueCount: 1 };
+    };
     executeStagedPlan = async function () { return { ok: true, executorVersion: 25 }; };
     runPowerShell = async function (script, args) {
       if (args.indexOf("-ValidateOnly") >= 0) return;
@@ -61,7 +64,7 @@ function fixture(options = {}) {
       fs.writeFileSync(path.join(folder, "speed-merge-trial", "sentence-edit-plan.json"), JSON.stringify(Object.assign({}, plan, { speedMergeTrial: "adjacent-speed-v2", visualSegments: [] })));
     };
     state.targetSrt = path.join(fixture.home, "reference.srt"); fs.writeFileSync(state.targetSrt, "REFERENCE");
-    window.api = { edit: runSync, captions: runCaptions, cleanup: cleanupStaleJobs, prune: function (root, workflow, current) { cleanupPreviousJobs(root, workflow, current); }, active: function (folder) { runContext = folder ? { outputFolder: folder } : null; }, recovery: function () { return recoveryContext; } };
+    window.api = { edit: runSync, captions: runCaptions, cleanup: cleanupStaleJobs, prune: function (root, workflow, current) { cleanupPreviousJobs(root, workflow, current); }, active: function (folder) { runContext = folder ? { outputFolder: folder } : null; } };
   `), context);
   function job(name, workflow, finishedAt = "2026-01-01T00:00:00.000Z") {
     const folder = path.join(jobs, name); fs.mkdirSync(folder, { recursive: true });
@@ -114,7 +117,8 @@ test("stale-cleanup-protects-latest-marked-per-workflow-and-active", () => {
   [...keep, ...remove, pending, active, unrelated].forEach(old); f.api.active(active);
   assert.equal(f.api.cleanup(), remove.length);
   [...keep, pending, active, recent, unrelated].forEach(p => assert(fs.existsSync(p), p));
-  remove.forEach(p => assert(!fs.existsSync(p), p)); assert(f.api.recovery(), "orphan journal still locks recovery");
+  remove.forEach(p => assert(!fs.existsSync(p), p));
+  assert(fs.existsSync(path.join(pending, "job.json.audio-recovery.json")));
 });
 test("active-job-never-pruned-at-new-run", async () => {
   const f = fixture(), active = f.job("Job_active", "edit"), current = f.job("Job_current", "edit"); f.api.active(active);

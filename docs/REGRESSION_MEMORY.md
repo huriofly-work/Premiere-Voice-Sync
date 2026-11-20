@@ -1,5 +1,28 @@
 # Bộ nhớ hồi quy của project
 
+## Issue #107 — Bỏ khóa lượt sau khi Dừng hoặc lỗi
+
+- **Nguyên nhân.** Panel dùng `recoveryContext` để khóa cả hai nút chạy khi
+  timeline đã thay đổi hoặc chưa xác minh được, kể cả khi đã chuyển sequence.
+  Nút xác minh còn đòi timeline Auto edit khớp snapshot trước lượt cũ.
+- **Quyết định.** Bỏ khóa và xác nhận phục hồi. Auto edit giữ các bước đã thực
+  hiện, cảnh báo về marker khi dừng trước bước Gắn marker và tự đóng phiên host
+  còn sót. LocalStorage chỉ giữ mã phiên dựng để thử đóng lại. Panel tự tìm
+  nhật ký xuất audio trên đĩa và thử khôi phục sau Dừng/lỗi, khi mở panel và
+  trước cả hai workflow. Lỗi phục hồi ghi log và báo cảnh báo. Nút Kiểm tra
+  đầu vào đọc nguồn và phạm vi của chế độ hiện tại.
+- **Bất biến.** Host vẫn kiểm project, sequence, cấu trúc và snapshot của
+  nhật ký trước khi xóa. Panel kiểm thư mục Jobs, tên tệp và đường dẫn không
+  qua link. Dọn job cũ, thay dữ liệu lượt trước và thu gọn WAV/PCM đều bảo vệ
+  job còn nhật ký. Giữ hậu kiểm trong lượt đang chạy.
+- **Hồi quy.** Bản cũ trượt các ca nút chạy sau Dừng/lỗi và tự thử nhật ký.
+  Bản sửa đạt các ca đổi sequence và chạy tiếp, đóng mã phiên khi mở panel,
+  thử nhiều nhật ký, phục hồi thành công hoặc giữ lại khi lỗi, thử lại trước
+  cả hai workflow, và giữ dữ liệu job. Kiểm cú pháp JavaScript và đối chiếu
+  executor sinh từ nguồn đạt. Bộ chuẩn đạt 78 nhóm, parse 139 tệp PowerShell,
+  bỏ qua sáu nhóm tích hợp Windows. Log ở `_local/issue-107/standard-suite.log`.
+  Nghiệm thu trên Premiere còn chờ.
+
 ## Issue #105 — Thông báo lỗi đối chiếu phạm vi SRT
 
 - **Nguyên nhân.** Khi tạo phụ đề ở chế độ trộn audio, track tiếng gốc đang bật có thể làm lời nhận diện lệch SRT. PowerShell bọc ngoại lệ từ matcher C# thành `Exception calling "Find"` và panel thiếu thông báo cho nhóm mã `SUBTITLE_REFERENCE_SCOPE_*`.

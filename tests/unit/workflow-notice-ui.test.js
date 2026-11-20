@@ -103,7 +103,7 @@ function fixture(options={}){
     if(options.numberDifference){assert(s.calls.some(x=>Array.isArray(x)&&x[0]==="review-plan"&&x[1]===0));assert(!s.controls.workflowNoticeMessage.textContent.includes("cue SRT cần nghe lại"));const saved=JSON.parse(s.calls.find(x=>Array.isArray(x)&&x[0]==="write"&&x[1].endsWith("caption-result.json"))[2]);assert.equal(saved.referenceNumberReviewCues.length,1,"Keep number diagnostics in the saved report.");}
     if(options.supplement){assert(s.controls.workflowNoticeTechnical.textContent.includes("bổ sung 2 vùng"));assert(s.controls.workflowNoticeTechnical.textContent.includes("lời nói ngoài SRT"));assert(!s.controls.workflowNoticeMessage.textContent.includes("Đã bỏ qua"));}
     if(options.emptySupplement)assert(s.controls.workflowNoticeTechnical.textContent.includes("không nhận diện được lời nói"));
-    if(options.applyFailure){assert(s.controls.workflowNoticeTechnical.textContent.includes("Caption Track có thể đã được thêm"));assert(s.controls.runCaptions.disabled,"Unknown import result requires recovery verification.");}
+    if(options.applyFailure){assert(s.controls.workflowNoticeTechnical.textContent.includes("Caption Track có thể đã được thêm"));assert(!s.controls.runCaptions.disabled,"Unknown import result allows a later run.");}
     if(!options.rangeFailure){
       assert.strictEqual(s.calls.find(x=>Array.isArray(x)&&x[0]==="metrics-start")[1],"caption-only");
       assert.strictEqual(s.calls.find(x=>Array.isArray(x)&&x[0]==="metrics-finish")[1],failed?"failed":"success");

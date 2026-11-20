@@ -95,8 +95,6 @@ details > summary { color: #d5d7dc; cursor: pointer; font-weight: 600; margin: 9
 .notice-history { padding: 9px 12px; }
 .notice-history > summary { margin: 0; }
 .history-entry { display: block; width: 100%; margin-top: 7px; text-align: left; white-space: normal; overflow-wrap: anywhere; }
-.recovery-notice { border: 2px solid var(--warn); }
-.recovery-notice > strong { color: var(--warn); }
 .run-health { margin: 0; padding: 8px; border-radius: 6px; background: #3f3018; color: #ffdfae; }
 .run-health:empty { display: none; }
 .workflow-notice-card p { min-height: 0; overflow-y: auto; color: var(--text); margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -13,13 +13,12 @@ function fixture(options = {}) {
     fixture: { options, events } };
   vm.runInNewContext(source.replace('  document.addEventListener("DOMContentLoaded", wire);', `
     extensionRoot=function(){return "C:\\\\panel";}; status=log=function(){};
-    scanSequence=async function(){return {ok:true,sequenceId:fixture.options.recoveryMatches?'seq':'other'};};
-    scanCaptionRange=async function(){return {sequenceId:'seq',snapshot:'original'};};
-    evalHost=async function(){return {ok:true,count:fixture.options.noCaptionApi?null:fixture.options.captionChanged?1:0,bins:fixture.options.binChanged?1:0,inPoint:fixture.options.inChanged?1:0,outPoint:10};};
-    window.api={show:showWorkflowNotice,confirm:confirmWorkflowNotice,choose:chooseWorkflowNotice,close:closeWorkflowNotice,begin:beginRun,stage:runStage,fail:reportRunFailure,finish:finishRunNotice,cleanup:appendCleanupNotice,busy:setWorkflowBusy,check:checkIncidentInputs,unexpected:reportUnexpectedError,load:loadNoticeHistory,health:updateRunHealth,
-      history:function(){return noticeHistory;},queue:function(){return noticeQueue;},current:function(){return currentNotice;},context:function(){return runContext;},recovery:function(){return recoveryContext;},end:function(){runContext=null;saveRecoveryJournal();setWorkflowBusy(false);},setPending:function(n,engine){hostPending=engine?0:n;enginePending=engine?n:0;},state:state};
+    scanSequence=async function(){fixture.events.edit=(fixture.events.edit||0)+1;return {ok:true,sequenceId:"other"};};
+    scanCaptionRange=async function(){fixture.events.captions=(fixture.events.captions||0)+1;return {sequenceId:"other",plan:{}};};
+    window.api={show:showWorkflowNotice,confirm:confirmWorkflowNotice,choose:chooseWorkflowNotice,close:closeWorkflowNotice,begin:beginRun,stage:runStage,fail:reportRunFailure,finish:finishRunNotice,cleanup:appendCleanupNotice,busy:setWorkflowBusy,check:checkInputs,unexpected:reportUnexpectedError,load:loadNoticeHistory,health:updateRunHealth,
+      history:function(){return noticeHistory;},queue:function(){return noticeQueue;},current:function(){return currentNotice;},context:function(){return runContext;},end:function(){runContext=null;setWorkflowBusy(false);},setPending:function(n,engine){hostPending=engine?0:n;enginePending=engine?n:0;},state:state};
   `), context);
-  return { api: context.window.api, controls, native, host, storage, callbacks };
+  return { api: context.window.api, controls, native, host, storage, callbacks, events };
 }
 (async () => {
   const f=fixture();
@@ -51,36 +50,22 @@ function fixture(options = {}) {
   c.api.choose(false); assert.strictEqual(await choice,false); assert.strictEqual(c.controls.workflowNoticeTitle.textContent,"Failure"); assert.strictEqual(c.native.length,0);
   const p=fixture(), midway=p.api.confirm("Review","Mid-run review","Continue","Stop",true);
   assert.strictEqual(p.native.length,0); p.api.choose(false); assert.strictEqual(await midway,false);
-  const r=fixture({recoveryMatches:false}); r.api.begin("edit");
-  r.api.context().baseline=JSON.stringify({ok:true,sequenceId:"seq"}); r.api.context().impact="changed";
-  r.api.fail(Error("PARTIAL_EDIT"),"Edit failed"); r.api.end();
-  assert(r.controls.runSync.disabled); assert(!r.controls.recoveryNotice.hidden);
-  await r.api.check(); assert(r.api.recovery(),"Mismatching template must not unlock another edit.");
-  const s=fixture({recoveryMatches:true}); s.api.begin("edit");
-  s.api.context().baseline=JSON.stringify({ok:true,sequenceId:"seq"}); s.api.context().impact="unknown";
-  s.api.fail(Error("NO_RESULT"),"Edit unknown"); s.api.end();
-  s.api.setPending(1); await s.api.check(); assert(s.api.recovery(),"No read/retry can be queued behind a pending host mutation.");
-  s.api.setPending(0); await s.api.check(); assert.strictEqual(s.api.recovery(),null); assert(!s.controls.runSync.disabled);
-  for(const captionChanged of [false,true]) {
-    const a=fixture({captionChanged}); a.api.begin("captions");
-    Object.assign(a.api.context(),{sequenceId:"seq",baseline:"original",captionCount:JSON.stringify({count:0,bins:0,inPoint:0,outPoint:10}),impact:"unknown"});
-    a.api.fail(Error("IMPORT_FAILED"),"Subtitle failed"); a.api.end(); await a.api.check();
-    assert.strictEqual(!!a.api.recovery(),captionChanged,"Added caption must be checked before retry.");
-  }
-  for(const options of [{},{binChanged:true},{inChanged:true}]) {
-    const a=fixture(Object.assign({noCaptionApi:true},options)); a.api.begin("captions");
-    Object.assign(a.api.context(),{sequenceId:"seq",baseline:"original",captionCount:JSON.stringify({count:null,bins:0,inPoint:0,outPoint:10}),impact:"unknown"});
-    a.api.fail(Error("IMPORT_FAILED"),"Subtitle failed"); a.api.end();
-    let pending=a.api.check(); await Promise.resolve();
-    assert(a.api.recovery(),"Unavailable caption API must not unlock recovery automatically.");
-    assert(a.controls.workflowNoticeMessage.textContent.includes("không tự xác minh"));
-    a.api.choose(false); await pending; assert(a.api.recovery(),"Cancel keeps recovery locked.");
-    pending=a.api.check(); await Promise.resolve(); a.api.choose(true); await pending;
-    assert.strictEqual(!!a.api.recovery(),!!(options.binChanged||options.inChanged),"Manual caption review must still enforce In/Out and temporary-bin checks.");
+  for(const [mode,impact] of [["edit","changed"],["edit","unknown"],["captions","unknown"]]) {
+    const r=fixture(); r.api.begin(mode); r.api.context().impact=impact;
+    r.api.fail(Error("PREVIOUS_RUN_FAILED"),"Failed"); r.api.end();
+    assert(!r.controls.runSync.disabled&&!r.controls.runCaptions.disabled);
+    assert(!r.api.current().choice);
+    r.api.state.mode=mode;
+    r.api.setPending(1); await r.api.check();
+    assert.deepStrictEqual(r.events,{},"Input check must wait for a pending host call");
+    r.api.setPending(0); await r.api.check();
+    assert.deepStrictEqual(r.events,{[mode]:1},"Check scans only the active mode, even after a failure on another sequence");
+    assert(!r.api.state.noticeChoice);
   }
   const u=fixture(); u.api.begin("edit"); u.api.context().impact="unknown"; u.api.unexpected(Error("ASYNC_FAILED"));
-  assert(u.api.context().fatal); assert(u.api.recovery());
+  assert(u.api.context().fatal);
   u.api.finish("Edit","Done"); assert.strictEqual(u.controls.workflowNoticeCard.className,"workflow-notice-card error","Unhandled error cannot become green success.");
+  u.api.end(); assert(!u.controls.runSync.disabled&&!u.controls.runCaptions.disabled);
   const h=fixture(); h.api.begin("edit"); h.api.busy(true); h.api.context().lastProgress=Date.now()-180000; h.api.setPending(1); h.api.health();
   assert(h.controls.runHealth.textContent.includes("chờ lệnh hiện tại trả về")); assert(h.api.state.workflowBusy);
   h.api.setPending(1,true); h.api.health();

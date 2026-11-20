@@ -43,14 +43,15 @@ async function paused(mode,point,extras={}){
   for(const [mode,point] of [["edit","edit-advance-1"],["captions","run-captions.ps1"]]){
     let r=await paused(mode,point);r.f.api.stop();r.f.api.stop();await settle(r.f,r.running);
     assert.equal(r.f.controls.workflowNoticeTitle.textContent,"Đã dừng tác vụ");
-    assert.equal(!!r.f.api.recovery(),mode==="edit");
+    assert(!r.f.controls.runSync.disabled&&!r.f.controls.runCaptions.disabled);
     r=await paused(mode,point);r.options.snapshotVersion=1;r.f.api.pause();await settle(r.f,r.running);
-    assert(r.f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));assert(r.f.api.recovery());
+    assert(r.f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));assert(!r.f.controls.runSync.disabled&&!r.f.controls.runCaptions.disabled);
     assert(!r.f.calls.some(c=>c[0]==="host"&&c[1].includes("applyCaptionOnly")));
     if(mode==="edit")assert.equal(r.f.calls.filter(c=>c[0]==="host"&&c[1].includes("advanceDiagnosticEdit")).length,1,"Changed timeline cannot receive next stage");
     r=await paused(mode,point);r.f.api.fatal(Error("FATAL_PAUSED"));await settle(r.f,r.running);
     assert(r.f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất")||r.f.controls.workflowNoticeTitle.textContent.includes("lỗi"));
-    r=await paused(mode,point);r.options.pauseReadFailure=true;r.f.api.pause();await settle(r.f,r.running);assert(r.f.api.recovery(),"Unreadable resume state keeps recovery locked");
+    r=await paused(mode,point);r.options.pauseReadFailure=true;r.f.api.pause();await settle(r.f,r.running);
+    assert(!r.f.controls.runSync.disabled&&!r.f.controls.runCaptions.disabled,"An unreadable resume state only stops the current run");
   }
   const broken=await paused("captions","run-captions.ps1",{pauseReadFailure:true});await settle(broken.f,broken.running);
   assert(broken.f.controls.workflowNoticeTitle.textContent.includes("Không hoàn tất"));
