@@ -9,6 +9,13 @@
 - Ngày 19/11, user xác nhận trên Premiere rằng marker trên nest V1 đi theo clip khi di chuyển hoặc trim, và phần nới mép caption 5 frame đúng.
 - Bản stable/Latest hiện tại là 2.20.98. Bước tiếp theo là chuẩn bị bản ứng viên 3.0.0 để user chạy một lần danh sách nghiệm thu trên Premiere Pro 26.2.2 rồi mới công bố. 3.0.0 chưa công bố. User quyết định phát hành dạng prerelease hay stable. [Nghiệm thu native 3.0.0](TESTING.md#nghiệm-thu-native-300)
 
+## Trạng thái ngày 21/11/2026
+
+- Ngày 20/11 user chạy danh sách nghiệm thu trên bản ứng viên đầu: mục 1–4 đạt, mục 5–7 tìm ra lỗi. Các bản sửa đã merge: #104 (hoà độ giao nhau), #106 (câu báo lời không khớp SRT), #108 (không chặn lượt sau khi Dừng/lỗi), #110 (kiểm đầu vào một lần), #112 (gọn đầu vào Tạo phụ đề), #113 (đoạn hình giảm tốc bị Premiere giới hạn).
+- Một lượt soát độc lập toàn bộ thay đổi từ 2.20.98 báo 5 điểm; user xem và bỏ qua cả 5 vì đã đổi trong 3.0.0, gần như không xảy ra hoặc không thể xảy ra.
+- Gói 3.0.0 được build lại ngày 21/11 (version giữ 3.0.0 vì chưa công bố); ZIP cũ `B068D618…` đã bị thay. Hash mới ghi trong [3.0.0.json](releases/3.0.0.json). Bước tiếp theo: cài bản mới, user kiểm lại các mục bị ảnh hưởng theo [danh sách kiểm lại](TESTING.md#kiểm-lại-sau-các-bản-sửa-ngày-20112026), ghi kết quả rồi công bố.
+- Để dành sau 3.0.0: tăng tốc gắn marker trên nest V1 (lượt 20/11 tốn 18,3 s cho 19 marker, cần probe đo trước) và hỗ trợ đầu vào đã chỉnh như voice/hình cắt phần đầu (cần user chốt phạm vi và probe theo chính sách khả thi).
+
 ## Git, bản phát hành và bản cài
 
 | Hạng mục | Trạng thái đã đối chiếu |

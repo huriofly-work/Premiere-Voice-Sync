@@ -5,8 +5,8 @@
   "channel": "prerelease",
   "nativeAcceptance": "pending",
   "package": {
-    "sha256": "B068D618413CDD58F5964D01FB7EA2A43C58FA6B65D169194A0BD21984F9B8C1",
-    "bytes": 1535366912,
+    "sha256": "A6DC5337E8ED9EE719AD844BC3D06AA9C0DF980EAE1325878005F644B64C32C4",
+    "bytes": 1535370263,
     "filename": "Premiere-Voice-Sync-3.0.0-Panel.zip"
   },
   "recognitionModel": {
@@ -20,11 +20,13 @@
     "status": "built",
     "mockEvidence": [
       "tests/unit/diagnostic-executor.test.js: before the marker rename, final marker rows matched the previous host on 42 fixtures x 4 executors (GUIDs ignored); timeline and native-argument hashes unchanged; every steady rerun writes 0 markers.",
-      "Placement mocks at 23.976, 24, 25, 29.97 and 60 fps with voice at 90%, 100% and 150%; reversed and time-remapped A2 clips list their markers as unattached.",
+      "Placement mocks at 23.976, 24, 25, 29.97 and 60 fps with voice at 90%, 100% and 150%; equal-overlap ties at 25 fps attach to the piece holding the warning midpoint.",
+      "tests/unit/edit-input.test.js: reversed and time-remapped A2 clips are refused at the single input check with every reason listed, before ASR and before any timeline change.",
+      "Slowed-piece cap: mock reproduces the 56-frame shortfall of the 2026-11-20 run; restoring Out before end keeps full source and length; the correction was proven by a native probe on Premiere 26.2.2.",
       "tests/unit/partial-markers.test.js: Stop or fault at every stage boundary, 0 partial-worse; 172/172 injected write faults compensated."
     ],
-    "regressionGroupsPassed": 84,
-    "powershellScriptsParsed": 139,
+    "regressionGroupsPassed": 86,
+    "powershellScriptsParsed": 141,
     "windowsIntegrationGroupsRun": 6
   },
   "changes": [
@@ -33,7 +35,13 @@
     "Gan marker always removes every old tool marker; unplaceable warnings are listed as unattached; no ruler markers.",
     "A caption failure still writes Video and Voice markers; only Caption markers are skipped and the panel names the caption error.",
     "Stop or error keeps the timeline as far as the run got; markers are only written in the last step; a late Stop keeps the finished result; the original error comes first (#90, PR #91).",
-    "No compatibility with older versions: 2.20.x markers are not recognised, the EXE-installer migration and old settings, job and alignment formats are removed (#96, #98, PR #99)."
+    "No compatibility with older versions: 2.20.x markers are not recognised, the EXE-installer migration and old settings, job and alignment formats are removed (#96, #98, PR #99).",
+    "A slowed picture piece capped by Premiere gets its Out restored before its end, for every piece, so no picture gap is left (#102, PR #113).",
+    "Equal-overlap ties attach the marker to the piece holding the warning midpoint, else the earlier piece (#103, PR #104).",
+    "Tao phu de explains in plain Vietnamese when recognised speech does not match the SRT (#105, PR #106).",
+    "Stop or an error never blocks later runs; Tao phu de restores mute, enable and In/Out automatically and only warns on failure (#107, PR #108).",
+    "Dung theo voice runs one input check that lists every refusal reason with guidance; an existing Caption Track is accepted (#109, PR #110).",
+    "Tao phu de reads its input once and drops the unused legacy path (#111, PR #112)."
   ],
   "pullRequests": [
     91,
@@ -41,19 +49,31 @@
     95,
     97,
     99,
-    100
+    100,
+    104,
+    106,
+    108,
+    110,
+    112,
+    113
   ],
   "issues": [
     90,
     92,
     94,
     96,
-    98
+    98,
+    102,
+    103,
+    105,
+    107,
+    109,
+    111
   ],
   "knownLimitations": [
-    "Not yet run in Premiere; the 3.0.0 native checklist in docs/TESTING.md is pending.",
+    "The first build ran the native checklist on 2026-11-20: items 1-4 passed, items 5-7 found the issues fixed above. This rebuild still needs the affected items rechecked in Premiere.",
+    "Placing 19 markers on the V1 nest took 18.3 s in the 2026-11-20 run; a speed-up is planned for a later version.",
     "Markers written by 2.20.x are not recognised: remove them by hand once or use a clean template, otherwise new markers avoid their frames and may shift or stay unattached.",
-    "Writing markers after the cuts may make Auto edit slower on large projects; to be measured in the native run.",
     "Setup/Remove on a clean Windows account and an antivirus scan were not recorded for this build.",
     "FFmpeg 8.1.2 source is not attached to the release; THIRD_PARTY_NOTICES.md links to it (user decision 2026-11-15)."
   ]
