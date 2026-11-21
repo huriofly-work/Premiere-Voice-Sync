@@ -31,11 +31,21 @@ Người bảo trì chạy một lần đủ 7 mục dưới đây trên Premier
    - **Kết quả.** Hai loại marker nằm ở điểm giữa đúng đoạn lời trên timeline sau khi đổi tốc độ, dùng frame trống kề bên nếu trùng điểm.
    - **Gửi lại.** Gửi cặp log của lượt dựng, `voiceMarkerCount`, `captionMarkerCount`, `markerFailureCount` và `unattachedMarkerCount`. Chụp tốc độ clip, vùng lời và vị trí hai loại marker trên timeline có mốc frame.
 6. **Voice phát ngược và đổi tốc độ theo thời gian.** Chạy Dựng theo voice với một clip A2 phát ngược và một clip A2 dùng Time Remapping, cả hai có vùng cảnh báo Voice và Caption.
-   - **Kết quả.** Lượt dựng hoàn tất. Chi tiết panel liệt kê marker Voice và Caption chưa gắn được cho hai clip, kèm khoảng cảnh báo và lý do.
-   - **Gửi lại.** Gửi cặp log của lượt dựng và các trường `ok`, `unattachedMarkerCount`, `unattachedMarkers`, `markerFailureCount`. Chụp thông báo hoàn tất và phần Chi tiết có các dòng chưa gắn được của cả hai clip.
+   - **Kết quả.** Panel từ chối ở bước kiểm đầu vào, trước khi nhận diện lời và trước khi sửa timeline. Thông báo nêu đủ hai lý do: voice A2 đang chạy ngược (Reverse) và voice A2 có Time Remapping, mỗi lý do kèm cách sửa. Không còn câu báo voice bị cắt phần đầu. Timeline và marker không đổi.
+   - **Gửi lại.** Gửi `Workflow_*.jsonl` của lượt này. Chụp thông báo từ chối và timeline sau đó.
 7. **Tốc độ khung hình khác 30 fps.** Chạy Dựng theo voice trên project hoặc sequence có tốc độ khung hình khác 30 fps, ví dụ 25 hoặc 23,976 fps. Dùng mẫu có cảnh báo cả ba loại.
    - **Kết quả.** Timeline khớp kế hoạch, các điểm cắt và cả ba loại marker nằm đúng frame của sequence.
    - **Gửi lại.** Gửi cặp log của lượt dựng, tốc độ khung hình, `videoMarkerCount`, `voiceMarkerCount`, `captionMarkerCount`, `markerFailureCount` và `unattachedMarkerCount`. Ghi mốc frame dự kiến và thực tế ở các điểm đã đối chiếu. Chụp cài đặt sequence và timeline phóng đủ để đọc mốc frame và thấy cả ba loại marker.
+
+### Kiểm lại sau các bản sửa ngày 20/11/2026
+
+Lượt chạy ngày 20/11/2026 đã đạt mục 1–4. Bản build lại chỉ cần chạy các mục bị ảnh hưởng bởi #104, #106, #108, #110, #112 và #113:
+
+- **Mục 5** trên sequence "Muc5 - toc do": không còn khe hở hình ở đoạn hình giảm tốc (trước đây đoạn 127 thiếu 56 frame), `speedNonConvergenceCount` bằng 0, marker Voice và Caption nằm đúng như mục 5.
+- **Mục 6** theo kết quả mới ở trên.
+- **Mục 7** ở 25 fps: cảnh báo Caption ở chỗ hai đoạn A2 giao nhau bằng nhau được gắn vào một đoạn, `unattachedMarkerCount` bằng 0.
+- **Dừng rồi chạy lại.** Bấm Dừng giữa một lượt Dựng theo voice, sau đó chạy lại trên bản sao template khác mà không mở lại panel. Panel không chặn lượt sau.
+- **Một lượt Dựng theo voice thường** và **một lượt Tạo phụ đề** trên project Sông Congo, để xác nhận bước kiểm đầu vào gộp mới không chặn nhầm. Caption Track có sẵn không còn bị chặn.
 
 ### Không cần kiểm (user đã xác nhận trên Premiere ngày 19/11/2026)
 

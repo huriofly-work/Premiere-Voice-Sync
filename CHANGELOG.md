@@ -4,7 +4,15 @@ Từ 14/11/2026 chỉ mục "Chưa phát hành" đầu tiên là thay đổi đa
 
 ## 3.0.0 — 2026-11-20
 
-Bản ứng viên; chưa công bố, chưa chạy trên Premiere; 2.20.98 vẫn là stable/Latest. [Ghi chú phát hành](docs/releases/notes/RELEASE_3.0.0.md).
+Bản ứng viên; chưa công bố; 2.20.98 vẫn là stable/Latest. Bản đầu (20/11) đã chạy danh sách nghiệm thu trên Premiere và được build lại sau các bản sửa bên dưới; còn chờ kiểm lại các mục bị ảnh hưởng. [Ghi chú phát hành](docs/releases/notes/RELEASE_3.0.0.md).
+
+**Sửa sau lượt nghiệm thu ngày 20/11/2026**
+- Đoạn hình giảm tốc không còn bị hụt: khi Premiere giới hạn độ dài đoạn nest chạy chậm, tool khôi phục Out rồi mới đặt điểm cuối, cho mọi đoạn chứ không chỉ đoạn cuối (#102).
+- Hai đoạn clip giao với vùng cảnh báo bằng nhau thì marker gắn vào đoạn chứa điểm giữa, không có thì đoạn trước, thay vì bỏ ở mục chưa gắn (#103).
+- Lời nhận diện không khớp SRT ở Tạo phụ đề được báo bằng câu tiếng Việt dễ hiểu, kèm gợi ý tắt track không phải lời nói (#105).
+- Sau khi Dừng hoặc lỗi, panel không còn chặn các lượt chạy sau. Tạo phụ đề tự khôi phục mute, enable và In/Out; nếu không khôi phục được thì chỉ cảnh báo (#107).
+- Dựng theo voice kiểm đầu vào một lần và báo đủ, đúng từng lý do (voice chạy ngược, Time Remapping, cắt phần đầu, voice chồng nhau, file mất…). Caption Track có sẵn không còn bị chặn (#109).
+- Tạo phụ đề bỏ các lượt đọc đầu vào trùng lặp và đường xử lý cũ không còn dùng (#111).
 
 **Không tương thích với bản cũ** (quyết định 19/11/2026):
 - Marker do 2.20.x ghi không được nhận ra. Trước lần chạy đầu bằng 3.0.0, xóa tay các marker có tên bắt đầu bằng `VOICE SYNC - ` trên file voice, nest V1 và thước, hoặc dùng template sạch.
